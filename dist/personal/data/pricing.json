@@ -1,7 +1,14 @@
 {
-  "last_updated": "2026-05-20",
+  "last_updated": "2026-06-04",
   "source_url": "https://platform.claude.com/docs/en/about-claude/pricing",
   "models": {
+    "claude-opus-4-8": {
+      "input_per_mtok": 5,
+      "output_per_mtok": 25,
+      "cache_write_5m_per_mtok": 6.25,
+      "cache_write_1h_per_mtok": 10,
+      "cache_read_per_mtok": 0.5
+    },
     "claude-opus-4-7": {
       "input_per_mtok": 5,
       "output_per_mtok": 25,

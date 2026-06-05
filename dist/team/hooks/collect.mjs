@@ -1964,13 +1964,17 @@ function validate(v) {
   const hint = validateIdentityHint(o.identity_hint);
   if (hint.kind === "bad")
     return hint;
+  const endpoint = typeof o.endpoint === "string" && o.endpoint ? o.endpoint : void 0;
+  const identity_type = o.identity_type === "full" || o.identity_type === "hash" ? o.identity_type : void 0;
   return {
     kind: "ok",
     cred: {
       schema_version: 1,
       issued_at: o.issued_at,
       credential: o.credential,
-      identity_hint: hint.value
+      identity_hint: hint.value,
+      ...endpoint !== void 0 ? { endpoint } : {},
+      ...identity_type !== void 0 ? { identity_type } : {}
     }
   };
 }
@@ -1987,6 +1991,18 @@ function validateIdentityHint(v) {
       return { kind: "bad", reason: "identity_hint.value required for source=directory" };
     return { kind: "ok", value: { source: "directory", value: o.value } };
   }
+  if (o.source === "mdm_file") {
+    const user_email = typeof o.user_email === "string" ? o.user_email : void 0;
+    const user_upn = typeof o.user_upn === "string" ? o.user_upn : void 0;
+    return {
+      kind: "ok",
+      value: {
+        source: "mdm_file",
+        ...user_email !== void 0 ? { user_email } : {},
+        ...user_upn !== void 0 ? { user_upn } : {}
+      }
+    };
+  }
   return { kind: "bad", reason: `identity_hint.source unknown: ${String(o.source)}` };
 }
 
@@ -1995,7 +2011,9 @@ init_credential_paths();
 var INGEST_ENDPOINT = "https://ingest.preview.fancysauce.ai";
 var DEFAULT_LOGIN_STATE_DIR = join(homedir2(), ".config", "fancysauce");
 var KNOWN_FANCYSAUCE_VARS = /* @__PURE__ */ new Set([
-  "FANCYSAUCE_CREDENTIAL_PATHS"
+  "FANCYSAUCE_CREDENTIAL_PATHS",
+  "FANCYSAUCE_API_KEY",
+  "FANCYSAUCE_IDENTITY_TYPE"
 ]);
 function parseCredentialPathsEnv() {
   if (process.env.VITEST !== "true")
@@ -2041,8 +2059,20 @@ async function loadConfig(opts = {}) {
   const paths = opts.paths ?? (parsed ? { system: parsed.system, user: parsed.user } : credentialPaths());
   const result = await readCredential(paths);
   switch (result.source) {
-    case "absent":
-      return null;
+    case "absent": {
+      const apiKey = process.env.FANCYSAUCE_API_KEY;
+      if (!apiKey)
+        return null;
+      const envIdentityType = process.env.FANCYSAUCE_IDENTITY_TYPE === "full" ? "full" : "hash";
+      return {
+        credential: apiKey,
+        endpoint: opts.endpointOverride ?? INGEST_ENDPOINT,
+        loginStateDir,
+        policy: defaultPolicy(),
+        identity_type: envIdentityType,
+        identity_hint: null
+      };
+    }
     case "malformed-system":
     case "malformed-user":
       return {
@@ -2056,13 +2086,18 @@ async function loadConfig(opts = {}) {
         }
       };
     case "system":
-    case "user":
+    case "user": {
+      const fileEndpoint = result.credential.endpoint ?? endpoint;
+      const fileIdentityType = result.credential.identity_type ?? void 0;
       return {
         credential: result.credential.credential,
-        endpoint,
+        endpoint: fileEndpoint,
         loginStateDir,
-        policy: defaultPolicy()
+        policy: defaultPolicy(),
+        ...fileIdentityType !== void 0 ? { identity_type: fileIdentityType } : {},
+        identity_hint: result.credential.identity_hint
       };
+    }
   }
 }
 function defaultUnknownEnvVarHandler(_name, _value) {
@@ -2151,9 +2186,12 @@ function deriveFromMarketplaces(root, home) {
 init_credential_paths();
 
 // dist/team/lib/hash.mjs
-import { createHash } from "node:crypto";
+import { createHash, createHmac } from "node:crypto";
 function sha256Hex(input) {
   return createHash("sha256").update(input, "utf8").digest("hex");
+}
+function hmacIdentity(apiKey, value) {
+  return createHmac("sha256", apiKey).update(value.toLowerCase(), "utf8").digest("hex");
 }
 
 // dist/team/lib/stable-stringify.mjs
@@ -2883,10 +2921,69 @@ function toApiRequestEvent(r, sessionId, sequence) {
 
 // dist/team/lib/identity-resolver.mjs
 import { createHash as createHash2, randomUUID as randomUUID2 } from "node:crypto";
-import { execFile } from "node:child_process";
+import { execFile as execFile2 } from "node:child_process";
 import { open as open4, readFile as readFile5, rename as rename4, unlink as unlink2 } from "node:fs/promises";
 import { join as join5 } from "node:path";
 import { randomBytes } from "node:crypto";
+import { userInfo } from "node:os";
+
+// dist/team/lib/identity-sources.mjs
+import { execFile } from "node:child_process";
+var TIMEOUT_MS = 200;
+function defaultRunner(cmd, args, timeoutMs) {
+  return new Promise((resolve, reject) => {
+    execFile(cmd, args, { timeout: timeoutMs }, (err, stdout) => {
+      if (err)
+        return reject(err);
+      resolve(stdout.toString());
+    });
+  });
+}
+async function readGitConfigEmail(deps = {}) {
+  const runner = deps.runner ?? defaultRunner;
+  try {
+    const out = await runner("git", ["config", "--global", "user.email"], TIMEOUT_MS);
+    const trimmed = out.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  } catch {
+    return null;
+  }
+}
+async function readMacOsDsclEmail(deps = {}) {
+  const platform = deps.platform ?? process.platform;
+  if (platform !== "darwin")
+    return null;
+  const runner = deps.runner ?? defaultRunner;
+  const user = deps.username ?? process.env.USER ?? process.env.LOGNAME;
+  if (!user)
+    return null;
+  try {
+    const out = await runner("dscl", [".", "-read", `/Users/${user}`, "EMailAddress"], TIMEOUT_MS);
+    const match = out.match(/^EMailAddress:\s*(\S+)/m);
+    return match?.[1] ?? null;
+  } catch {
+    return null;
+  }
+}
+async function readWindowsUpn(deps = {}) {
+  const platform = deps.platform ?? process.platform;
+  if (platform !== "win32")
+    return null;
+  const runner = deps.runner ?? defaultRunner;
+  try {
+    const out = await runner("whoami", ["/upn"], TIMEOUT_MS);
+    const trimmed = out.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  } catch {
+    return null;
+  }
+}
+
+// dist/team/lib/identity-resolver.mjs
+var TENANT_KEY_PREFIXES = ["fs_live_t_", "fs_test_t_"];
+function isTenantKey(credential) {
+  return TENANT_KEY_PREFIXES.some((p) => credential.startsWith(p));
+}
 var GIT_TIMEOUT_MS = 200;
 var IdentityResolver = class {
   dir;
@@ -2897,10 +2994,57 @@ var IdentityResolver = class {
     this.installPath = join5(dir, "install.json");
     this.git = git;
   }
-  async resolve(cwd) {
+  async resolve(cwd, opts) {
     const install_id = await this.loadOrCreateInstallId();
     const repo = await this.resolveRepoHash(cwd);
-    return { install_id, ...repo };
+    const base = { install_id, ...repo };
+    if (!opts)
+      return base;
+    if (!isTenantKey(opts.credential))
+      return base;
+    const sources = opts.identitySources ?? {
+      dsclEmail: () => readMacOsDsclEmail(),
+      winUpn: () => readWindowsUpn(),
+      gitEmail: () => readGitConfigEmail()
+    };
+    const osUsername = (opts.osUsername ?? (() => userInfo().username))();
+    let email;
+    let identitySource;
+    if (opts.identity_hint?.source === "mdm_file" && opts.identity_hint.user_email) {
+      email = opts.identity_hint.user_email;
+      identitySource = "mdm_file";
+    } else {
+      const dscl = await sources.dsclEmail?.();
+      if (dscl) {
+        email = dscl;
+        identitySource = "dscl";
+      } else {
+        const upn = await sources.winUpn?.();
+        if (upn) {
+          email = upn;
+          identitySource = "whoami_upn";
+        } else {
+          const git = await sources.gitEmail?.();
+          if (git) {
+            email = git;
+            identitySource = "git_config";
+          }
+        }
+      }
+    }
+    const result = { ...base, handle_os: hmacIdentity(opts.credential, osUsername) };
+    if (email) {
+      result.handle_email = hmacIdentity(opts.credential, email);
+      result.identity_source = identitySource;
+    }
+    if (opts.identity_type === "full") {
+      if (email)
+        result.email = email;
+      if (opts.identity_hint?.source === "mdm_file" && opts.identity_hint.user_upn) {
+        result.upn = opts.identity_hint.user_upn;
+      }
+    }
+    return result;
   }
   async resolveRepoHash(cwd) {
     const url = await this.git.gitRemoteUrl(cwd);
@@ -2961,12 +3105,23 @@ async function writeInstallFile(path, body) {
   }
 }
 function toResourceAttributes(id, opts) {
-  return {
+  const attrs = {
     "service.name": "fancysauce",
     "service.version": opts.pluginVersion,
     "fancysauce.schema_version": opts.schemaVersion,
     "fancysauce.install_id": id.install_id
   };
+  if (id.handle_email)
+    attrs["fancysauce.user.handle_email"] = id.handle_email;
+  if (id.handle_os)
+    attrs["fancysauce.user.handle_os"] = id.handle_os;
+  if (id.identity_source)
+    attrs["fancysauce.user.identity_source"] = id.identity_source;
+  if (id.email)
+    attrs["fancysauce.user.email"] = id.email;
+  if (id.upn)
+    attrs["fancysauce.user.upn"] = id.upn;
+  return attrs;
 }
 function defaultGitAccess() {
   return {
@@ -2975,7 +3130,7 @@ function defaultGitAccess() {
 }
 function gitRead(args) {
   return new Promise((resolve) => {
-    execFile("git", args, { timeout: GIT_TIMEOUT_MS }, (err, stdout) => {
+    execFile2("git", args, { timeout: GIT_TIMEOUT_MS }, (err, stdout) => {
       if (err)
         return resolve(null);
       const trimmed = stdout.toString().trim();
@@ -3477,7 +3632,12 @@ function encodeResourceAttributes(r) {
     "service.name",
     "service.version",
     "fancysauce.schema_version",
-    "fancysauce.install_id"
+    "fancysauce.install_id",
+    "fancysauce.user.handle_email",
+    "fancysauce.user.handle_os",
+    "fancysauce.user.identity_source",
+    "fancysauce.user.email",
+    "fancysauce.user.upn"
   ];
   for (const key of order) {
     const v = r[key];
@@ -4175,7 +4335,11 @@ async function runCollectOnce(opts) {
     const hookPayload = opts.hookPayload;
     const root = dataDir();
     await mkdir10(root, { recursive: true, mode: 448 });
-    const identity = await new IdentityResolver(root).resolve(hookPayload.cwd ?? process.cwd());
+    const identity = await new IdentityResolver(root).resolve(hookPayload.cwd ?? process.cwd(), {
+      credential: config.credential,
+      identity_type: config.identity_type ?? "hash",
+      identity_hint: config.identity_hint ?? null
+    });
     const resource = toResourceAttributes(identity, {
       pluginVersion: pluginVersion(),
       schemaVersion: SCHEMA_VERSION

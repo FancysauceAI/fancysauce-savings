@@ -1,12 +1,16 @@
 import { createRequire as __cr } from 'node:module'; const require = __cr(import.meta.url);
 
 // dist/personal/bin/bill-check.mjs
-import { createReadStream, readFileSync, readdirSync, realpathSync, statSync } from "node:fs";
-import { createInterface } from "node:readline";
+import { realpathSync } from "node:fs";
 import { parseArgs } from "node:util";
-import { join, dirname } from "node:path";
+import { join as join2, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { homedir } from "node:os";
+
+// dist/personal/lib/usage.mjs
+import { createReadStream, readFileSync, readdirSync, statSync } from "node:fs";
+import { createInterface } from "node:readline";
+import { join } from "node:path";
 function normalizeModelKey(modelId) {
   return modelId.replace(/-\d{8}$/, "");
 }
@@ -117,6 +121,96 @@ function aggregate(sessions) {
   return out;
 }
 var DAYS_PER_MONTH = 30.4375;
+async function collectSessions(projectsDir, since) {
+  let projects = [];
+  try {
+    projects = readdirSync(projectsDir).map((name) => join(projectsDir, name)).filter((p) => {
+      try {
+        return statSync(p).isDirectory();
+      } catch {
+        return false;
+      }
+    });
+  } catch {
+  }
+  const transcripts = [];
+  for (const proj of projects) {
+    try {
+      for (const f of readdirSync(proj)) {
+        if (!f.endsWith(".jsonl"))
+          continue;
+        const full = join(proj, f);
+        try {
+          if (statSync(full).isFile())
+            transcripts.push(full);
+        } catch {
+        }
+      }
+    } catch {
+    }
+  }
+  const sessions = [];
+  let totalMalformed = 0;
+  let sessionsDroppedNoTimestamp = 0;
+  for (const t of transcripts) {
+    try {
+      const s = await extractSession(t);
+      const sidDir = t.replace(/\.jsonl$/, "");
+      try {
+        const subDir = join(sidDir, "subagents");
+        if (statSync(subDir).isDirectory()) {
+          for (const sf of readdirSync(subDir)) {
+            if (!sf.endsWith(".jsonl"))
+              continue;
+            try {
+              const sub = await extractSession(join(subDir, sf));
+              for (const [model, usage] of sub.perModel) {
+                let bucket = s.perModel.get(model);
+                if (!bucket) {
+                  bucket = { ...usage };
+                  s.perModel.set(model, bucket);
+                } else {
+                  bucket.input_tokens += usage.input_tokens;
+                  bucket.output_tokens += usage.output_tokens;
+                  bucket.cache_creation_5m += usage.cache_creation_5m;
+                  bucket.cache_creation_1h += usage.cache_creation_1h;
+                  bucket.cache_read += usage.cache_read;
+                }
+              }
+              s.malformedLines += sub.malformedLines;
+            } catch {
+            }
+          }
+        }
+      } catch {
+      }
+      if (since) {
+        if (s.start_ts === null) {
+          sessionsDroppedNoTimestamp++;
+          continue;
+        }
+        if (s.start_ts < since)
+          continue;
+      }
+      sessions.push(s);
+      totalMalformed += s.malformedLines;
+    } catch {
+    }
+  }
+  return { sessions, totalMalformed, sessionsDroppedNoTimestamp, transcriptCount: transcripts.length };
+}
+function computeDateRange(sessions) {
+  const timestamps = sessions.map((s) => s.start_ts).filter((ts) => ts !== null).sort();
+  if (timestamps.length === 0)
+    return null;
+  return {
+    earliest: timestamps[0],
+    latest: timestamps[timestamps.length - 1],
+    days: Math.max(1, (Date.parse(timestamps[timestamps.length - 1]) - Date.parse(timestamps[0])) / 864e5)
+  };
+}
+
+// dist/personal/bin/bill-check.mjs
 var AGENTIC_ENTRYPOINTS = /* @__PURE__ */ new Set(["sdk-cli", "sdk-py", "sdk-ts"]);
 var PLAN_TIERS = Object.freeze([
   { id: "pro", label: "Pro", credit: 20 },
@@ -228,7 +322,13 @@ function displayEntrypoint(ep) {
   }
 }
 function sumAggregateUsage(a) {
-  const total = emptyUsage();
+  const total = {
+    input_tokens: 0,
+    output_tokens: 0,
+    cache_creation_5m: 0,
+    cache_creation_1h: 0,
+    cache_read: 0
+  };
   for (const u of a.perModel.values()) {
     total.input_tokens += u.input_tokens;
     total.output_tokens += u.output_tokens;
@@ -426,91 +526,20 @@ function renderJson(agg, pricing, meta) {
 async function main(opts) {
   const flags = parseFlags(opts.argv);
   const pricing = loadPricing(opts.pricingPath);
-  let projects = [];
-  try {
-    projects = readdirSync(opts.projectsDir).map((name) => join(opts.projectsDir, name)).filter((p) => {
-      try {
-        return statSync(p).isDirectory();
-      } catch {
-        return false;
-      }
-    });
-  } catch {
-  }
-  const transcripts = [];
-  for (const proj of projects) {
-    try {
-      for (const f of readdirSync(proj)) {
-        if (!f.endsWith(".jsonl"))
-          continue;
-        const full = join(proj, f);
-        try {
-          if (statSync(full).isFile())
-            transcripts.push(full);
-        } catch {
-        }
-      }
-    } catch {
-    }
-  }
-  if (transcripts.length === 0) {
+  const { sessions, totalMalformed, sessionsDroppedNoTimestamp, transcriptCount } = await collectSessions(opts.projectsDir, flags.since);
+  if (transcriptCount === 0) {
     const msg = "No Claude Code transcripts found at " + opts.projectsDir + ".\n";
     opts.stdout.write(msg);
     return msg;
-  }
-  const sessions = [];
-  let totalMalformed = 0;
-  let sessionsDroppedNoTimestamp = 0;
-  for (const t of transcripts) {
-    try {
-      const s = await extractSession(t);
-      const sidDir = t.replace(/\.jsonl$/, "");
-      try {
-        const subDir = join(sidDir, "subagents");
-        if (statSync(subDir).isDirectory()) {
-          for (const sf of readdirSync(subDir)) {
-            if (!sf.endsWith(".jsonl"))
-              continue;
-            try {
-              const sub = await extractSession(join(subDir, sf));
-              for (const [model, usage] of sub.perModel) {
-                let bucket = s.perModel.get(model);
-                if (!bucket) {
-                  bucket = { ...usage };
-                  s.perModel.set(model, bucket);
-                } else {
-                  bucket.input_tokens += usage.input_tokens;
-                  bucket.output_tokens += usage.output_tokens;
-                  bucket.cache_creation_5m += usage.cache_creation_5m;
-                  bucket.cache_creation_1h += usage.cache_creation_1h;
-                  bucket.cache_read += usage.cache_read;
-                }
-              }
-              s.malformedLines += sub.malformedLines;
-            } catch {
-            }
-          }
-        }
-      } catch {
-      }
-      if (flags.since) {
-        if (s.start_ts === null) {
-          sessionsDroppedNoTimestamp++;
-          continue;
-        }
-        if (s.start_ts < flags.since)
-          continue;
-      }
-      sessions.push(s);
-      totalMalformed += s.malformedLines;
-    } catch {
-    }
   }
   const agg = aggregate(sessions);
   const unknownModels = [];
   for (const [, a] of agg) {
     for (const [model, usage] of a.perModel) {
       if (!pricing.models[normalizeModelKey(model)]) {
+        const tokens = usage.input_tokens + usage.output_tokens + usage.cache_creation_5m + usage.cache_creation_1h + usage.cache_read;
+        if (tokens === 0)
+          continue;
         const existing = unknownModels.find((u) => u.model === model);
         if (existing) {
           existing.input_tokens += usage.input_tokens;
@@ -525,12 +554,7 @@ async function main(opts) {
       }
     }
   }
-  const timestamps = sessions.map((s) => s.start_ts).filter((ts) => ts !== null).sort();
-  const dateRange = timestamps.length === 0 ? null : {
-    earliest: timestamps[0],
-    latest: timestamps[timestamps.length - 1],
-    days: Math.max(1, (Date.parse(timestamps[timestamps.length - 1]) - Date.parse(timestamps[0])) / 864e5)
-  };
+  const dateRange = computeDateRange(sessions);
   let planImpact = null;
   if (dateRange) {
     const monthlyMult = DAYS_PER_MONTH / dateRange.days;
@@ -567,8 +591,8 @@ var isDirectInvocation = (() => {
 })();
 if (isDirectInvocation) {
   const here = dirname(fileURLToPath(import.meta.url));
-  const pricingPath = join(here, "..", "data", "pricing.json");
-  let cliProjectsDir = join(homedir(), ".claude", "projects");
+  const pricingPath = join2(here, "..", "data", "pricing.json");
+  let cliProjectsDir = join2(homedir(), ".claude", "projects");
   try {
     const f = parseFlags(process.argv.slice(2));
     if (f.projectsDir)

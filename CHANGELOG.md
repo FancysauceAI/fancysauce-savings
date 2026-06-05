@@ -2,6 +2,21 @@
 
 All public releases of `fancysauce-savings`. Most recent first.
 
+## v0.9.0 — 2026-06-05
+
+### Features
+- **`/enterprise-cost`**: estimate whether moving a team from a flat seat-based
+  plan to Enterprise usage-based pricing (USD 20/seat + API rates) would cost more
+  or less, projected from your real Claude Code usage via a seeded log-normal
+  Monte-Carlo. (#45)
+- **Tenant-wide install with per-user identity**: env-var fallback,
+  hashed-by-default identity, and MDM (Jamf/Intune) reference templates. (#41)
+
+### Fixes
+- **Pricing**: add Claude Opus 4.8 rates — recent usage previously priced at $0. (#45)
+- Cost reports now omit zero-token `<synthetic>` placeholder turns from the
+  unknown-models footer. (#45)
+
 ## v0.8.0 — 2026-05-22
 
 ### Fixes

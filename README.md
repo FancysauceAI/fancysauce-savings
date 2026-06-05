@@ -2,7 +2,7 @@
 
 Cost and usage observability for Claude Code
 
-**Version:** 0.8.0
+**Version:** 0.9.0
 
 ## About this Plugin
 

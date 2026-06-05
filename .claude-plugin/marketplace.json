@@ -5,13 +5,13 @@
   },
   "metadata": {
     "description": "Cost and usage observability for Claude Code",
-    "version": "0.8.0"
+    "version": "0.9.0"
   },
   "plugins": [
     {
       "name": "fancysauce-savings",
       "source": "./",
-      "version": "0.8.0"
+      "version": "0.9.0"
     }
   ]
 }

@@ -159,13 +159,17 @@ function validate(v) {
   const hint = validateIdentityHint(o.identity_hint);
   if (hint.kind === "bad")
     return hint;
+  const endpoint = typeof o.endpoint === "string" && o.endpoint ? o.endpoint : void 0;
+  const identity_type = o.identity_type === "full" || o.identity_type === "hash" ? o.identity_type : void 0;
   return {
     kind: "ok",
     cred: {
       schema_version: 1,
       issued_at: o.issued_at,
       credential: o.credential,
-      identity_hint: hint.value
+      identity_hint: hint.value,
+      ...endpoint !== void 0 ? { endpoint } : {},
+      ...identity_type !== void 0 ? { identity_type } : {}
     }
   };
 }
@@ -182,6 +186,18 @@ function validateIdentityHint(v) {
       return { kind: "bad", reason: "identity_hint.value required for source=directory" };
     return { kind: "ok", value: { source: "directory", value: o.value } };
   }
+  if (o.source === "mdm_file") {
+    const user_email = typeof o.user_email === "string" ? o.user_email : void 0;
+    const user_upn = typeof o.user_upn === "string" ? o.user_upn : void 0;
+    return {
+      kind: "ok",
+      value: {
+        source: "mdm_file",
+        ...user_email !== void 0 ? { user_email } : {},
+        ...user_upn !== void 0 ? { user_upn } : {}
+      }
+    };
+  }
   return { kind: "bad", reason: `identity_hint.source unknown: ${String(o.source)}` };
 }
 
@@ -189,7 +205,9 @@ function validateIdentityHint(v) {
 var INGEST_ENDPOINT = "https://ingest.preview.fancysauce.ai";
 var DEFAULT_LOGIN_STATE_DIR = join(homedir2(), ".config", "fancysauce");
 var KNOWN_FANCYSAUCE_VARS = /* @__PURE__ */ new Set([
-  "FANCYSAUCE_CREDENTIAL_PATHS"
+  "FANCYSAUCE_CREDENTIAL_PATHS",
+  "FANCYSAUCE_API_KEY",
+  "FANCYSAUCE_IDENTITY_TYPE"
 ]);
 function parseCredentialPathsEnv() {
   if (process.env.VITEST !== "true")
@@ -229,8 +247,20 @@ async function loadConfig(opts = {}) {
   const paths = opts.paths ?? (parsed ? { system: parsed.system, user: parsed.user } : credentialPaths());
   const result = await readCredential(paths);
   switch (result.source) {
-    case "absent":
-      return null;
+    case "absent": {
+      const apiKey = process.env.FANCYSAUCE_API_KEY;
+      if (!apiKey)
+        return null;
+      const envIdentityType = process.env.FANCYSAUCE_IDENTITY_TYPE === "full" ? "full" : "hash";
+      return {
+        credential: apiKey,
+        endpoint: opts.endpointOverride ?? INGEST_ENDPOINT,
+        loginStateDir,
+        policy: defaultPolicy(),
+        identity_type: envIdentityType,
+        identity_hint: null
+      };
+    }
     case "malformed-system":
     case "malformed-user":
       return {
@@ -244,13 +274,18 @@ async function loadConfig(opts = {}) {
         }
       };
     case "system":
-    case "user":
+    case "user": {
+      const fileEndpoint = result.credential.endpoint ?? endpoint;
+      const fileIdentityType = result.credential.identity_type ?? void 0;
       return {
         credential: result.credential.credential,
-        endpoint,
+        endpoint: fileEndpoint,
         loginStateDir,
-        policy: defaultPolicy()
+        policy: defaultPolicy(),
+        ...fileIdentityType !== void 0 ? { identity_type: fileIdentityType } : {},
+        identity_hint: result.credential.identity_hint
       };
+    }
   }
 }
 function defaultUnknownEnvVarHandler(_name, _value) {
