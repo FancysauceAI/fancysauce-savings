@@ -2,7 +2,7 @@
 description: Upload locally captured history to your fancysauce account
 ---
 
-Run `${CLAUDE_PLUGIN_ROOT}/dist/team/bin/upload-history.mjs` via the Bash tool, passing through any args the user provided. Surface its stderr/stdout verbatim.
+Run `${CLAUDE_PLUGIN_ROOT}/dist/shared/bin/upload-history.mjs` via the Bash tool, passing through any args the user provided. Surface its stderr/stdout verbatim.
 
 Args the binary supports:
 - (no args) — spawn the background runner; return immediately with a brief acknowledgment.

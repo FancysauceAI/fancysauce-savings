@@ -1,0 +1,34 @@
+{
+  "name": "fancysauce-codex",
+  "owner": {
+    "name": "FancySauceAI"
+  },
+  "metadata": {
+    "description": "FancySauceAI plugin for OpenAI Codex CLI",
+    "version": "0.10.0"
+  },
+  "plugins": [
+    {
+      "name": "fancysauce-savings-codex",
+      "source": {
+        "path": "./codex"
+      },
+      "description": "Cost and usage observability for OpenAI Codex CLI",
+      "version": "0.10.0",
+      "interface": {
+        "displayName": "FancySauce Savings"
+      },
+      "author": {
+        "name": "FancySauceAI"
+      },
+      "keywords": [
+        "observability",
+        "cost",
+        "telemetry",
+        "otel",
+        "codex"
+      ],
+      "category": "productivity"
+    }
+  ]
+}

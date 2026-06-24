@@ -2,6 +2,58 @@
 
 All public releases of `fancysauce-savings`. Most recent first.
 
+## v0.10.0 — 2026-06-24
+
+### Features
+- Tenant URL install: revive the per-tenant marketplace-URL install for managed
+  tenants — a per-tenant marketplace.json delivers an ingest-only tenant key once
+  via a SessionStart bootstrap hook that graduates it into a 0600 credential file;
+  telemetry hooks stay key-less. (#55)
+- URL-flow variant publishing: publish-dist publishes a manifest-less plugin
+  variant to a url-flow branch + v{VERSION}-url tag (or a separate repo via
+  --url-repo), with a full repo+ref+sha handoff pin. (#56)
+
+## v0.9.1 — 2026-06-19
+
+### Features
+
+- feat(smoke): local Codex install harness + telemetry inspector
+- feat(publish): --tool codex publishes to a separate dist repo
+- feat(release): lockstep-bump the Codex manifest + marketplace
+- feat(codex): login skill + stage skills/ in the codex package
+- feat(codex): marketplace catalogue + install README template
+- feat: fancysauce.agent resource attribute (claude-code | codex-cli)
+- feat(codex): rollout tailer → api.request with client-side cost + tokens_reasoning
+- feat(codex): rollout parser (last_token_usage → api.request, stateful model)
+- feat(codex): pricing table + client-side cost
+- feat(codex): --tool codex packaging + e2e
+- feat(codex): adapter, hook entry, hooks.json, manifest
+- feat(codex): hook-event mapper (verified rust-v0.136.0 shapes)
+- feat(types): add PostCompact to HookEventName (Codex), inert CC mapping
+
+### Fixes
+
+- fix(codex): root hook commands at ${CLAUDE_PLUGIN_ROOT}; repath CC commands; dedup subagent uuids
+- fix(sinks): refresh session-index on stop so Codex sessions show live cost
+- fix(codex): deterministic api.request event_uuid for idempotent replay
+- fix: repath url-consistency test import + data-dir comment after relocation
+
+### Documentation
+
+- docs(codex): release runbook (dual-tool cutover)
+- docs: Codex Phase 5 (release wiring) plan
+- docs: point v1 contract at the dual-tool v1.1 addendum + change-rule for new agent source
+- docs: Phase 4 plan + backend contract v1.1 (dual-tool)
+- docs: Codex Phase 3 (rollout tailer → api.request) implementation plan
+- docs: Codex pricing research for client-side cost (draft, pending validation)
+- docs: Codex Phase 2 (hooks-only) implementation plan
+- docs: verified Codex hook+rollout shapes from openai/codex rust-v0.136.0
+- docs: rewrite relocation plan for the real origin/main inventory
+- docs: flag shared tail-engine extraction as a Phase-3 watch-item (§5.2a, §9)
+- docs: re-ground dual-tool design against origin/main (#41 credential model, sinks, backfill)
+- docs: Phase 1 implementation plan (behavior-preserving refactor)
+- docs: design for dual-tool telemetry (Claude Code + Codex)
+
 ## v0.9.0 — 2026-06-05
 
 ### Features

@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 import { createRequire as __cr } from 'node:module'; const require = __cr(import.meta.url);
 
-// dist/team/lib/login/orchestrator.mjs
+// dist/shared/login/orchestrator.mjs
 import { stat as stat2, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
-// dist/team/lib/login/state.mjs
+// dist/shared/login/state.mjs
 import { randomBytes, timingSafeEqual } from "node:crypto";
 var STATE_BYTES = 32;
 function generateState() {
@@ -19,7 +19,7 @@ function verifyState(expected, actual) {
   return timingSafeEqual(a, b);
 }
 
-// dist/team/lib/login/loopback.mjs
+// dist/shared/login/loopback.mjs
 import { createServer } from "node:http";
 import { URL } from "node:url";
 var SECURITY_HEADERS = {
@@ -101,7 +101,7 @@ async function startLoopback(opts) {
   return { port, completion, close };
 }
 
-// dist/team/lib/login/browser.mjs
+// dist/shared/login/browser.mjs
 import { spawn } from "node:child_process";
 function BROWSER_COMMAND_FOR_PLATFORM(platform) {
   switch (platform) {
@@ -135,7 +135,7 @@ function defaultSpawner(cmd, args) {
   });
 }
 
-// dist/team/lib/credential-file.mjs
+// dist/shared/credential-file.mjs
 import { mkdir, rename, open, chmod, unlink, readFile, stat } from "node:fs/promises";
 import { dirname } from "node:path";
 import { randomBytes as randomBytes2 } from "node:crypto";
@@ -168,7 +168,7 @@ async function writeCredential(path, cred) {
   }
 }
 
-// dist/team/lib/credential-paths.mjs
+// dist/shared/credential-paths.mjs
 import { homedir } from "node:os";
 import { posix, win32 } from "node:path";
 function credentialPaths() {
@@ -186,7 +186,7 @@ function credentialPaths() {
   };
 }
 
-// dist/team/lib/login/orchestrator.mjs
+// dist/shared/login/orchestrator.mjs
 async function runLogin(opts) {
   const systemPath = opts.systemCredentialPath ?? credentialPaths().system;
   const systemExists = await stat2(systemPath).then(() => true).catch(() => false);
@@ -235,7 +235,7 @@ async function writeIntentMarker(stateDir, intent) {
   }
 }
 
-// dist/team/bin/login.mjs
+// dist/shared/bin/login.mjs
 import { dirname as dirname2 } from "node:path";
 import { mkdir as mkdir2 } from "node:fs/promises";
 async function main(opts = {}) {

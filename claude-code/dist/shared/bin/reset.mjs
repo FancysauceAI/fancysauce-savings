@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 import { createRequire as __cr } from 'node:module'; const require = __cr(import.meta.url);
 
-// dist/team/bin/reset.mjs
+// dist/shared/bin/reset.mjs
 import { readFile, rm, stat } from "node:fs/promises";
 import { join as join3 } from "node:path";
 import { createInterface } from "node:readline";
 
-// dist/team/lib/credential-paths.mjs
+// dist/shared/credential-paths.mjs
 import { homedir } from "node:os";
 import { posix, win32 } from "node:path";
 function credentialPaths() {
@@ -24,7 +24,7 @@ function credentialPaths() {
   };
 }
 
-// dist/team/lib/config.mjs
+// dist/shared/config.mjs
 import { join } from "node:path";
 import { homedir as homedir2 } from "node:os";
 var DEFAULT_LOGIN_STATE_DIR = join(homedir2(), ".config", "fancysauce");
@@ -54,9 +54,9 @@ function parseCredentialPathsEnv() {
   };
 }
 
-// dist/team/lib/data-dir.mjs
+// dist/shared/data-dir.mjs
 import { readFileSync } from "node:fs";
-import { join as join2, dirname } from "node:path";
+import { basename, join as join2, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { homedir as homedir3 } from "node:os";
 function resolveDataDir(opts = {}) {
@@ -72,6 +72,12 @@ function resolveDataDir(opts = {}) {
   const fromMarketplaces = deriveFromMarketplaces(root, home);
   if (fromMarketplaces !== null)
     return fromMarketplaces;
+  const fromCodexCache = deriveFromCodexCache(root, home);
+  if (fromCodexCache !== null)
+    return fromCodexCache;
+  const fromCodexMarketplaces = deriveFromCodexMarketplaces(root, home);
+  if (fromCodexMarketplaces !== null)
+    return fromCodexMarketplaces;
   return join2(home, ".claude-plugin-data");
 }
 function defaultPluginRoot() {
@@ -132,8 +138,77 @@ function deriveFromMarketplaces(root, home) {
     return null;
   }
 }
+function deriveFromCodexCache(root, home) {
+  const prefix = trimTrailingSlash(join2(home, ".codex", "plugins", "cache"));
+  if (!root.startsWith(prefix + "/"))
+    return null;
+  const parts = root.slice(prefix.length + 1).split("/");
+  const alias = parts[0];
+  const plugin = parts[1];
+  if (!alias || !plugin)
+    return null;
+  return join2(home, ".codex", "plugins", "data", `${plugin}-${alias}`);
+}
+function deriveFromCodexMarketplaces(root, home) {
+  try {
+    const plugin = readCodexPluginName(root) ?? basename(root);
+    if (plugin.length === 0)
+      return null;
+    const configPath = join2(home, ".codex", "config.toml");
+    const marketplaces = parseCodexMarketplaces(readFileSync(configPath, "utf8"));
+    for (const marketplace of marketplaces) {
+      const expectedRoot = trimTrailingSlash(join2(marketplace.source, "plugins", plugin));
+      if (expectedRoot === root) {
+        return join2(home, ".codex", "plugins", "data", `${plugin}-${marketplace.alias}`);
+      }
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+function readCodexPluginName(root) {
+  try {
+    const manifest = JSON.parse(readFileSync(join2(root, ".codex-plugin", "plugin.json"), "utf8"));
+    return typeof manifest.name === "string" && manifest.name.length > 0 ? manifest.name : null;
+  } catch {
+    return null;
+  }
+}
+function parseCodexMarketplaces(config) {
+  const marketplaces = [];
+  let currentAlias = null;
+  for (const line of config.split(/\r?\n/)) {
+    const header = line.match(/^\s*\[marketplaces\.([^\]]+)\]\s*$/);
+    if (header) {
+      currentAlias = parseTomlKey(header[1]);
+      continue;
+    }
+    if (/^\s*\[/.test(line)) {
+      currentAlias = null;
+      continue;
+    }
+    if (currentAlias === null)
+      continue;
+    const source = line.match(/^\s*source\s*=\s*"([^"]*)"\s*$/);
+    if (source) {
+      marketplaces.push({ alias: currentAlias, source: source[1] });
+    }
+  }
+  return marketplaces;
+}
+function parseTomlKey(key) {
+  const trimmed = key.trim();
+  if (!trimmed.startsWith('"') || !trimmed.endsWith('"'))
+    return trimmed;
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    return trimmed.slice(1, -1);
+  }
+}
 
-// dist/team/bin/reset.mjs
+// dist/shared/bin/reset.mjs
 function parseArgs(argv) {
   return {
     all: argv.includes("--all"),

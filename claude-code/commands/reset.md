@@ -2,7 +2,7 @@
 description: Wipe local fancysauce data
 ---
 
-Run `${CLAUDE_PLUGIN_ROOT}/dist/team/bin/reset.mjs` with any args the user passed (e.g., `--all`, `--queue-only`, `--no-confirm`) via the Bash tool.
+Run `${CLAUDE_PLUGIN_ROOT}/dist/shared/bin/reset.mjs` with any args the user passed (e.g., `--all`, `--queue-only`, `--no-confirm`) via the Bash tool.
 
 The reset binary handles confirmation, scope, and safety checks. Surface the binary's stderr/stdout to the user verbatim.
 

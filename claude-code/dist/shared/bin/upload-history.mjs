@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 import { createRequire as __cr } from 'node:module'; const require = __cr(import.meta.url);
 
-// dist/team/bin/upload-history.mjs
+// dist/shared/bin/upload-history.mjs
 import { writeFile, mkdir as mkdir4 } from "node:fs/promises";
 import { join as join6 } from "node:path";
 
-// dist/team/lib/credential-paths.mjs
+// dist/shared/credential-paths.mjs
 import { homedir } from "node:os";
 import { posix, win32 } from "node:path";
 function credentialPaths() {
@@ -23,11 +23,11 @@ function credentialPaths() {
   };
 }
 
-// dist/team/lib/config.mjs
+// dist/shared/config.mjs
 import { join } from "node:path";
 import { homedir as homedir2 } from "node:os";
 
-// dist/team/lib/policy.mjs
+// dist/shared/policy.mjs
 function defaultPolicy() {
   const keepLists = {
     "session.start": Object.freeze(["cwd_hash", "model", "permission_mode", "fancysauce.repo_url_hash"]),
@@ -84,6 +84,7 @@ function defaultPolicy() {
       "tokens_cache_create",
       "tokens_cache_create_5m",
       "tokens_cache_create_1h",
+      "tokens_reasoning",
       "model",
       "request_id",
       "transcript_message_uuid",
@@ -98,7 +99,7 @@ function defaultPolicy() {
   });
 }
 
-// dist/team/lib/credential-file.mjs
+// dist/shared/credential-file.mjs
 import { mkdir, rename, open, chmod, unlink, readFile, stat } from "node:fs/promises";
 async function readCredential(paths) {
   const sys = await tryReadOne(paths.system);
@@ -161,6 +162,7 @@ function validate(v) {
     return hint;
   const endpoint = typeof o.endpoint === "string" && o.endpoint ? o.endpoint : void 0;
   const identity_type = o.identity_type === "full" || o.identity_type === "hash" ? o.identity_type : void 0;
+  const provenance = o.provenance === "marketplace_url" ? "marketplace_url" : void 0;
   return {
     kind: "ok",
     cred: {
@@ -169,7 +171,8 @@ function validate(v) {
       credential: o.credential,
       identity_hint: hint.value,
       ...endpoint !== void 0 ? { endpoint } : {},
-      ...identity_type !== void 0 ? { identity_type } : {}
+      ...identity_type !== void 0 ? { identity_type } : {},
+      ...provenance !== void 0 ? { provenance } : {}
     }
   };
 }
@@ -201,7 +204,7 @@ function validateIdentityHint(v) {
   return { kind: "bad", reason: `identity_hint.source unknown: ${String(o.source)}` };
 }
 
-// dist/team/lib/config.mjs
+// dist/shared/config.mjs
 var INGEST_ENDPOINT = "https://ingest.preview.fancysauce.ai";
 var DEFAULT_LOGIN_STATE_DIR = join(homedir2(), ".config", "fancysauce");
 var KNOWN_FANCYSAUCE_VARS = /* @__PURE__ */ new Set([
@@ -291,9 +294,9 @@ async function loadConfig(opts = {}) {
 function defaultUnknownEnvVarHandler(_name, _value) {
 }
 
-// dist/team/lib/data-dir.mjs
+// dist/shared/data-dir.mjs
 import { readFileSync } from "node:fs";
-import { join as join2, dirname } from "node:path";
+import { basename, join as join2, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { homedir as homedir3 } from "node:os";
 function resolveDataDir(opts = {}) {
@@ -309,6 +312,12 @@ function resolveDataDir(opts = {}) {
   const fromMarketplaces = deriveFromMarketplaces(root, home);
   if (fromMarketplaces !== null)
     return fromMarketplaces;
+  const fromCodexCache = deriveFromCodexCache(root, home);
+  if (fromCodexCache !== null)
+    return fromCodexCache;
+  const fromCodexMarketplaces = deriveFromCodexMarketplaces(root, home);
+  if (fromCodexMarketplaces !== null)
+    return fromCodexMarketplaces;
   return join2(home, ".claude-plugin-data");
 }
 function defaultPluginRoot() {
@@ -369,8 +378,77 @@ function deriveFromMarketplaces(root, home) {
     return null;
   }
 }
+function deriveFromCodexCache(root, home) {
+  const prefix = trimTrailingSlash(join2(home, ".codex", "plugins", "cache"));
+  if (!root.startsWith(prefix + "/"))
+    return null;
+  const parts = root.slice(prefix.length + 1).split("/");
+  const alias = parts[0];
+  const plugin = parts[1];
+  if (!alias || !plugin)
+    return null;
+  return join2(home, ".codex", "plugins", "data", `${plugin}-${alias}`);
+}
+function deriveFromCodexMarketplaces(root, home) {
+  try {
+    const plugin = readCodexPluginName(root) ?? basename(root);
+    if (plugin.length === 0)
+      return null;
+    const configPath = join2(home, ".codex", "config.toml");
+    const marketplaces = parseCodexMarketplaces(readFileSync(configPath, "utf8"));
+    for (const marketplace of marketplaces) {
+      const expectedRoot = trimTrailingSlash(join2(marketplace.source, "plugins", plugin));
+      if (expectedRoot === root) {
+        return join2(home, ".codex", "plugins", "data", `${plugin}-${marketplace.alias}`);
+      }
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+function readCodexPluginName(root) {
+  try {
+    const manifest = JSON.parse(readFileSync(join2(root, ".codex-plugin", "plugin.json"), "utf8"));
+    return typeof manifest.name === "string" && manifest.name.length > 0 ? manifest.name : null;
+  } catch {
+    return null;
+  }
+}
+function parseCodexMarketplaces(config) {
+  const marketplaces = [];
+  let currentAlias = null;
+  for (const line of config.split(/\r?\n/)) {
+    const header = line.match(/^\s*\[marketplaces\.([^\]]+)\]\s*$/);
+    if (header) {
+      currentAlias = parseTomlKey(header[1]);
+      continue;
+    }
+    if (/^\s*\[/.test(line)) {
+      currentAlias = null;
+      continue;
+    }
+    if (currentAlias === null)
+      continue;
+    const source = line.match(/^\s*source\s*=\s*"([^"]*)"\s*$/);
+    if (source) {
+      marketplaces.push({ alias: currentAlias, source: source[1] });
+    }
+  }
+  return marketplaces;
+}
+function parseTomlKey(key) {
+  const trimmed = key.trim();
+  if (!trimmed.startsWith('"') || !trimmed.endsWith('"'))
+    return trimmed;
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    return trimmed.slice(1, -1);
+  }
+}
 
-// dist/team/lib/backfill/status.mjs
+// dist/shared/backfill/status.mjs
 import { readFile as readFile2, open as open2, rename as rename2, mkdir as mkdir2, unlink as unlink2 } from "node:fs/promises";
 import { join as join3, dirname as dirname2 } from "node:path";
 async function readStatus(stateDir) {
@@ -382,12 +460,12 @@ async function readStatus(stateDir) {
   }
 }
 
-// dist/team/lib/backfill/runner-spawn.mjs
+// dist/shared/backfill/runner-spawn.mjs
 import { spawn } from "node:child_process";
 import { join as join4, dirname as dirname3 } from "node:path";
 import { fileURLToPath as fileURLToPath2 } from "node:url";
 
-// dist/team/lib/backfill/runner-env.mjs
+// dist/shared/backfill/runner-env.mjs
 var ALLOWED = /* @__PURE__ */ new Set([
   "PATH",
   "HOME",
@@ -412,7 +490,7 @@ function buildRunnerEnv(env) {
   return out;
 }
 
-// dist/team/lib/backfill/runner-spawn.mjs
+// dist/shared/backfill/runner-spawn.mjs
 async function spawnBackfillRunner(input) {
   const here = dirname3(fileURLToPath2(import.meta.url));
   const binPath = join4(here, "..", "..", "bin", "backfill-runner.mjs");
@@ -441,7 +519,7 @@ function defaultSpawner(binPath, args) {
   });
 }
 
-// dist/team/lib/backfill/pid-guard.mjs
+// dist/shared/backfill/pid-guard.mjs
 import { readFile as readFile3, rm, mkdir as mkdir3, open as open3 } from "node:fs/promises";
 import { join as join5 } from "node:path";
 async function isBackfillActive(stateDir) {
@@ -461,7 +539,7 @@ async function isBackfillActive(stateDir) {
   }
 }
 
-// dist/team/bin/upload-history.mjs
+// dist/shared/bin/upload-history.mjs
 async function main(opts) {
   const argv = opts.argv;
   const dataDir = resolveDataDir({ override: opts.dataDir });

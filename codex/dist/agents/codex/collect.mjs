@@ -12,8 +12,15 @@ var __require = /* @__PURE__ */ ((x) => typeof require !== "undefined" ? require
   if (typeof require !== "undefined") return require.apply(this, arguments);
   throw Error('Dynamic require of "' + x + '" is not supported');
 });
+var __esm = (fn, res) => function __init() {
+  return fn && (res = (0, fn[__getOwnPropNames(fn)[0]])(fn = 0)), res;
+};
 var __commonJS = (cb, mod) => function __require2() {
   return mod || (0, cb[__getOwnPropNames(cb)[0]])((mod = { exports: {} }).exports, mod), mod.exports;
+};
+var __export = (target, all) => {
+  for (var name in all)
+    __defProp(target, name, { get: all[name], enumerable: true });
 };
 var __copyProps = (to, from, except, desc) => {
   if (from && typeof from === "object" || typeof from === "function") {
@@ -32,9 +39,36 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
   mod
 ));
 
-// node_modules/graceful-fs/polyfills.js
+// dist/shared/credential-paths.mjs
+var credential_paths_exports = {};
+__export(credential_paths_exports, {
+  credentialPaths: () => credentialPaths
+});
+import { homedir } from "node:os";
+import { posix, win32 } from "node:path";
+function credentialPaths() {
+  if (process.platform === "win32") {
+    const programData = process.env.PROGRAMDATA ?? "C:\\ProgramData";
+    const appData = process.env.APPDATA ?? win32.join(homedir(), "AppData", "Roaming");
+    return {
+      system: win32.join(programData, "fancysauce", "credentials.json"),
+      user: win32.join(appData, "fancysauce", "credentials.json")
+    };
+  }
+  return {
+    system: "/etc/fancysauce/credentials.json",
+    user: posix.join(process.env.HOME ?? homedir(), ".config", "fancysauce", "credentials.json")
+  };
+}
+var init_credential_paths = __esm({
+  "dist/shared/credential-paths.mjs"() {
+    "use strict";
+  }
+});
+
+// ../../../node_modules/graceful-fs/polyfills.js
 var require_polyfills = __commonJS({
-  "node_modules/graceful-fs/polyfills.js"(exports, module) {
+  "../../../node_modules/graceful-fs/polyfills.js"(exports, module) {
     var constants = __require("constants");
     var origCwd = process.cwd;
     var cwd = null;
@@ -99,7 +133,7 @@ var require_polyfills = __commonJS({
       }
       if (platform === "win32") {
         fs.rename = typeof fs.rename !== "function" ? fs.rename : (function(fs$rename) {
-          function rename8(from, to, cb) {
+          function rename11(from, to, cb) {
             var start = Date.now();
             var backoff = 0;
             fs$rename(from, to, function CB(er) {
@@ -119,8 +153,8 @@ var require_polyfills = __commonJS({
               if (cb) cb(er);
             });
           }
-          if (Object.setPrototypeOf) Object.setPrototypeOf(rename8, fs$rename);
-          return rename8;
+          if (Object.setPrototypeOf) Object.setPrototypeOf(rename11, fs$rename);
+          return rename11;
         })(fs.rename);
       }
       fs.read = typeof fs.read !== "function" ? fs.read : (function(fs$read) {
@@ -320,9 +354,9 @@ var require_polyfills = __commonJS({
   }
 });
 
-// node_modules/graceful-fs/legacy-streams.js
+// ../../../node_modules/graceful-fs/legacy-streams.js
 var require_legacy_streams = __commonJS({
-  "node_modules/graceful-fs/legacy-streams.js"(exports, module) {
+  "../../../node_modules/graceful-fs/legacy-streams.js"(exports, module) {
     var Stream = __require("stream").Stream;
     module.exports = legacy;
     function legacy(fs) {
@@ -416,9 +450,9 @@ var require_legacy_streams = __commonJS({
   }
 });
 
-// node_modules/graceful-fs/clone.js
+// ../../../node_modules/graceful-fs/clone.js
 var require_clone = __commonJS({
-  "node_modules/graceful-fs/clone.js"(exports, module) {
+  "../../../node_modules/graceful-fs/clone.js"(exports, module) {
     "use strict";
     module.exports = clone;
     var getPrototypeOf = Object.getPrototypeOf || function(obj) {
@@ -439,9 +473,9 @@ var require_clone = __commonJS({
   }
 });
 
-// node_modules/graceful-fs/graceful-fs.js
+// ../../../node_modules/graceful-fs/graceful-fs.js
 var require_graceful_fs = __commonJS({
-  "node_modules/graceful-fs/graceful-fs.js"(exports, module) {
+  "../../../node_modules/graceful-fs/graceful-fs.js"(exports, module) {
     var fs = __require("fs");
     var polyfills = require_polyfills();
     var legacy = require_legacy_streams();
@@ -524,8 +558,8 @@ var require_graceful_fs = __commonJS({
       fs2.createReadStream = createReadStream;
       fs2.createWriteStream = createWriteStream;
       var fs$readFile = fs2.readFile;
-      fs2.readFile = readFile9;
-      function readFile9(path, options, cb) {
+      fs2.readFile = readFile12;
+      function readFile12(path, options, cb) {
         if (typeof options === "function")
           cb = options, options = null;
         return go$readFile(path, options, cb);
@@ -541,8 +575,8 @@ var require_graceful_fs = __commonJS({
         }
       }
       var fs$writeFile = fs2.writeFile;
-      fs2.writeFile = writeFile6;
-      function writeFile6(path, data, options, cb) {
+      fs2.writeFile = writeFile9;
+      function writeFile9(path, data, options, cb) {
         if (typeof options === "function")
           cb = options, options = null;
         return go$writeFile(path, data, options, cb);
@@ -559,8 +593,8 @@ var require_graceful_fs = __commonJS({
       }
       var fs$appendFile = fs2.appendFile;
       if (fs$appendFile)
-        fs2.appendFile = appendFile2;
-      function appendFile2(path, data, options, cb) {
+        fs2.appendFile = appendFile5;
+      function appendFile5(path, data, options, cb) {
         if (typeof options === "function")
           cb = options, options = null;
         return go$appendFile(path, data, options, cb);
@@ -701,7 +735,7 @@ var require_graceful_fs = __commonJS({
       }
       function ReadStream$open() {
         var that = this;
-        open6(that.path, that.flags, that.mode, function(err, fd) {
+        open8(that.path, that.flags, that.mode, function(err, fd) {
           if (err) {
             if (that.autoClose)
               that.destroy();
@@ -721,7 +755,7 @@ var require_graceful_fs = __commonJS({
       }
       function WriteStream$open() {
         var that = this;
-        open6(that.path, that.flags, that.mode, function(err, fd) {
+        open8(that.path, that.flags, that.mode, function(err, fd) {
           if (err) {
             that.destroy();
             that.emit("error", err);
@@ -738,8 +772,8 @@ var require_graceful_fs = __commonJS({
         return new fs2.WriteStream(path, options);
       }
       var fs$open = fs2.open;
-      fs2.open = open6;
-      function open6(path, flags, mode, cb) {
+      fs2.open = open8;
+      function open8(path, flags, mode, cb) {
         if (typeof mode === "function")
           cb = mode, mode = null;
         return go$open(path, flags, mode, cb);
@@ -809,9 +843,9 @@ var require_graceful_fs = __commonJS({
   }
 });
 
-// node_modules/retry/lib/retry_operation.js
+// ../../../node_modules/retry/lib/retry_operation.js
 var require_retry_operation = __commonJS({
-  "node_modules/retry/lib/retry_operation.js"(exports, module) {
+  "../../../node_modules/retry/lib/retry_operation.js"(exports, module) {
     function RetryOperation(timeouts, options) {
       if (typeof options === "boolean") {
         options = { forever: options };
@@ -940,9 +974,9 @@ var require_retry_operation = __commonJS({
   }
 });
 
-// node_modules/retry/lib/retry.js
+// ../../../node_modules/retry/lib/retry.js
 var require_retry = __commonJS({
-  "node_modules/retry/lib/retry.js"(exports) {
+  "../../../node_modules/retry/lib/retry.js"(exports) {
     var RetryOperation = require_retry_operation();
     exports.operation = function(options) {
       var timeouts = exports.timeouts(options);
@@ -1026,16 +1060,16 @@ var require_retry = __commonJS({
   }
 });
 
-// node_modules/retry/index.js
+// ../../../node_modules/retry/index.js
 var require_retry2 = __commonJS({
-  "node_modules/retry/index.js"(exports, module) {
+  "../../../node_modules/retry/index.js"(exports, module) {
     module.exports = require_retry();
   }
 });
 
-// node_modules/proper-lockfile/node_modules/signal-exit/signals.js
+// ../../../node_modules/proper-lockfile/node_modules/signal-exit/signals.js
 var require_signals = __commonJS({
-  "node_modules/proper-lockfile/node_modules/signal-exit/signals.js"(exports, module) {
+  "../../../node_modules/proper-lockfile/node_modules/signal-exit/signals.js"(exports, module) {
     module.exports = [
       "SIGABRT",
       "SIGALRM",
@@ -1070,9 +1104,9 @@ var require_signals = __commonJS({
   }
 });
 
-// node_modules/proper-lockfile/node_modules/signal-exit/index.js
+// ../../../node_modules/proper-lockfile/node_modules/signal-exit/index.js
 var require_signal_exit = __commonJS({
-  "node_modules/proper-lockfile/node_modules/signal-exit/index.js"(exports, module) {
+  "../../../node_modules/proper-lockfile/node_modules/signal-exit/index.js"(exports, module) {
     var process2 = global.process;
     var processOk = function(process3) {
       return process3 && typeof process3 === "object" && typeof process3.removeListener === "function" && typeof process3.emit === "function" && typeof process3.reallyExit === "function" && typeof process3.listeners === "function" && typeof process3.kill === "function" && typeof process3.pid === "number" && typeof process3.on === "function";
@@ -1229,19 +1263,19 @@ var require_signal_exit = __commonJS({
   }
 });
 
-// node_modules/proper-lockfile/lib/mtime-precision.js
+// ../../../node_modules/proper-lockfile/lib/mtime-precision.js
 var require_mtime_precision = __commonJS({
-  "node_modules/proper-lockfile/lib/mtime-precision.js"(exports, module) {
+  "../../../node_modules/proper-lockfile/lib/mtime-precision.js"(exports, module) {
     "use strict";
     var cacheSymbol = /* @__PURE__ */ Symbol();
     function probe(file, fs, callback) {
       const cachedPrecision = fs[cacheSymbol];
       if (cachedPrecision) {
-        return fs.stat(file, (err, stat2) => {
+        return fs.stat(file, (err, stat4) => {
           if (err) {
             return callback(err);
           }
-          callback(null, stat2.mtime, cachedPrecision);
+          callback(null, stat4.mtime, cachedPrecision);
         });
       }
       const mtime = new Date(Math.ceil(Date.now() / 1e3) * 1e3 + 5);
@@ -1249,13 +1283,13 @@ var require_mtime_precision = __commonJS({
         if (err) {
           return callback(err);
         }
-        fs.stat(file, (err2, stat2) => {
+        fs.stat(file, (err2, stat4) => {
           if (err2) {
             return callback(err2);
           }
-          const precision = stat2.mtime.getTime() % 1e3 === 0 ? "s" : "ms";
+          const precision = stat4.mtime.getTime() % 1e3 === 0 ? "s" : "ms";
           Object.defineProperty(fs, cacheSymbol, { value: precision });
-          callback(null, stat2.mtime, precision);
+          callback(null, stat4.mtime, precision);
         });
       });
     }
@@ -1271,9 +1305,9 @@ var require_mtime_precision = __commonJS({
   }
 });
 
-// node_modules/proper-lockfile/lib/lockfile.js
+// ../../../node_modules/proper-lockfile/lib/lockfile.js
 var require_lockfile = __commonJS({
-  "node_modules/proper-lockfile/lib/lockfile.js"(exports, module) {
+  "../../../node_modules/proper-lockfile/lib/lockfile.js"(exports, module) {
     "use strict";
     var path = __require("path");
     var fs = require_graceful_fs();
@@ -1309,14 +1343,14 @@ var require_lockfile = __commonJS({
         if (options.stale <= 0) {
           return callback(Object.assign(new Error("Lock file is already being held"), { code: "ELOCKED", file }));
         }
-        options.fs.stat(lockfilePath, (err2, stat2) => {
+        options.fs.stat(lockfilePath, (err2, stat4) => {
           if (err2) {
             if (err2.code === "ENOENT") {
               return acquireLock(file, { ...options, stale: 0 }, callback);
             }
             return callback(err2);
           }
-          if (!isLockStale(stat2, options)) {
+          if (!isLockStale(stat4, options)) {
             return callback(Object.assign(new Error("Lock file is already being held"), { code: "ELOCKED", file }));
           }
           removeLock(file, options, (err3) => {
@@ -1328,8 +1362,8 @@ var require_lockfile = __commonJS({
         });
       });
     }
-    function isLockStale(stat2, options) {
-      return stat2.mtime.getTime() < Date.now() - options.stale;
+    function isLockStale(stat4, options) {
+      return stat4.mtime.getTime() < Date.now() - options.stale;
     }
     function removeLock(file, options, callback) {
       options.fs.rmdir(getLockFile(file, options), (err) => {
@@ -1347,7 +1381,7 @@ var require_lockfile = __commonJS({
       lock2.updateDelay = lock2.updateDelay || options.update;
       lock2.updateTimeout = setTimeout(() => {
         lock2.updateTimeout = null;
-        options.fs.stat(lock2.lockfilePath, (err, stat2) => {
+        options.fs.stat(lock2.lockfilePath, (err, stat4) => {
           const isOverThreshold = lock2.lastUpdate + options.stale < Date.now();
           if (err) {
             if (err.code === "ENOENT" || isOverThreshold) {
@@ -1356,7 +1390,7 @@ var require_lockfile = __commonJS({
             lock2.updateDelay = 1e3;
             return updateLock(file, options);
           }
-          const isMtimeOurs = lock2.mtime.getTime() === stat2.mtime.getTime();
+          const isMtimeOurs = lock2.mtime.getTime() === stat4.mtime.getTime();
           if (!isMtimeOurs) {
             return setLockAsCompromised(
               file,
@@ -1481,11 +1515,11 @@ var require_lockfile = __commonJS({
         if (err) {
           return callback(err);
         }
-        options.fs.stat(getLockFile(file2, options), (err2, stat2) => {
+        options.fs.stat(getLockFile(file2, options), (err2, stat4) => {
           if (err2) {
             return err2.code === "ENOENT" ? callback(null, false) : callback(err2);
           }
-          return callback(null, !isLockStale(stat2, options));
+          return callback(null, !isLockStale(stat4, options));
         });
       });
     }
@@ -1508,9 +1542,9 @@ var require_lockfile = __commonJS({
   }
 });
 
-// node_modules/proper-lockfile/lib/adapter.js
+// ../../../node_modules/proper-lockfile/lib/adapter.js
 var require_adapter = __commonJS({
-  "node_modules/proper-lockfile/lib/adapter.js"(exports, module) {
+  "../../../node_modules/proper-lockfile/lib/adapter.js"(exports, module) {
     "use strict";
     var fs = require_graceful_fs();
     function createSyncFs(fs2) {
@@ -1573,31 +1607,31 @@ var require_adapter = __commonJS({
   }
 });
 
-// node_modules/proper-lockfile/index.js
+// ../../../node_modules/proper-lockfile/index.js
 var require_proper_lockfile = __commonJS({
-  "node_modules/proper-lockfile/index.js"(exports, module) {
+  "../../../node_modules/proper-lockfile/index.js"(exports, module) {
     "use strict";
-    var lockfile4 = require_lockfile();
+    var lockfile5 = require_lockfile();
     var { toPromise, toSync, toSyncOptions } = require_adapter();
     async function lock(file, options) {
-      const release = await toPromise(lockfile4.lock)(file, options);
+      const release = await toPromise(lockfile5.lock)(file, options);
       return toPromise(release);
     }
     function lockSync(file, options) {
-      const release = toSync(lockfile4.lock)(file, toSyncOptions(options));
+      const release = toSync(lockfile5.lock)(file, toSyncOptions(options));
       return toSync(release);
     }
     function unlock(file, options) {
-      return toPromise(lockfile4.unlock)(file, options);
+      return toPromise(lockfile5.unlock)(file, options);
     }
     function unlockSync(file, options) {
-      return toSync(lockfile4.unlock)(file, toSyncOptions(options));
+      return toSync(lockfile5.unlock)(file, toSyncOptions(options));
     }
     function check(file, options) {
-      return toPromise(lockfile4.check)(file, options);
+      return toPromise(lockfile5.check)(file, options);
     }
     function checkSync(file, options) {
-      return toSync(lockfile4.check)(file, toSyncOptions(options));
+      return toSync(lockfile5.check)(file, toSyncOptions(options));
     }
     module.exports = lock;
     module.exports.lock = lock;
@@ -1609,15 +1643,199 @@ var require_proper_lockfile = __commonJS({
   }
 });
 
-// dist/team/bin/backfill-runner.mjs
-import { writeFile as writeFile5 } from "node:fs/promises";
-import { join as join9 } from "node:path";
+// dist/shared/backfill/pid-guard.mjs
+var pid_guard_exports = {};
+__export(pid_guard_exports, {
+  acquirePidGuard: () => acquirePidGuard,
+  isBackfillActive: () => isBackfillActive,
+  releasePidGuard: () => releasePidGuard
+});
+import { readFile as readFile9, rm as rm2, mkdir as mkdir7, open as open5 } from "node:fs/promises";
+import { join as join12 } from "node:path";
+async function isBackfillActive(stateDir) {
+  try {
+    const raw = await readFile9(join12(stateDir, "backfill.pid"), "utf8");
+    const pid = Number(raw.trim());
+    if (!Number.isFinite(pid) || pid <= 0)
+      return null;
+    try {
+      process.kill(pid, 0);
+      return pid;
+    } catch {
+      return null;
+    }
+  } catch {
+    return null;
+  }
+}
+async function acquirePidGuard(stateDir) {
+  await mkdir7(stateDir, { recursive: true });
+  const path = join12(stateDir, "backfill.pid");
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const fh = await open5(path, "wx", 384);
+      try {
+        await fh.writeFile(String(process.pid));
+        await fh.sync();
+      } finally {
+        await fh.close();
+      }
+      return { kind: "acquired" };
+    } catch (err) {
+      if (err.code !== "EEXIST")
+        throw err;
+      const live2 = await isBackfillActive(stateDir);
+      if (live2 !== null)
+        return { kind: "already-running", pid: live2 };
+      await rm2(path, { force: true });
+    }
+  }
+  const live = await isBackfillActive(stateDir);
+  return live !== null ? { kind: "already-running", pid: live } : { kind: "already-running", pid: -1 };
+}
+async function releasePidGuard(stateDir) {
+  await rm2(join12(stateDir, "backfill.pid"), { force: true });
+}
+var init_pid_guard = __esm({
+  "dist/shared/backfill/pid-guard.mjs"() {
+    "use strict";
+  }
+});
 
-// dist/team/lib/config.mjs
+// dist/shared/backfill/runner-env.mjs
+function buildRunnerEnv(env) {
+  const out = {};
+  for (const [k, v] of Object.entries(env)) {
+    if (ALLOWED.has(k))
+      out[k] = v;
+  }
+  return out;
+}
+var ALLOWED;
+var init_runner_env = __esm({
+  "dist/shared/backfill/runner-env.mjs"() {
+    "use strict";
+    ALLOWED = /* @__PURE__ */ new Set([
+      "PATH",
+      "HOME",
+      "USER",
+      "LOGNAME",
+      "SHELL",
+      "LANG",
+      "LC_ALL",
+      "LC_CTYPE",
+      "TZ",
+      "TERM",
+      "VITEST",
+      "CLAUDE_PLUGIN_DATA",
+      "FANCYSAUCE_CREDENTIAL_PATHS"
+    ]);
+  }
+});
+
+// dist/shared/backfill/runner-spawn.mjs
+var runner_spawn_exports = {};
+__export(runner_spawn_exports, {
+  spawnBackfillRunner: () => spawnBackfillRunner
+});
+import { spawn } from "node:child_process";
+import { join as join13, dirname as dirname4 } from "node:path";
+import { fileURLToPath as fileURLToPath2 } from "node:url";
+async function spawnBackfillRunner(input) {
+  const here = dirname4(fileURLToPath2(import.meta.url));
+  const binPath = join13(here, "..", "..", "bin", "backfill-runner.mjs");
+  const args = ["--data-dir", input.dataDir, "--credential-path", input.credentialPath];
+  const spawner = input.spawner ?? defaultSpawner;
+  try {
+    const { pid } = await spawner(binPath, args);
+    return { kind: "spawned", pid };
+  } catch (err) {
+    return { kind: "error", reason: err.message };
+  }
+}
+function defaultSpawner(binPath, args) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(process.execPath, [binPath, ...args], {
+      detached: true,
+      stdio: "ignore",
+      env: buildRunnerEnv(process.env)
+    });
+    child.once("error", reject);
+    child.once("spawn", () => {
+      const pid = child.pid ?? 0;
+      child.unref();
+      resolve({ pid });
+    });
+  });
+}
+var init_runner_spawn = __esm({
+  "dist/shared/backfill/runner-spawn.mjs"() {
+    "use strict";
+    init_runner_env();
+  }
+});
+
+// dist/shared/backfill/status.mjs
+var status_exports = {};
+__export(status_exports, {
+  readStatus: () => readStatus,
+  writeStatus: () => writeStatus
+});
+import { readFile as readFile10, open as open6, rename as rename9, mkdir as mkdir8, unlink as unlink3 } from "node:fs/promises";
+import { join as join14, dirname as dirname5 } from "node:path";
+import { randomBytes as randomBytes2 } from "node:crypto";
+async function readStatus(stateDir) {
+  try {
+    const raw = await readFile10(join14(stateDir, "backfill.status"), "utf8");
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+async function writeStatus(stateDir, s) {
+  const path = join14(stateDir, "backfill.status");
+  await mkdir8(dirname5(path), { recursive: true });
+  const tmp = `${path}.${process.pid}.${randomBytes2(4).toString("hex")}.tmp`;
+  let renamed = false;
+  try {
+    const fh = await open6(tmp, "wx", 384);
+    try {
+      await fh.writeFile(JSON.stringify(s));
+      await fh.sync();
+    } finally {
+      await fh.close();
+    }
+    await rename9(tmp, path);
+    renamed = true;
+  } finally {
+    if (!renamed) {
+      try {
+        await unlink3(tmp);
+      } catch {
+      }
+    }
+  }
+}
+var init_status = __esm({
+  "dist/shared/backfill/status.mjs"() {
+    "use strict";
+  }
+});
+
+// dist/agents/codex/collect.mjs
+import { readFileSync as readFileSync4 } from "node:fs";
+
+// dist/shared/run-collect.mjs
+import { readFileSync as readFileSync2 } from "node:fs";
+import { randomUUID as randomUUID2 } from "node:crypto";
+import { mkdir as mkdir9, writeFile as writeFile7, appendFile as appendFile3, stat as stat3, rm as rm3 } from "node:fs/promises";
+import { join as join15 } from "node:path";
+
+// dist/shared/config.mjs
 import { join } from "node:path";
 import { homedir as homedir2 } from "node:os";
 
-// dist/team/lib/policy.mjs
+// dist/shared/policy.mjs
 function defaultPolicy() {
   const keepLists = {
     "session.start": Object.freeze(["cwd_hash", "model", "permission_mode", "fancysauce.repo_url_hash"]),
@@ -1674,6 +1892,7 @@ function defaultPolicy() {
       "tokens_cache_create",
       "tokens_cache_create_5m",
       "tokens_cache_create_1h",
+      "tokens_reasoning",
       "model",
       "request_id",
       "transcript_message_uuid",
@@ -1688,7 +1907,7 @@ function defaultPolicy() {
   });
 }
 
-// dist/team/lib/credential-file.mjs
+// dist/shared/credential-file.mjs
 import { mkdir, rename, open, chmod, unlink, readFile, stat } from "node:fs/promises";
 async function readCredential(paths) {
   const sys = await tryReadOne(paths.system);
@@ -1751,6 +1970,7 @@ function validate(v) {
     return hint;
   const endpoint = typeof o.endpoint === "string" && o.endpoint ? o.endpoint : void 0;
   const identity_type = o.identity_type === "full" || o.identity_type === "hash" ? o.identity_type : void 0;
+  const provenance = o.provenance === "marketplace_url" ? "marketplace_url" : void 0;
   return {
     kind: "ok",
     cred: {
@@ -1759,7 +1979,8 @@ function validate(v) {
       credential: o.credential,
       identity_hint: hint.value,
       ...endpoint !== void 0 ? { endpoint } : {},
-      ...identity_type !== void 0 ? { identity_type } : {}
+      ...identity_type !== void 0 ? { identity_type } : {},
+      ...provenance !== void 0 ? { provenance } : {}
     }
   };
 }
@@ -1791,25 +2012,8 @@ function validateIdentityHint(v) {
   return { kind: "bad", reason: `identity_hint.source unknown: ${String(o.source)}` };
 }
 
-// dist/team/lib/credential-paths.mjs
-import { homedir } from "node:os";
-import { posix, win32 } from "node:path";
-function credentialPaths() {
-  if (process.platform === "win32") {
-    const programData = process.env.PROGRAMDATA ?? "C:\\ProgramData";
-    const appData = process.env.APPDATA ?? win32.join(homedir(), "AppData", "Roaming");
-    return {
-      system: win32.join(programData, "fancysauce", "credentials.json"),
-      user: win32.join(appData, "fancysauce", "credentials.json")
-    };
-  }
-  return {
-    system: "/etc/fancysauce/credentials.json",
-    user: posix.join(process.env.HOME ?? homedir(), ".config", "fancysauce", "credentials.json")
-  };
-}
-
-// dist/team/lib/config.mjs
+// dist/shared/config.mjs
+init_credential_paths();
 var INGEST_ENDPOINT = "https://ingest.preview.fancysauce.ai";
 var DEFAULT_LOGIN_STATE_DIR = join(homedir2(), ".config", "fancysauce");
 var KNOWN_FANCYSAUCE_VARS = /* @__PURE__ */ new Set([
@@ -1841,6 +2045,12 @@ function parseCredentialPathsEnv() {
     user: o.user,
     ...typeof o.login_state_dir === "string" ? { login_state_dir: o.login_state_dir } : {}
   };
+}
+function resolveLoginStateDir() {
+  const parsed = parseCredentialPathsEnv();
+  if (parsed?.login_state_dir)
+    return parsed.login_state_dir;
+  return DEFAULT_LOGIN_STATE_DIR;
 }
 async function loadConfig(opts = {}) {
   const onUnknown = opts.onUnknownEnvVar ?? defaultUnknownEnvVarHandler;
@@ -1899,16 +2109,313 @@ async function loadConfig(opts = {}) {
 function defaultUnknownEnvVarHandler(_name, _value) {
 }
 
-// dist/team/lib/flusher.mjs
-var import_proper_lockfile3 = __toESM(require_proper_lockfile(), 1);
-import { appendFile, open as open2, readFile as readFile5, rename as rename5, writeFile as writeFile4 } from "node:fs/promises";
-import { join as join5 } from "node:path";
+// dist/shared/data-dir.mjs
+import { readFileSync } from "node:fs";
+import { basename, join as join2, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+import { homedir as homedir3 } from "node:os";
+function resolveDataDir(opts = {}) {
+  if (opts.override)
+    return opts.override;
+  if (process.env.CLAUDE_PLUGIN_DATA)
+    return process.env.CLAUDE_PLUGIN_DATA;
+  const home = opts.homeDir ?? homedir3();
+  const root = trimTrailingSlash(opts.pluginRoot ?? defaultPluginRoot());
+  const fromRegistry = deriveFromRegistry(root, home);
+  if (fromRegistry !== null)
+    return fromRegistry;
+  const fromMarketplaces = deriveFromMarketplaces(root, home);
+  if (fromMarketplaces !== null)
+    return fromMarketplaces;
+  const fromCodexCache = deriveFromCodexCache(root, home);
+  if (fromCodexCache !== null)
+    return fromCodexCache;
+  const fromCodexMarketplaces = deriveFromCodexMarketplaces(root, home);
+  if (fromCodexMarketplaces !== null)
+    return fromCodexMarketplaces;
+  return join2(home, ".claude-plugin-data");
+}
+function defaultPluginRoot() {
+  const here = dirname(fileURLToPath(import.meta.url));
+  return join2(here, "..", "..", "..");
+}
+function trimTrailingSlash(p) {
+  return p.endsWith("/") ? p.slice(0, -1) : p;
+}
+function deriveFromRegistry(root, home) {
+  try {
+    const regPath = join2(home, ".claude", "plugins", "installed_plugins.json");
+    const reg = JSON.parse(readFileSync(regPath, "utf8"));
+    const plugins = reg?.plugins;
+    if (typeof plugins !== "object" || plugins === null)
+      return null;
+    for (const [key, entries] of Object.entries(plugins)) {
+      if (!Array.isArray(entries))
+        continue;
+      for (const entry of entries) {
+        const installPath = entry.installPath;
+        if (typeof installPath !== "string")
+          continue;
+        if (trimTrailingSlash(installPath) !== root)
+          continue;
+        const at = key.lastIndexOf("@");
+        if (at <= 0 || at >= key.length - 1)
+          continue;
+        const plugin = key.slice(0, at);
+        const alias = key.slice(at + 1);
+        return join2(home, ".claude", "plugins", "data", `${plugin}-${alias}`);
+      }
+    }
+  } catch {
+  }
+  return null;
+}
+function deriveFromMarketplaces(root, home) {
+  try {
+    const kmPath = join2(home, ".claude", "plugins", "known_marketplaces.json");
+    const km = JSON.parse(readFileSync(kmPath, "utf8"));
+    let alias = null;
+    for (const [k, v] of Object.entries(km)) {
+      const installLocation = v.installLocation;
+      if (typeof installLocation === "string" && trimTrailingSlash(installLocation) === root) {
+        alias = k;
+        break;
+      }
+    }
+    if (alias === null)
+      return null;
+    const manifest = JSON.parse(readFileSync(join2(root, ".claude-plugin", "marketplace.json"), "utf8"));
+    const plugin = manifest.plugins?.[0]?.name;
+    if (typeof plugin !== "string" || plugin.length === 0)
+      return null;
+    return join2(home, ".claude", "plugins", "data", `${plugin}-${alias}`);
+  } catch {
+    return null;
+  }
+}
+function deriveFromCodexCache(root, home) {
+  const prefix = trimTrailingSlash(join2(home, ".codex", "plugins", "cache"));
+  if (!root.startsWith(prefix + "/"))
+    return null;
+  const parts = root.slice(prefix.length + 1).split("/");
+  const alias = parts[0];
+  const plugin = parts[1];
+  if (!alias || !plugin)
+    return null;
+  return join2(home, ".codex", "plugins", "data", `${plugin}-${alias}`);
+}
+function deriveFromCodexMarketplaces(root, home) {
+  try {
+    const plugin = readCodexPluginName(root) ?? basename(root);
+    if (plugin.length === 0)
+      return null;
+    const configPath = join2(home, ".codex", "config.toml");
+    const marketplaces = parseCodexMarketplaces(readFileSync(configPath, "utf8"));
+    for (const marketplace of marketplaces) {
+      const expectedRoot = trimTrailingSlash(join2(marketplace.source, "plugins", plugin));
+      if (expectedRoot === root) {
+        return join2(home, ".codex", "plugins", "data", `${plugin}-${marketplace.alias}`);
+      }
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+function readCodexPluginName(root) {
+  try {
+    const manifest = JSON.parse(readFileSync(join2(root, ".codex-plugin", "plugin.json"), "utf8"));
+    return typeof manifest.name === "string" && manifest.name.length > 0 ? manifest.name : null;
+  } catch {
+    return null;
+  }
+}
+function parseCodexMarketplaces(config) {
+  const marketplaces = [];
+  let currentAlias = null;
+  for (const line of config.split(/\r?\n/)) {
+    const header = line.match(/^\s*\[marketplaces\.([^\]]+)\]\s*$/);
+    if (header) {
+      currentAlias = parseTomlKey(header[1]);
+      continue;
+    }
+    if (/^\s*\[/.test(line)) {
+      currentAlias = null;
+      continue;
+    }
+    if (currentAlias === null)
+      continue;
+    const source = line.match(/^\s*source\s*=\s*"([^"]*)"\s*$/);
+    if (source) {
+      marketplaces.push({ alias: currentAlias, source: source[1] });
+    }
+  }
+  return marketplaces;
+}
+function parseTomlKey(key) {
+  const trimmed = key.trim();
+  if (!trimmed.startsWith('"') || !trimmed.endsWith('"'))
+    return trimmed;
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    return trimmed.slice(1, -1);
+  }
+}
 
-// dist/team/lib/flush-cursor.mjs
-import { readFile as readFile2, rename as rename2, writeFile } from "node:fs/promises";
-import { join as join2 } from "node:path";
+// dist/shared/run-collect.mjs
+init_credential_paths();
 
-// dist/team/lib/locking.mjs
+// dist/shared/hash.mjs
+import { createHash, createHmac } from "node:crypto";
+function sha256Hex(input) {
+  return createHash("sha256").update(input, "utf8").digest("hex");
+}
+function hmacIdentity(apiKey, value) {
+  return createHmac("sha256", apiKey).update(value.toLowerCase(), "utf8").digest("hex");
+}
+
+// dist/shared/content-filter.mjs
+function buildRules(policy) {
+  const k = (eventType) => keep(policy.keepLists[eventType]);
+  return {
+    "session.start": k("session.start"),
+    "session.end": k("session.end"),
+    "prompt.submit": promptSubmit,
+    "tool_call.start": toolCallStart,
+    "tool_call.complete": toolCallComplete,
+    "tool_call.failed": toolCallFailed,
+    "subagent.start": k("subagent.start"),
+    "subagent.complete": k("subagent.complete"),
+    "stop": k("stop"),
+    "permission.request": k("permission.request"),
+    "notification": k("notification"),
+    "task.completed": k("task.completed"),
+    "compaction.before": k("compaction.before"),
+    "compaction.after": k("compaction.after"),
+    "config.changed": k("config.changed"),
+    "api.request": k("api.request")
+  };
+}
+function promptSubmit(a) {
+  const out = {
+    prompt_length: numericOr(a.prompt_length, 0)
+  };
+  if (typeof a.slash_command === "string" && a.slash_command) {
+    out.slash_command = a.slash_command;
+  }
+  return out;
+}
+function keep(names) {
+  const set = new Set(names);
+  return (attrs) => {
+    const out = {};
+    for (const [k, v] of Object.entries(attrs)) {
+      if (set.has(k))
+        out[k] = v;
+    }
+    return out;
+  };
+}
+function toolCallStart(a) {
+  const rawInput = typeof a.tool_input_raw === "string" ? a.tool_input_raw : "";
+  const out = stripUndefined({
+    tool_name: asString(a.tool_name),
+    tool_input_hash: sha256Hex(rawInput),
+    input_size_bytes: Buffer.byteLength(rawInput, "utf8"),
+    correlation_id: asString(a.correlation_id),
+    subsession_id: a.subsession_id,
+    agent_type: a.agent_type
+  });
+  if (typeof a.skill_name === "string" && a.skill_name)
+    out.skill_name = a.skill_name;
+  return out;
+}
+function toolCallComplete(a) {
+  const rawInput = typeof a.tool_input_raw === "string" ? a.tool_input_raw : "";
+  const rawResponse = typeof a.tool_response_raw === "string" ? a.tool_response_raw : "";
+  const out = stripUndefined({
+    tool_name: asString(a.tool_name),
+    tool_input_hash: sha256Hex(rawInput),
+    input_size_bytes: Buffer.byteLength(rawInput, "utf8"),
+    response_size_bytes: Buffer.byteLength(rawResponse, "utf8"),
+    success: a.success === true,
+    correlation_id: asString(a.correlation_id),
+    subsession_id: a.subsession_id,
+    agent_type: a.agent_type
+  });
+  if (typeof a.skill_name === "string" && a.skill_name)
+    out.skill_name = a.skill_name;
+  return out;
+}
+function toolCallFailed(a) {
+  const rawInput = typeof a.tool_input_raw === "string" ? a.tool_input_raw : "";
+  const out = stripUndefined({
+    tool_name: asString(a.tool_name),
+    tool_input_hash: sha256Hex(rawInput),
+    correlation_id: asString(a.correlation_id),
+    subsession_id: a.subsession_id,
+    agent_type: a.agent_type
+  });
+  if (typeof a.skill_name === "string" && a.skill_name)
+    out.skill_name = a.skill_name;
+  return out;
+}
+function asString(v) {
+  return typeof v === "string" ? v : "";
+}
+function numericOr(v, fallback) {
+  return typeof v === "number" ? v : fallback;
+}
+function stripUndefined(o) {
+  const out = {};
+  for (const [k, v] of Object.entries(o))
+    if (v !== void 0)
+      out[k] = v;
+  return out;
+}
+var rulesCache = /* @__PURE__ */ new WeakMap();
+function getRules(policy) {
+  let rules = rulesCache.get(policy);
+  if (!rules) {
+    rules = buildRules(policy);
+    rulesCache.set(policy, rules);
+  }
+  return rules;
+}
+function filterEvent(raw, policy) {
+  const rules = getRules(policy);
+  const rule = rules[raw.event_type];
+  if (!rule) {
+    throw new Error(`No content-filter rule for event_type: ${raw.event_type}`);
+  }
+  const filteredAttrs = rule(raw.attributes);
+  const out = {
+    ...raw,
+    attributes: filteredAttrs
+  };
+  const serialized = JSON.stringify({
+    uuid: out.event_uuid,
+    type: out.event_type,
+    sid: out.session_id,
+    ts: out.timestamp_ns.toString(),
+    attrs: out.attributes
+  });
+  if (Buffer.byteLength(serialized, "utf8") > policy.maxSerializedBytes) {
+    return null;
+  }
+  return out;
+}
+
+// dist/shared/identity-resolver.mjs
+import { createHash as createHash2, randomUUID } from "node:crypto";
+import { execFile as execFile2 } from "node:child_process";
+import { open as open2, readFile as readFile2, rename as rename2, unlink as unlink2 } from "node:fs/promises";
+import { join as join3 } from "node:path";
+import { randomBytes } from "node:crypto";
+import { userInfo } from "node:os";
+
+// dist/shared/locking.mjs
 var import_proper_lockfile = __toESM(require_proper_lockfile(), 1);
 import { mkdir as mkdir2 } from "node:fs/promises";
 var LOCK_OPTIONS = {
@@ -1926,19 +2433,354 @@ async function withDirLock(dir, fn) {
   }
 }
 
-// dist/team/lib/flush-cursor.mjs
+// dist/shared/identity-sources.mjs
+import { execFile } from "node:child_process";
+var TIMEOUT_MS = 200;
+function defaultRunner(cmd, args, timeoutMs) {
+  return new Promise((resolve, reject) => {
+    execFile(cmd, args, { timeout: timeoutMs }, (err, stdout) => {
+      if (err)
+        return reject(err);
+      resolve(stdout.toString());
+    });
+  });
+}
+async function readGitConfigEmail(deps = {}) {
+  const runner = deps.runner ?? defaultRunner;
+  try {
+    const out = await runner("git", ["config", "--global", "user.email"], TIMEOUT_MS);
+    const trimmed = out.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  } catch {
+    return null;
+  }
+}
+async function readMacOsDsclEmail(deps = {}) {
+  const platform = deps.platform ?? process.platform;
+  if (platform !== "darwin")
+    return null;
+  const runner = deps.runner ?? defaultRunner;
+  const user = deps.username ?? process.env.USER ?? process.env.LOGNAME;
+  if (!user)
+    return null;
+  try {
+    const out = await runner("dscl", [".", "-read", `/Users/${user}`, "EMailAddress"], TIMEOUT_MS);
+    const match = out.match(/^EMailAddress:\s*(\S+)/m);
+    return match?.[1] ?? null;
+  } catch {
+    return null;
+  }
+}
+async function readWindowsUpn(deps = {}) {
+  const platform = deps.platform ?? process.platform;
+  if (platform !== "win32")
+    return null;
+  const runner = deps.runner ?? defaultRunner;
+  try {
+    const out = await runner("whoami", ["/upn"], TIMEOUT_MS);
+    const trimmed = out.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  } catch {
+    return null;
+  }
+}
+
+// dist/shared/identity-resolver.mjs
+var TENANT_KEY_PREFIXES = ["fs_live_t_", "fs_test_t_"];
+function isTenantKey(credential) {
+  return TENANT_KEY_PREFIXES.some((p) => credential.startsWith(p));
+}
+var GIT_TIMEOUT_MS = 200;
+var IdentityResolver = class {
+  dir;
+  installPath;
+  git;
+  constructor(dir, git = defaultGitAccess()) {
+    this.dir = dir;
+    this.installPath = join3(dir, "install.json");
+    this.git = git;
+  }
+  async resolve(cwd, opts) {
+    const install_id = await this.loadOrCreateInstallId();
+    const repo = await this.resolveRepoHash(cwd);
+    const base = { install_id, ...repo };
+    if (!opts)
+      return base;
+    if (!isTenantKey(opts.credential))
+      return base;
+    const sources = opts.identitySources ?? {
+      dsclEmail: () => readMacOsDsclEmail(),
+      winUpn: () => readWindowsUpn(),
+      gitEmail: () => readGitConfigEmail()
+    };
+    const osUsername = (opts.osUsername ?? (() => userInfo().username))();
+    let email;
+    let identitySource;
+    if (opts.identity_hint?.source === "mdm_file" && opts.identity_hint.user_email) {
+      email = opts.identity_hint.user_email;
+      identitySource = "mdm_file";
+    } else {
+      const dscl = await sources.dsclEmail?.();
+      if (dscl) {
+        email = dscl;
+        identitySource = "dscl";
+      } else {
+        const upn = await sources.winUpn?.();
+        if (upn) {
+          email = upn;
+          identitySource = "whoami_upn";
+        } else {
+          const git = await sources.gitEmail?.();
+          if (git) {
+            email = git;
+            identitySource = "git_config";
+          }
+        }
+      }
+    }
+    const result = { ...base, handle_os: hmacIdentity(opts.credential, osUsername) };
+    if (email) {
+      result.handle_email = hmacIdentity(opts.credential, email);
+      result.identity_source = identitySource;
+    }
+    if (opts.identity_type === "full") {
+      if (email)
+        result.email = email;
+      if (opts.identity_hint?.source === "mdm_file" && opts.identity_hint.user_upn) {
+        result.upn = opts.identity_hint.user_upn;
+      }
+    }
+    return result;
+  }
+  async resolveRepoHash(cwd) {
+    const url = await this.git.gitRemoteUrl(cwd);
+    if (!url)
+      return {};
+    return { repo_url_hash: createHash2("sha256").update(url, "utf8").digest("hex") };
+  }
+  async loadOrCreateInstallId() {
+    return withDirLock(this.dir, async () => {
+      const existing = await readInstallId(this.installPath);
+      if (existing !== null)
+        return existing;
+      const install_id = randomUUID();
+      const body = { install_id, created_at: (/* @__PURE__ */ new Date()).toISOString() };
+      await writeInstallFile(this.installPath, body);
+      return install_id;
+    });
+  }
+};
+async function readInstallId(path) {
+  let buf;
+  try {
+    buf = await readFile2(path, "utf8");
+  } catch {
+    return null;
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(buf);
+  } catch {
+    return null;
+  }
+  if (typeof parsed !== "object" || parsed === null)
+    return null;
+  const id = parsed.install_id;
+  return typeof id === "string" && id.length > 0 ? id : null;
+}
+async function writeInstallFile(path, body) {
+  const tmp = `${path}.${process.pid}.${randomBytes(4).toString("hex")}.tmp`;
+  let renamed = false;
+  try {
+    const fh = await open2(tmp, "wx", 384);
+    try {
+      await fh.writeFile(JSON.stringify(body));
+      await fh.sync();
+    } finally {
+      await fh.close();
+    }
+    await rename2(tmp, path);
+    renamed = true;
+  } finally {
+    if (!renamed) {
+      try {
+        await unlink2(tmp);
+      } catch {
+      }
+    }
+  }
+}
+function toResourceAttributes(id, opts) {
+  const attrs = {
+    "service.name": "fancysauce",
+    "service.version": opts.pluginVersion,
+    "fancysauce.schema_version": opts.schemaVersion,
+    "fancysauce.install_id": id.install_id,
+    "fancysauce.agent": opts.agent
+  };
+  if (id.handle_email)
+    attrs["fancysauce.user.handle_email"] = id.handle_email;
+  if (id.handle_os)
+    attrs["fancysauce.user.handle_os"] = id.handle_os;
+  if (id.identity_source)
+    attrs["fancysauce.user.identity_source"] = id.identity_source;
+  if (id.email)
+    attrs["fancysauce.user.email"] = id.email;
+  if (id.upn)
+    attrs["fancysauce.user.upn"] = id.upn;
+  return attrs;
+}
+function defaultGitAccess() {
+  return {
+    gitRemoteUrl: (cwd) => gitRead(["-C", cwd, "remote", "get-url", "origin"])
+  };
+}
+function gitRead(args) {
+  return new Promise((resolve) => {
+    execFile2("git", args, { timeout: GIT_TIMEOUT_MS }, (err, stdout) => {
+      if (err)
+        return resolve(null);
+      const trimmed = stdout.toString().trim();
+      resolve(trimmed.length ? trimmed : null);
+    });
+  });
+}
+
+// dist/shared/queue.mjs
+import { open as open3, stat as stat2 } from "node:fs/promises";
+import { join as join4 } from "node:path";
+var Queue = class {
+  dir;
+  path;
+  capBytes;
+  constructor(dir, capBytes) {
+    this.dir = dir;
+    this.path = join4(dir, "queue.ndjson");
+    this.capBytes = capBytes;
+  }
+  async size() {
+    try {
+      const s = await stat2(this.path);
+      return s.size;
+    } catch (err) {
+      if (err.code === "ENOENT")
+        return 0;
+      throw err;
+    }
+  }
+  async append(lines) {
+    if (lines.length === 0) {
+      return { written: 0, dropped: 0, sizeAfter: await this.size() };
+    }
+    return withDirLock(this.dir, async () => {
+      const fh = await open3(this.path, "a", 384);
+      let written = 0;
+      let dropped = 0;
+      let currentSize = (await fh.stat()).size;
+      try {
+        for (const line of lines) {
+          const bytes = Buffer.byteLength(line, "utf8") + 1;
+          if (currentSize + bytes > this.capBytes) {
+            dropped++;
+            continue;
+          }
+          await fh.write(line + "\n", null, "utf8");
+          written++;
+          currentSize += bytes;
+        }
+      } finally {
+        await fh.close();
+      }
+      return { written, dropped, sizeAfter: currentSize };
+    });
+  }
+};
+
+// dist/shared/health.mjs
+var import_proper_lockfile2 = __toESM(require_proper_lockfile(), 1);
+import { mkdir as mkdir3, readFile as readFile3, rename as rename3, writeFile } from "node:fs/promises";
+import { join as join5 } from "node:path";
+var DEFAULT = { dropped_event_count: 0 };
+var LOCK_RETRIES = {
+  retries: 100,
+  factor: 1.5,
+  minTimeout: 5,
+  maxTimeout: 50
+};
+var HealthState = class {
+  dir;
+  path;
+  tmp;
+  constructor(dir) {
+    this.dir = dir;
+    this.path = join5(dir, "health.json");
+    this.tmp = `${this.path}.tmp`;
+  }
+  async read() {
+    try {
+      return { ...DEFAULT, ...JSON.parse(await readFile3(this.path, "utf8")) };
+    } catch {
+      return { ...DEFAULT };
+    }
+  }
+  async recordDrop(n) {
+    await this.update((h) => {
+      h.dropped_event_count += n;
+    });
+  }
+  async touch() {
+    await this.update((h) => {
+      h.last_hook_at = Date.now();
+    });
+  }
+  async recordFlush(result) {
+    await this.update((h) => {
+      h.last_flush_at = Date.now();
+      h.last_flush_result = result;
+    });
+  }
+  async update(mutate) {
+    await mkdir3(this.dir, { recursive: true });
+    try {
+      await readFile3(this.path);
+    } catch {
+      await writeFile(this.path, "{}", "utf8");
+    }
+    const release = await import_proper_lockfile2.default.lock(this.path, {
+      retries: LOCK_RETRIES,
+      realpath: false
+    });
+    try {
+      const h = await this.read();
+      mutate(h);
+      await writeFile(this.tmp, JSON.stringify(h), "utf8");
+      await rename3(this.tmp, this.path);
+    } finally {
+      await release();
+    }
+  }
+};
+
+// dist/shared/flusher.mjs
+var import_proper_lockfile3 = __toESM(require_proper_lockfile(), 1);
+import { appendFile, open as open4, readFile as readFile6, rename as rename6, writeFile as writeFile4 } from "node:fs/promises";
+import { join as join8 } from "node:path";
+
+// dist/shared/flush-cursor.mjs
+import { readFile as readFile4, rename as rename4, writeFile as writeFile2 } from "node:fs/promises";
+import { join as join6 } from "node:path";
 var FlushCursor = class {
   dir;
   path;
   tmpPath;
   constructor(dir) {
     this.dir = dir;
-    this.path = join2(dir, "flush_cursor.json");
+    this.path = join6(dir, "flush_cursor.json");
     this.tmpPath = `${this.path}.tmp`;
   }
   async read() {
     try {
-      const buf = await readFile2(this.path, "utf8");
+      const buf = await readFile4(this.path, "utf8");
       const parsed = JSON.parse(buf);
       return parsed.last_flushed_offset_bytes ?? 0;
     } catch (err) {
@@ -1964,15 +2806,15 @@ var FlushCursor = class {
   }
   async write(offset) {
     const body = { last_flushed_offset_bytes: offset };
-    await writeFile(this.tmpPath, JSON.stringify(body), "utf8");
-    await rename2(this.tmpPath, this.path);
+    await writeFile2(this.tmpPath, JSON.stringify(body), "utf8");
+    await rename4(this.tmpPath, this.path);
   }
 };
 
-// dist/team/lib/backoff-state.mjs
-import { mkdir as mkdir3, readFile as readFile3, rename as rename3, writeFile as writeFile2 } from "node:fs/promises";
-import { join as join3 } from "node:path";
-var DEFAULT = {
+// dist/shared/backoff-state.mjs
+import { mkdir as mkdir4, readFile as readFile5, rename as rename5, writeFile as writeFile3 } from "node:fs/promises";
+import { join as join7 } from "node:path";
+var DEFAULT2 = {
   consecutiveAuthFailures: 0,
   transientAttempts: 0
 };
@@ -1984,7 +2826,7 @@ var BackoffState = class {
   tmpPath;
   constructor(dir) {
     this.dir = dir;
-    this.path = join3(dir, "backoff.json");
+    this.path = join7(dir, "backoff.json");
     this.tmpPath = `${this.path}.tmp`;
   }
   async read() {
@@ -2074,88 +2916,23 @@ var BackoffState = class {
   }
   async loadFile() {
     try {
-      const buf = await readFile3(this.path, "utf8");
-      return { ...DEFAULT, ...JSON.parse(buf) };
+      const buf = await readFile5(this.path, "utf8");
+      return { ...DEFAULT2, ...JSON.parse(buf) };
     } catch (err) {
       if (err.code === "ENOENT") {
-        return { ...DEFAULT };
+        return { ...DEFAULT2 };
       }
       throw err;
     }
   }
   async save(f) {
-    await mkdir3(this.dir, { recursive: true });
-    await writeFile2(this.tmpPath, JSON.stringify(f), "utf8");
-    await rename3(this.tmpPath, this.path);
-  }
-};
-
-// dist/team/lib/health.mjs
-var import_proper_lockfile2 = __toESM(require_proper_lockfile(), 1);
-import { mkdir as mkdir4, readFile as readFile4, rename as rename4, writeFile as writeFile3 } from "node:fs/promises";
-import { join as join4 } from "node:path";
-var DEFAULT2 = { dropped_event_count: 0 };
-var LOCK_RETRIES = {
-  retries: 100,
-  factor: 1.5,
-  minTimeout: 5,
-  maxTimeout: 50
-};
-var HealthState = class {
-  dir;
-  path;
-  tmp;
-  constructor(dir) {
-    this.dir = dir;
-    this.path = join4(dir, "health.json");
-    this.tmp = `${this.path}.tmp`;
-  }
-  async read() {
-    try {
-      return { ...DEFAULT2, ...JSON.parse(await readFile4(this.path, "utf8")) };
-    } catch {
-      return { ...DEFAULT2 };
-    }
-  }
-  async recordDrop(n) {
-    await this.update((h) => {
-      h.dropped_event_count += n;
-    });
-  }
-  async touch() {
-    await this.update((h) => {
-      h.last_hook_at = Date.now();
-    });
-  }
-  async recordFlush(result) {
-    await this.update((h) => {
-      h.last_flush_at = Date.now();
-      h.last_flush_result = result;
-    });
-  }
-  async update(mutate) {
     await mkdir4(this.dir, { recursive: true });
-    try {
-      await readFile4(this.path);
-    } catch {
-      await writeFile3(this.path, "{}", "utf8");
-    }
-    const release = await import_proper_lockfile2.default.lock(this.path, {
-      retries: LOCK_RETRIES,
-      realpath: false
-    });
-    try {
-      const h = await this.read();
-      mutate(h);
-      await writeFile3(this.tmp, JSON.stringify(h), "utf8");
-      await rename4(this.tmp, this.path);
-    } finally {
-      await release();
-    }
+    await writeFile3(this.tmpPath, JSON.stringify(f), "utf8");
+    await rename5(this.tmpPath, this.path);
   }
 };
 
-// dist/team/lib/forwarder.mjs
+// dist/shared/forwarder.mjs
 import { request as httpRequest } from "node:http";
 import { request as httpsRequest } from "node:https";
 import { gzip } from "node:zlib";
@@ -2278,7 +3055,7 @@ function parseRetryAfter(h) {
   return null;
 }
 
-// dist/team/lib/otlp-encoder.mjs
+// dist/shared/otlp-encoder.mjs
 var ATTR_DENY = /* @__PURE__ */ new Set([
   "cwd",
   "agent_transcript_path",
@@ -2324,6 +3101,7 @@ var ATTR_TYPE = {
   tokens_cache_create: "int",
   tokens_cache_create_5m: "int",
   tokens_cache_create_1h: "int",
+  tokens_reasoning: "int",
   request_id: "string",
   transcript_message_uuid: "string",
   stop_reason: "string",
@@ -2363,6 +3141,7 @@ function encodeResourceAttributes(r) {
     "service.version",
     "fancysauce.schema_version",
     "fancysauce.install_id",
+    "fancysauce.agent",
     "fancysauce.user.handle_email",
     "fancysauce.user.handle_os",
     "fancysauce.user.identity_source",
@@ -2423,13 +3202,13 @@ function encodeAnyValue(key, v) {
   }
 }
 
-// dist/team/lib/config-fingerprint.mjs
-import { createHash } from "node:crypto";
+// dist/shared/config-fingerprint.mjs
+import { createHash as createHash3 } from "node:crypto";
 function fingerprint(value) {
-  return createHash("sha256").update(value).digest("hex").slice(0, 16);
+  return createHash3("sha256").update(value).digest("hex").slice(0, 16);
 }
 
-// dist/team/lib/flusher.mjs
+// dist/shared/flusher.mjs
 var DEFAULT_MAX_EVENTS = 100;
 var DEFAULT_MAX_BYTES = 1e6;
 var MIN_POST_TIMEOUT_MS = 100;
@@ -2437,8 +3216,8 @@ var COMPACT_THRESHOLD_BYTES = 1e6;
 async function tryFlush(input) {
   const start = Date.now();
   const deadline = start + input.budgetMs;
-  const queuePath = join5(input.dataDir, "queue.ndjson");
-  const flushLockPath = join5(input.dataDir, ".flush.lock");
+  const queuePath = join8(input.dataDir, "queue.ndjson");
+  const flushLockPath = join8(input.dataDir, ".flush.lock");
   const backoff = new BackoffState(input.dataDir);
   const cursor = new FlushCursor(input.dataDir);
   const health = new HealthState(input.stateDir);
@@ -2451,9 +3230,9 @@ async function tryFlush(input) {
     return { skipped: true, reason: "backoff deadline in future" };
   }
   try {
-    await readFile5(flushLockPath);
+    await readFile6(flushLockPath);
   } catch {
-    const fh = await open2(flushLockPath, "a");
+    const fh = await open4(flushLockPath, "a");
     await fh.close();
   }
   let release;
@@ -2466,7 +3245,7 @@ async function tryFlush(input) {
     let startOffset = await cursor.read();
     let batch = await readBatch(queuePath, startOffset, input.batchMaxEvents ?? DEFAULT_MAX_EVENTS, input.batchMaxBytes ?? DEFAULT_MAX_BYTES);
     if (batch.events.length === 0 && batch.cursorPastEof) {
-      await appendFile(join5(input.dataDir, "collect-error.log"), `${(/* @__PURE__ */ new Date()).toISOString()} fancysauce: flush cursor (${startOffset}) past queue EOF (${batch.queueSize}); resetting (at-least-once dedup applies)
+      await appendFile(join8(input.dataDir, "collect-error.log"), `${(/* @__PURE__ */ new Date()).toISOString()} fancysauce: flush cursor (${startOffset}) past queue EOF (${batch.queueSize}); resetting (at-least-once dedup applies)
 `).catch(() => {
       });
       await cursor.resetUnlocked();
@@ -2484,7 +3263,7 @@ async function tryFlush(input) {
     try {
       envelope = encodeOtlp(events, input.resource);
     } catch (err) {
-      await appendFile(join5(input.dataDir, "collect-error.log"), `${(/* @__PURE__ */ new Date()).toISOString()} fancysauce: encoder rejected batch of ${events.length} events (cursor ${startOffset}\u2192${endOffset}); dropping: ${err.message}
+      await appendFile(join8(input.dataDir, "collect-error.log"), `${(/* @__PURE__ */ new Date()).toISOString()} fancysauce: encoder rejected batch of ${events.length} events (cursor ${startOffset}\u2192${endOffset}); dropping: ${err.message}
 `).catch(() => {
       });
       await cursor.advance(endOffset);
@@ -2541,16 +3320,16 @@ async function readBatch(queuePath, startOffset, maxEvents, maxBytes) {
   let fh = null;
   try {
     try {
-      fh = await open2(queuePath, "r");
+      fh = await open4(queuePath, "r");
     } catch {
       return { events: [], endOffset: startOffset };
     }
-    const stat2 = await fh.stat();
-    if (stat2.size < startOffset)
-      return { events: [], endOffset: startOffset, cursorPastEof: true, queueSize: stat2.size };
-    if (stat2.size <= startOffset)
+    const stat4 = await fh.stat();
+    if (stat4.size < startOffset)
+      return { events: [], endOffset: startOffset, cursorPastEof: true, queueSize: stat4.size };
+    if (stat4.size <= startOffset)
       return { events: [], endOffset: startOffset };
-    const toRead = Math.min(stat2.size - startOffset, maxBytes);
+    const toRead = Math.min(stat4.size - startOffset, maxBytes);
     const buf = Buffer.alloc(toRead);
     await fh.read(buf, 0, toRead, startOffset);
     const lastNl = buf.lastIndexOf("\n".charCodeAt(0));
@@ -2586,27 +3365,27 @@ async function readBatch(queuePath, startOffset, maxEvents, maxBytes) {
       await fh.close();
   }
 }
-async function maybeCompact(dataDir, cursor, queuePath) {
+async function maybeCompact(dataDir2, cursor, queuePath) {
   const flushedOffset = await cursor.read();
   if (flushedOffset < COMPACT_THRESHOLD_BYTES)
     return;
-  await withDirLock(dataDir, async () => {
+  await withDirLock(dataDir2, async () => {
     let fh = null;
     try {
       try {
-        fh = await open2(queuePath, "r");
+        fh = await open4(queuePath, "r");
       } catch {
         return;
       }
-      const stat2 = await fh.stat();
-      if (flushedOffset >= stat2.size) {
+      const stat4 = await fh.stat();
+      if (flushedOffset >= stat4.size) {
         await fh.close();
         fh = null;
         await cursor.resetUnlocked();
         await writeFile4(queuePath, "");
         return;
       }
-      const tailLen = stat2.size - flushedOffset;
+      const tailLen = stat4.size - flushedOffset;
       const buf = Buffer.alloc(tailLen);
       await fh.read(buf, 0, tailLen, flushedOffset);
       await fh.close();
@@ -2614,7 +3393,7 @@ async function maybeCompact(dataDir, cursor, queuePath) {
       const tmpPath = `${queuePath}.compact.tmp`;
       await writeFile4(tmpPath, buf);
       await cursor.resetUnlocked();
-      await rename5(tmpPath, queuePath);
+      await rename6(tmpPath, queuePath);
     } finally {
       if (fh)
         await fh.close();
@@ -2640,16 +3419,16 @@ async function reconcileConfigFingerprint(input, backoff, cursor, queuePath) {
   await backoff.resetForConfigChange(current);
 }
 var REBIND_LOG_BODY_BUDGET = 256;
-async function logRebind(dataDir, rebind) {
+async function logRebind(dataDir2, rebind) {
   const body = JSON.stringify(rebind);
   const truncated = body.length > REBIND_LOG_BODY_BUDGET ? `${body.slice(0, REBIND_LOG_BODY_BUDGET)}...[truncated ${body.length - REBIND_LOG_BODY_BUDGET}B]` : body;
   const line = `${(/* @__PURE__ */ new Date()).toISOString()} fancysauce: rebind directive received and ignored (v0.5.0 closed-schema): ${truncated}
 `;
-  await appendFile(join5(dataDir, "collect-error.log"), line).catch(() => {
+  await appendFile(join8(dataDir2, "collect-error.log"), line).catch(() => {
   });
 }
-async function dropQueue(dataDir, queuePath, cursor) {
-  await withDirLock(dataDir, async () => {
+async function dropQueue(dataDir2, queuePath, cursor) {
+  await withDirLock(dataDir2, async () => {
     await cursor.resetUnlocked();
     await writeFile4(queuePath, "");
   });
@@ -2683,479 +3462,913 @@ function revive(v) {
   };
 }
 
-// dist/team/lib/backfill/pid-guard.mjs
-import { readFile as readFile6, rm, mkdir as mkdir5, open as open3 } from "node:fs/promises";
-import { join as join6 } from "node:path";
-async function isBackfillActive(stateDir) {
-  try {
-    const raw = await readFile6(join6(stateDir, "backfill.pid"), "utf8");
-    const pid = Number(raw.trim());
-    if (!Number.isFinite(pid) || pid <= 0)
-      return null;
-    try {
-      process.kill(pid, 0);
-      return pid;
-    } catch {
-      return null;
-    }
-  } catch {
-    return null;
-  }
-}
-async function acquirePidGuard(stateDir) {
-  await mkdir5(stateDir, { recursive: true });
-  const path = join6(stateDir, "backfill.pid");
-  for (let attempt = 0; attempt < 2; attempt++) {
-    try {
-      const fh = await open3(path, "wx", 384);
-      try {
-        await fh.writeFile(String(process.pid));
-        await fh.sync();
-      } finally {
-        await fh.close();
-      }
-      return { kind: "acquired" };
-    } catch (err) {
-      if (err.code !== "EEXIST")
-        throw err;
-      const live2 = await isBackfillActive(stateDir);
-      if (live2 !== null)
-        return { kind: "already-running", pid: live2 };
-      await rm(path, { force: true });
-    }
-  }
-  const live = await isBackfillActive(stateDir);
-  return live !== null ? { kind: "already-running", pid: live } : { kind: "already-running", pid: -1 };
-}
-async function releasePidGuard(stateDir) {
-  await rm(join6(stateDir, "backfill.pid"), { force: true });
+// dist/shared/hook-budget.mjs
+function remainingFlushBudgetMs(hookBudgetMs, elapsedMs, marginMs) {
+  const remaining = hookBudgetMs - elapsedMs - marginMs;
+  return remaining > 0 ? remaining : 0;
 }
 
-// dist/team/lib/backfill/status.mjs
-import { readFile as readFile7, open as open4, rename as rename6, mkdir as mkdir6, unlink as unlink2 } from "node:fs/promises";
-import { join as join7, dirname } from "node:path";
-import { randomBytes } from "node:crypto";
-async function readStatus(stateDir) {
-  try {
-    const raw = await readFile7(join7(stateDir, "backfill.status"), "utf8");
-    return JSON.parse(raw);
-  } catch {
-    return null;
+// dist/shared/sinks/index.mjs
+async function runSinks(sinks, events, ctx, onError = defaultOnError) {
+  if (events.length === 0)
+    return;
+  for (const sink of sinks) {
+    try {
+      await sink.onEvents(events, ctx);
+    } catch (err) {
+      await onError(sink.name, err);
+    }
   }
 }
-async function writeStatus(stateDir, s) {
-  const path = join7(stateDir, "backfill.status");
-  await mkdir6(dirname(path), { recursive: true });
-  const tmp = `${path}.${process.pid}.${randomBytes(4).toString("hex")}.tmp`;
-  let renamed = false;
-  try {
-    const fh = await open4(tmp, "wx", 384);
-    try {
-      await fh.writeFile(JSON.stringify(s));
-      await fh.sync();
-    } finally {
-      await fh.close();
+function defaultOnError(_name, _err) {
+}
+
+// dist/shared/sinks/event-log.mjs
+import { appendFile as appendFile2 } from "node:fs/promises";
+import { join as join9 } from "node:path";
+function eventLogSink() {
+  return {
+    name: "event-log",
+    async onEvents(events, ctx) {
+      const path = join9(ctx.sessionDir, "events.v1.jsonl");
+      const body = events.map(serialize).join("\n") + "\n";
+      await appendFile2(path, body, { encoding: "utf8", mode: 384 });
     }
-    await rename6(tmp, path);
-    renamed = true;
-  } finally {
-    if (!renamed) {
+  };
+}
+function serialize(e) {
+  return JSON.stringify({
+    event_uuid: e.event_uuid,
+    event_type: e.event_type,
+    session_id: e.session_id,
+    source: e.source,
+    sequence: e.sequence,
+    timestamp_ns: e.timestamp_ns.toString(),
+    attributes: e.attributes
+  });
+}
+
+// dist/shared/sinks/summary-updater.mjs
+import { readFile as readFile7, writeFile as writeFile5, rename as rename7, mkdir as mkdir5 } from "node:fs/promises";
+import { join as join10, dirname as dirname2 } from "node:path";
+
+// dist/shared/sinks/coalescers.mjs
+function initialSummary(sessionId, startTs, version) {
+  return {
+    schema_version: 1,
+    session_id: sessionId,
+    start_ts: startTs,
+    last_updated_ts: startTs,
+    duration_wall_s: 0,
+    active: true,
+    end_reason: null,
+    fancysauce_version: version,
+    install_id: "",
+    cwd_hash: "",
+    repo_url_hash: "",
+    event_count: 0,
+    event_counts_by_type: {},
+    model: { primary: "", observations: {} },
+    cost: {
+      total_cost_usd: 0,
+      tokens: { input: 0, output: 0, cache_read: 0, cache_create_5m: 0, cache_create_1h: 0 },
+      avg_cache_hit_rate: 0,
+      api_requests: 0
+    },
+    tools: { call_counts: {}, failed_calls: 0 },
+    subagents: { count: 0, by_type: {} },
+    skills: { slash_commands: {}, skill_invocations: {} }
+  };
+}
+function applyEvent(s, e) {
+  const next = applyUniversalUpdates(s, e);
+  const a = e.attributes;
+  switch (e.event_type) {
+    case "session.start":
+      return applySessionStart(next, a);
+    case "session.end":
+      return applySessionEnd(next, a);
+    case "prompt.submit":
+      return applyPromptSubmit(next, a);
+    case "tool_call.start":
+      return applyToolCallStart(next, a);
+    case "tool_call.failed":
+      return applyToolCallFailed(next);
+    case "api.request":
+      return applyApiRequest(next, a);
+    case "subagent.start":
+      return applySubagentStart(next, a);
+    default:
+      return next;
+  }
+}
+function applyUniversalUpdates(s, e) {
+  const eventCount = s.event_count + 1;
+  const counts = { ...s.event_counts_by_type };
+  counts[e.event_type] = (counts[e.event_type] ?? 0) + 1;
+  const lastUpdatedTs = new Date(Number(e.timestamp_ns / 1000000n)).toISOString();
+  const startMs = Date.parse(s.start_ts);
+  const lastMs = Date.parse(lastUpdatedTs);
+  const durationS = Math.max(0, Math.floor((lastMs - startMs) / 1e3));
+  return {
+    ...s,
+    event_count: eventCount,
+    event_counts_by_type: counts,
+    last_updated_ts: lastUpdatedTs,
+    duration_wall_s: durationS
+  };
+}
+function applySessionStart(s, a) {
+  const model = typeof a.model === "string" ? a.model : "";
+  return {
+    ...s,
+    cwd_hash: typeof a.cwd_hash === "string" ? a.cwd_hash : s.cwd_hash,
+    repo_url_hash: typeof a["fancysauce.repo_url_hash"] === "string" ? a["fancysauce.repo_url_hash"] : s.repo_url_hash,
+    model: model ? bumpModel(s.model, model, true) : s.model
+  };
+}
+function applySessionEnd(s, a) {
+  return {
+    ...s,
+    active: false,
+    end_reason: typeof a.reason === "string" ? a.reason : null
+  };
+}
+function applyPromptSubmit(s, a) {
+  if (typeof a.slash_command === "string" && a.slash_command) {
+    return {
+      ...s,
+      skills: {
+        ...s.skills,
+        slash_commands: bumpCount(s.skills.slash_commands, a.slash_command)
+      }
+    };
+  }
+  return s;
+}
+function applyToolCallStart(s, a) {
+  const toolName = typeof a.tool_name === "string" ? a.tool_name : "";
+  const skillName = typeof a.skill_name === "string" ? a.skill_name : "";
+  return {
+    ...s,
+    tools: { ...s.tools, call_counts: toolName ? bumpCount(s.tools.call_counts, toolName) : s.tools.call_counts },
+    skills: {
+      ...s.skills,
+      skill_invocations: skillName ? bumpCount(s.skills.skill_invocations, skillName) : s.skills.skill_invocations
+    }
+  };
+}
+function applyToolCallFailed(s) {
+  return { ...s, tools: { ...s.tools, failed_calls: s.tools.failed_calls + 1 } };
+}
+function applyApiRequest(s, a) {
+  const cost = typeof a.cost_usd === "number" ? a.cost_usd : 0;
+  const tokIn = typeof a.tokens_input === "number" ? a.tokens_input : 0;
+  const tokOut = typeof a.tokens_output === "number" ? a.tokens_output : 0;
+  const cacheRead = typeof a.tokens_cache_read === "number" ? a.tokens_cache_read : 0;
+  const cache5m = typeof a.tokens_cache_create_5m === "number" ? a.tokens_cache_create_5m : 0;
+  const cache1h = typeof a.tokens_cache_create_1h === "number" ? a.tokens_cache_create_1h : 0;
+  const model = typeof a.model === "string" ? a.model : "";
+  const newTokens = {
+    input: s.cost.tokens.input + tokIn,
+    output: s.cost.tokens.output + tokOut,
+    cache_read: s.cost.tokens.cache_read + cacheRead,
+    cache_create_5m: s.cost.tokens.cache_create_5m + cache5m,
+    cache_create_1h: s.cost.tokens.cache_create_1h + cache1h
+  };
+  const denom = newTokens.input + newTokens.cache_read + newTokens.cache_create_5m + newTokens.cache_create_1h;
+  const avgHit = denom > 0 ? newTokens.cache_read / denom : 0;
+  return {
+    ...s,
+    model: model ? bumpModel(s.model, model, !s.model.primary) : s.model,
+    cost: {
+      total_cost_usd: s.cost.total_cost_usd + cost,
+      tokens: newTokens,
+      avg_cache_hit_rate: avgHit,
+      api_requests: s.cost.api_requests + 1
+    }
+  };
+}
+function applySubagentStart(s, a) {
+  const at = typeof a.agent_type === "string" ? a.agent_type : "";
+  return {
+    ...s,
+    subagents: {
+      count: s.subagents.count + 1,
+      by_type: at ? bumpCount(s.subagents.by_type, at) : s.subagents.by_type
+    }
+  };
+}
+function bumpCount(m, key) {
+  return { ...m, [key]: (m[key] ?? 0) + 1 };
+}
+function bumpModel(model, name, setPrimary) {
+  return {
+    primary: setPrimary && !model.primary ? name : model.primary || name,
+    observations: bumpCount(model.observations, name)
+  };
+}
+
+// dist/shared/sinks/summary-updater.mjs
+function summaryUpdaterSink(opts) {
+  return {
+    name: "summary-updater",
+    async onEvents(events, ctx) {
+      const path = join10(ctx.sessionDir, "summary.json");
+      await withDirLock(ctx.sessionDir, async () => {
+        let summary;
+        try {
+          const raw = await readFile7(path, "utf8");
+          summary = JSON.parse(raw);
+        } catch (err) {
+          if (err.code !== "ENOENT")
+            throw err;
+          const startTs = new Date(Number(events[0].timestamp_ns / 1000000n)).toISOString();
+          summary = initialSummary(ctx.sessionId, startTs, opts.pluginVersion);
+        }
+        for (const e of events)
+          summary = applyEvent(summary, e);
+        await mkdir5(dirname2(path), { recursive: true, mode: 448 });
+        const tmp = `${path}.${process.pid}.${Math.random().toString(36).slice(2, 10)}.tmp`;
+        await writeFile5(tmp, JSON.stringify(summary), { encoding: "utf8", mode: 384 });
+        await rename7(tmp, path);
+      });
+    }
+  };
+}
+
+// dist/shared/sinks/session-index.mjs
+import { readFile as readFile8, writeFile as writeFile6, rename as rename8, mkdir as mkdir6, rm } from "node:fs/promises";
+import { join as join11, dirname as dirname3 } from "node:path";
+
+// dist/shared/session-id.mjs
+var SESSION_ID_RE = /^[A-Za-z0-9_-]{1,128}$/;
+function isValidSessionId(s) {
+  return typeof s === "string" && SESSION_ID_RE.test(s);
+}
+
+// dist/shared/sinks/session-index.mjs
+var DEFAULT_MAX_ENTRIES = 100;
+var DEFAULT_RETENTION_DAYS = 90;
+function sessionIndexSink(opts = {}) {
+  const maxEntries = opts.maxEntries ?? DEFAULT_MAX_ENTRIES;
+  const retentionDays = opts.retentionDays ?? DEFAULT_RETENTION_DAYS;
+  return {
+    name: "session-index",
+    async onEvents(events, ctx) {
+      const relevant = events.filter((e) => e.event_type === "session.start" || e.event_type === "session.end" || e.event_type === "stop");
+      if (relevant.length === 0)
+        return;
+      await withDirLock(ctx.dataDir, async () => {
+        const indexPath = join11(ctx.dataDir, "session-index.json");
+        let idx;
+        try {
+          idx = JSON.parse(await readFile8(indexPath, "utf8"));
+        } catch (err) {
+          if (err.code !== "ENOENT")
+            throw err;
+          idx = { schema_version: 1, updated_ts: (/* @__PURE__ */ new Date()).toISOString(), sessions: [] };
+        }
+        const summaryPath = join11(ctx.sessionDir, "summary.json");
+        let summary = null;
+        try {
+          summary = JSON.parse(await readFile8(summaryPath, "utf8"));
+        } catch (err) {
+          if (err.code !== "ENOENT")
+            throw err;
+        }
+        if (!summary)
+          return;
+        if (!isValidSessionId(summary.session_id))
+          return;
+        const entry = {
+          session_id: summary.session_id,
+          start_ts: summary.start_ts,
+          end_ts: summary.active ? null : summary.last_updated_ts,
+          duration_wall_s: summary.duration_wall_s,
+          active: summary.active,
+          end_reason: summary.end_reason,
+          total_cost_usd: summary.cost.total_cost_usd,
+          event_count: summary.event_count,
+          summary_path: `sessions/${summary.session_id}/summary.json`
+        };
+        const existing = idx.sessions.findIndex((s) => s.session_id === summary.session_id);
+        if (existing >= 0)
+          idx.sessions[existing] = entry;
+        else
+          idx.sessions.unshift(entry);
+        idx.sessions.sort((a, b) => b.start_ts.localeCompare(a.start_ts));
+        const cutoff = Date.now() - retentionDays * 24 * 60 * 60 * 1e3;
+        const expired = [];
+        const kept = [];
+        for (const s of idx.sessions) {
+          if (s.active) {
+            kept.push(s);
+            continue;
+          }
+          const sMs = Date.parse(s.start_ts);
+          if (Number.isFinite(sMs) && sMs < cutoff)
+            expired.push(s);
+          else
+            kept.push(s);
+        }
+        idx.sessions = kept.slice(0, maxEntries);
+        if (kept.length > maxEntries) {
+          for (const s of kept.slice(maxEntries)) {
+            if (!s.active)
+              expired.push(s);
+          }
+        }
+        for (const s of expired) {
+          if (!isValidSessionId(s.session_id))
+            continue;
+          await rm(join11(ctx.dataDir, "sessions", s.session_id), { recursive: true, force: true });
+        }
+        idx.updated_ts = (/* @__PURE__ */ new Date()).toISOString();
+        await mkdir6(dirname3(indexPath), { recursive: true, mode: 448 });
+        const tmp = `${indexPath}.${process.pid}.${Math.random().toString(36).slice(2, 10)}.tmp`;
+        await writeFile6(tmp, JSON.stringify(idx), { encoding: "utf8", mode: 384 });
+        await rename8(tmp, indexPath);
+      });
+    }
+  };
+}
+
+// dist/shared/schema-version.mjs
+var SCHEMA_VERSION = "1.1.0";
+
+// dist/shared/run-collect.mjs
+var HOOK_BUDGET_MS = 1800;
+var FLUSH_MARGIN_MS = 200;
+var QUEUE_CAP_BYTES = 100 * 1024 * 1024;
+function pluginVersion() {
+  try {
+    const candidatePaths = [
+      join15(import.meta.dirname, "../../../package.json"),
+      join15(process.cwd(), "package.json")
+    ];
+    for (const p of candidatePaths) {
       try {
-        await unlink2(tmp);
+        const pkg = JSON.parse(readFileSync2(p, "utf8"));
+        if (pkg.version)
+          return pkg.version;
       } catch {
       }
     }
+  } catch {
   }
+  return "0.0.0";
 }
-
-// dist/team/lib/identity-resolver.mjs
-import { createHash as createHash3, randomUUID } from "node:crypto";
-import { execFile as execFile2 } from "node:child_process";
-import { open as open5, readFile as readFile8, rename as rename7, unlink as unlink3 } from "node:fs/promises";
-import { join as join8 } from "node:path";
-import { randomBytes as randomBytes2 } from "node:crypto";
-import { userInfo } from "node:os";
-
-// dist/team/lib/hash.mjs
-import { createHash as createHash2, createHmac } from "node:crypto";
-function hmacIdentity(apiKey, value) {
-  return createHmac("sha256", apiKey).update(value.toLowerCase(), "utf8").digest("hex");
+function dataDir() {
+  return resolveDataDir();
 }
-
-// dist/team/lib/identity-sources.mjs
-import { execFile } from "node:child_process";
-var TIMEOUT_MS = 200;
-function defaultRunner(cmd, args, timeoutMs) {
-  return new Promise((resolve, reject) => {
-    execFile(cmd, args, { timeout: timeoutMs }, (err, stdout) => {
-      if (err)
-        return reject(err);
-      resolve(stdout.toString());
-    });
+function serializeForQueue(event) {
+  if (typeof event.event_uuid !== "string" || event.event_uuid.length === 0) {
+    throw new Error(`event_uuid must be non-empty before enqueue (event_type=${event.event_type}, source=${event.source})`);
+  }
+  return JSON.stringify({
+    event_uuid: event.event_uuid,
+    event_type: event.event_type,
+    session_id: event.session_id,
+    source: event.source,
+    sequence: event.sequence,
+    timestamp_ns: event.timestamp_ns.toString(),
+    attributes: event.attributes
   });
 }
-async function readGitConfigEmail(deps = {}) {
-  const runner = deps.runner ?? defaultRunner;
+async function runCollect(adapter, opts) {
+  const start = Date.now();
+  let stderrBuf = "";
+  const writeStderr = (s) => {
+    stderrBuf += s;
+  };
   try {
-    const out = await runner("git", ["config", "--global", "user.email"], TIMEOUT_MS);
-    const trimmed = out.trim();
-    return trimmed.length > 0 ? trimmed : null;
-  } catch {
-    return null;
+    const config = await loadConfig({ endpointOverride: opts.endpointOverride }) ?? {
+      credential: "",
+      endpoint: INGEST_ENDPOINT,
+      loginStateDir: resolveLoginStateDir(),
+      policy: defaultPolicy()
+    };
+    if (config.credentialError) {
+      const msg = config.credentialError.source === "system" ? `fancysauce: managed credential at ${credentialPaths().system} is malformed (${config.credentialError.reason}); contact administrator.
+` : `fancysauce: user credential is malformed (${config.credentialError.reason}). Run /fancysauce:login.
+`;
+      writeStderr(msg);
+    }
+    const hookPayload = opts.hookPayload;
+    const root = dataDir();
+    await mkdir9(root, { recursive: true, mode: 448 });
+    const identity = await new IdentityResolver(root).resolve(hookPayload.cwd ?? process.cwd(), {
+      credential: config.credential,
+      identity_type: config.identity_type ?? "hash",
+      identity_hint: config.identity_hint ?? null
+    });
+    const resource = toResourceAttributes(identity, {
+      pluginVersion: pluginVersion(),
+      schemaVersion: SCHEMA_VERSION,
+      agent: adapter.agent
+    });
+    const enrichedRaw = await adapter.mapHookEvent(hookPayload);
+    const stamped = enrichedRaw && enrichedRaw.event_type === "session.start" && identity.repo_url_hash ? { ...enrichedRaw, attributes: { ...enrichedRaw.attributes, "fancysauce.repo_url_hash": identity.repo_url_hash } } : enrichedRaw;
+    const withId = stamped === null ? null : { ...stamped, event_uuid: randomUUID2() };
+    const primary = withId === null ? null : filterEvent(withId, config.policy);
+    const outboundDir = join15(root, "outbound");
+    await mkdir9(outboundDir, { recursive: true, mode: 448 });
+    const queue = new Queue(outboundDir, QUEUE_CAP_BYTES);
+    let queueDropped = 0;
+    let tailFilterDropped = 0;
+    const ctx = {
+      stateDir: join15(root, "state"),
+      errorLogPath: join15(root, "collect-error.log")
+    };
+    await adapter.tailTranscript(hookPayload, ctx, async (tailEvents) => {
+      const filteredTail = [];
+      for (const ev of tailEvents) {
+        const f = filterEvent(ev, config.policy);
+        if (f === null)
+          tailFilterDropped++;
+        else
+          filteredTail.push(f);
+      }
+      const all = primary ? [primary, ...filteredTail] : filteredTail;
+      if (all.length === 0)
+        return;
+      const result = await queue.append(all.map(serializeForQueue));
+      queueDropped = result.dropped;
+      const sessionDir = join15(root, "sessions", hookPayload.session_id);
+      await mkdir9(sessionDir, { recursive: true, mode: 448 });
+      const sinks = [
+        eventLogSink(),
+        summaryUpdaterSink({ pluginVersion: pluginVersion() }),
+        sessionIndexSink()
+      ];
+      await runSinks(sinks, all, {
+        dataDir: root,
+        sessionDir,
+        sessionId: hookPayload.session_id
+      }, async (name, err) => {
+        const msg = err instanceof Error ? err.stack ?? err.message : String(err);
+        try {
+          await appendFile3(join15(root, "collect-error.log"), `${(/* @__PURE__ */ new Date()).toISOString()} sink ${name}: ${msg}
+`);
+        } catch {
+        }
+      });
+    });
+    const primaryFilterDropped = stamped !== null && primary === null ? 1 : 0;
+    const health = new HealthState(join15(root, "state"));
+    await health.touch();
+    const dropped = queueDropped + tailFilterDropped + primaryFilterDropped;
+    if (dropped > 0)
+      await health.recordDrop(dropped);
+    const remaining = remainingFlushBudgetMs(HOOK_BUDGET_MS, Date.now() - start, FLUSH_MARGIN_MS);
+    if (remaining > 300) {
+      await tryFlush({
+        dataDir: outboundDir,
+        stateDir: join15(root, "state"),
+        credential: config.credential,
+        endpoint: config.endpoint,
+        resource,
+        budgetMs: remaining
+      });
+    }
+    try {
+      const stateDir = join15(root, "state");
+      const pendingPath = join15(config.loginStateDir, "backfill-pending");
+      const pendingExists = await stat3(pendingPath).then(() => true).catch(() => false);
+      if (pendingExists) {
+        const { isBackfillActive: isBackfillActive2 } = await Promise.resolve().then(() => (init_pid_guard(), pid_guard_exports));
+        const { spawnBackfillRunner: spawnBackfillRunner2 } = await Promise.resolve().then(() => (init_runner_spawn(), runner_spawn_exports));
+        const { credentialPaths: credentialPaths2 } = await Promise.resolve().then(() => (init_credential_paths(), credential_paths_exports));
+        const active = await isBackfillActive2(stateDir);
+        if (active === null) {
+          const paths = credentialPaths2();
+          await spawnBackfillRunner2({ dataDir: root, credentialPath: paths.user });
+          await rm3(pendingPath, { force: true });
+        }
+      }
+    } catch {
+    }
+    try {
+      const stateDir = join15(root, "state");
+      const { readStatus: readStatus2, writeStatus: writeStatus2 } = await Promise.resolve().then(() => (init_status(), status_exports));
+      const status = await readStatus2(stateDir);
+      if (status && status.phase === "completed" && !status.notified) {
+        writeStderr(`fancysauce: backfill complete \u2014 ${status.events_uploaded} events uploaded.
+`);
+        await writeStatus2(stateDir, { ...status, notified: true });
+      }
+    } catch {
+    }
+  } catch (err) {
+    const msg = err instanceof Error ? `${err.message}
+${err.stack ?? ""}` : String(err);
+    try {
+      const logPath = join15(dataDir(), "collect-error.log");
+      await writeFile7(logPath, `${(/* @__PURE__ */ new Date()).toISOString()} ${msg}
+`, { flag: "a" });
+    } catch {
+    }
+    throw err;
   }
-}
-async function readMacOsDsclEmail(deps = {}) {
-  const platform = deps.platform ?? process.platform;
-  if (platform !== "darwin")
-    return null;
-  const runner = deps.runner ?? defaultRunner;
-  const user = deps.username ?? process.env.USER ?? process.env.LOGNAME;
-  if (!user)
-    return null;
-  try {
-    const out = await runner("dscl", [".", "-read", `/Users/${user}`, "EMailAddress"], TIMEOUT_MS);
-    const match = out.match(/^EMailAddress:\s*(\S+)/m);
-    return match?.[1] ?? null;
-  } catch {
-    return null;
-  }
-}
-async function readWindowsUpn(deps = {}) {
-  const platform = deps.platform ?? process.platform;
-  if (platform !== "win32")
-    return null;
-  const runner = deps.runner ?? defaultRunner;
-  try {
-    const out = await runner("whoami", ["/upn"], TIMEOUT_MS);
-    const trimmed = out.trim();
-    return trimmed.length > 0 ? trimmed : null;
-  } catch {
-    return null;
-  }
+  return { stderr: stderrBuf };
 }
 
-// dist/team/lib/identity-resolver.mjs
-var TENANT_KEY_PREFIXES = ["fs_live_t_", "fs_test_t_"];
-function isTenantKey(credential) {
-  return TENANT_KEY_PREFIXES.some((p) => credential.startsWith(p));
-}
-var GIT_TIMEOUT_MS = 200;
-var IdentityResolver = class {
-  dir;
-  installPath;
-  git;
-  constructor(dir, git = defaultGitAccess()) {
-    this.dir = dir;
-    this.installPath = join8(dir, "install.json");
-    this.git = git;
+// dist/shared/stable-stringify.mjs
+function stableStringify(value) {
+  if (value === null || typeof value !== "object")
+    return JSON.stringify(value);
+  if (Array.isArray(value)) {
+    return "[" + value.map(stableStringify).join(",") + "]";
   }
-  async resolve(cwd, opts) {
-    const install_id = await this.loadOrCreateInstallId();
-    const repo = await this.resolveRepoHash(cwd);
-    const base = { install_id, ...repo };
-    if (!opts)
-      return base;
-    if (!isTenantKey(opts.credential))
-      return base;
-    const sources = opts.identitySources ?? {
-      dsclEmail: () => readMacOsDsclEmail(),
-      winUpn: () => readWindowsUpn(),
-      gitEmail: () => readGitConfigEmail()
-    };
-    const osUsername = (opts.osUsername ?? (() => userInfo().username))();
-    let email;
-    let identitySource;
-    if (opts.identity_hint?.source === "mdm_file" && opts.identity_hint.user_email) {
-      email = opts.identity_hint.user_email;
-      identitySource = "mdm_file";
-    } else {
-      const dscl = await sources.dsclEmail?.();
-      if (dscl) {
-        email = dscl;
-        identitySource = "dscl";
-      } else {
-        const upn = await sources.winUpn?.();
-        if (upn) {
-          email = upn;
-          identitySource = "whoami_upn";
-        } else {
-          const git = await sources.gitEmail?.();
-          if (git) {
-            email = git;
-            identitySource = "git_config";
-          }
+  const obj = value;
+  const keys = Object.keys(obj).sort();
+  return "{" + keys.map((k) => JSON.stringify(k) + ":" + stableStringify(obj[k])).join(",") + "}";
+}
+
+// dist/agents/codex/event-mapper.mjs
+var CODEX_HOOK_TO_EVENT_TYPE = {
+  SessionStart: "session.start",
+  UserPromptSubmit: "prompt.submit",
+  PreToolUse: "tool_call.start",
+  PostToolUse: "tool_call.complete",
+  PermissionRequest: "permission.request",
+  PreCompact: "compaction.before",
+  PostCompact: "compaction.after",
+  SubagentStart: "subagent.start",
+  SubagentStop: "subagent.complete",
+  Stop: "stop"
+};
+var TOOL_HOOKS = /* @__PURE__ */ new Set(["PreToolUse", "PostToolUse"]);
+function mapHookToEvent(input, sequence) {
+  const eventType = CODEX_HOOK_TO_EVENT_TYPE[input.hook_event_name];
+  if (!eventType) {
+    throw new Error(`Unknown Codex hook_event_name: ${String(input.hook_event_name)}`);
+  }
+  const attributes = {};
+  if (TOOL_HOOKS.has(input.hook_event_name)) {
+    if (input.tool_name)
+      attributes.tool_name = input.tool_name;
+    if (input.tool_input !== void 0) {
+      attributes.tool_input_raw = stableStringify(input.tool_input);
+    }
+    if (input.tool_response !== void 0) {
+      attributes.tool_response_raw = stableStringify(input.tool_response);
+    }
+    if (input.tool_use_id)
+      attributes.correlation_id = input.tool_use_id;
+    if (input.agent_id)
+      attributes.subsession_id = input.agent_id;
+    if (input.agent_type)
+      attributes.agent_type = input.agent_type;
+    if (input.hook_event_name === "PostToolUse")
+      attributes.success = true;
+  } else {
+    if (input.cwd)
+      attributes.cwd_hash = sha256Hex(input.cwd);
+    if (input.permission_mode)
+      attributes.permission_mode = input.permission_mode;
+    if (input.model)
+      attributes.model = input.model;
+    if (input.agent_id)
+      attributes.agent_id = input.agent_id;
+    if (input.agent_type)
+      attributes.agent_type = input.agent_type;
+    if (input.last_assistant_message) {
+      attributes.last_assistant_message_size_bytes = Buffer.byteLength(input.last_assistant_message, "utf8");
+      attributes.last_assistant_message_hash = sha256Hex(input.last_assistant_message);
+    }
+    if (input.hook_event_name === "UserPromptSubmit") {
+      const prompt = typeof input.prompt === "string" ? input.prompt : "";
+      attributes.prompt_length = Buffer.byteLength(prompt, "utf8");
+      const trimmed = prompt.trimStart();
+      if (trimmed.startsWith("/")) {
+        const firstToken = trimmed.slice(1).split(/\s/, 1)[0] ?? "";
+        if (/^[A-Za-z0-9_:-]{1,64}$/.test(firstToken)) {
+          attributes.slash_command = firstToken;
         }
       }
     }
-    const result = { ...base, handle_os: hmacIdentity(opts.credential, osUsername) };
-    if (email) {
-      result.handle_email = hmacIdentity(opts.credential, email);
-      result.identity_source = identitySource;
-    }
-    if (opts.identity_type === "full") {
-      if (email)
-        result.email = email;
-      if (opts.identity_hint?.source === "mdm_file" && opts.identity_hint.user_upn) {
-        result.upn = opts.identity_hint.user_upn;
+  }
+  return {
+    event_uuid: "",
+    // run-collect stamps before enqueue
+    event_type: eventType,
+    session_id: input.session_id,
+    source: `hook.${input.hook_event_name}`,
+    sequence,
+    timestamp_ns: BigInt(Date.now()) * 1000000n,
+    attributes
+  };
+}
+
+// dist/agents/codex/rollout-tail.mjs
+var import_proper_lockfile4 = __toESM(require_proper_lockfile(), 1);
+import { mkdir as mkdir10, readFile as readFile11, writeFile as writeFile8, rename as rename10, appendFile as appendFile4 } from "node:fs/promises";
+import { join as join16 } from "node:path";
+import { createHash as createHash4 } from "node:crypto";
+
+// dist/shared/tail-engine.mjs
+import { open as open7 } from "node:fs/promises";
+var DEFAULT_MAX_READ_BYTES = 4 * 1024 * 1024;
+async function readWindow(opts) {
+  const { path, startOffset, sequenceBase, maxReadBytes, parseWindow, state } = opts;
+  let fh = null;
+  try {
+    try {
+      fh = await open7(path, "r");
+    } catch (err) {
+      if (err.code === "ENOENT") {
+        return { events: [], endOffset: startOffset, truncated: false };
       }
+      throw err;
     }
-    return result;
+    const stat4 = await fh.stat();
+    const truncated = stat4.size < startOffset;
+    const effectiveStart = truncated ? 0 : startOffset;
+    if (stat4.size <= effectiveStart) {
+      return { events: [], endOffset: effectiveStart, truncated };
+    }
+    const toRead = Math.min(stat4.size - effectiveStart, maxReadBytes);
+    const buf = Buffer.alloc(toRead);
+    await fh.read(buf, 0, toRead, effectiveStart);
+    const lastNewline = buf.lastIndexOf("\n".charCodeAt(0));
+    if (lastNewline < 0)
+      return { events: [], endOffset: effectiveStart, truncated };
+    const usable = buf.slice(0, lastNewline + 1).toString("utf8");
+    const endOffset = effectiveStart + lastNewline + 1;
+    const lines = usable.split("\n").filter(Boolean);
+    const events = parseWindow(lines, sequenceBase, state);
+    return { events, endOffset, truncated };
+  } finally {
+    if (fh)
+      await fh.close();
   }
-  async resolveRepoHash(cwd) {
-    const url = await this.git.gitRemoteUrl(cwd);
-    if (!url)
-      return {};
-    return { repo_url_hash: createHash3("sha256").update(url, "utf8").digest("hex") };
-  }
-  async loadOrCreateInstallId() {
-    return withDirLock(this.dir, async () => {
-      const existing = await readInstallId(this.installPath);
-      if (existing !== null)
-        return existing;
-      const install_id = randomUUID();
-      const body = { install_id, created_at: (/* @__PURE__ */ new Date()).toISOString() };
-      await writeInstallFile(this.installPath, body);
-      return install_id;
+}
+
+// dist/agents/codex/cost.mjs
+import { readFileSync as readFileSync3 } from "node:fs";
+import { fileURLToPath as fileURLToPath3 } from "node:url";
+var TABLE = JSON.parse(readFileSync3(fileURLToPath3(new URL("./pricing.json", import.meta.url)), "utf8"));
+function computeCostUsd(model, t) {
+  const r = TABLE[model];
+  if (!r)
+    return void 0;
+  const nonCachedInput = Math.max(0, t.input_tokens - t.cached_input_tokens);
+  return nonCachedInput / 1e6 * r.input + t.cached_input_tokens / 1e6 * r.cached_input + t.output_tokens / 1e6 * r.output;
+}
+
+// dist/agents/codex/rollout-parser.mjs
+function deterministicUuid(sessionId, scope, timestamp, totalTokens) {
+  const scopeSeg = scope ? `${scope}|` : "";
+  const h = sha256Hex(`codex|${sessionId}|${scopeSeg}${timestamp}|${totalTokens}`);
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20, 32)}`;
+}
+function parseRolloutWindow(lines, sessionId, sequenceBase, state, scope = "") {
+  const events = [];
+  let seq = sequenceBase;
+  for (const line of lines) {
+    if (!line)
+      continue;
+    let rec;
+    try {
+      const parsed = JSON.parse(line);
+      rec = parsed;
+    } catch {
+      continue;
+    }
+    if (rec.type === "turn_context") {
+      const p = rec.payload;
+      if (p && typeof p.model === "string")
+        state.model = p.model;
+      continue;
+    }
+    if (rec.type !== "event_msg")
+      continue;
+    const payload = rec.payload;
+    if (!payload || payload.type !== "token_count")
+      continue;
+    const last = payload.info?.last_token_usage;
+    if (!last)
+      continue;
+    const total = payload.info?.total_token_usage?.total_tokens ?? last.total_tokens ?? 0;
+    const input = last.input_tokens ?? 0;
+    const cached = last.cached_input_tokens ?? 0;
+    const output = last.output_tokens ?? 0;
+    const reasoning = last.reasoning_output_tokens ?? 0;
+    const attrs = {
+      tokens_input: input,
+      tokens_output: output,
+      tokens_cache_read: cached,
+      tokens_reasoning: reasoning
+    };
+    if (state.model) {
+      attrs.model = state.model;
+      const cost = computeCostUsd(state.model, { input_tokens: input, cached_input_tokens: cached, output_tokens: output });
+      if (cost !== void 0)
+        attrs.cost_usd = cost;
+    }
+    events.push({
+      event_uuid: deterministicUuid(sessionId, scope, rec.timestamp ?? "", total),
+      event_type: "api.request",
+      session_id: sessionId,
+      source: "transcript.tail",
+      sequence: seq,
+      timestamp_ns: BigInt(rec.timestamp ? Date.parse(rec.timestamp) : Date.now()) * 1000000n,
+      attributes: attrs
     });
+    seq++;
+  }
+  return events;
+}
+
+// dist/agents/codex/rollout-tail.mjs
+var SESSION_ID_RE2 = /^[A-Za-z0-9_-]{1,128}$/;
+async function tailCodexRollout(input, ctx, sink) {
+  const sessionId = input.session_id;
+  if (!isValidSessionId2(sessionId)) {
+    await sink([]);
+    return;
+  }
+  const cursorDir = join16(ctx.stateDir, "sessions", sessionId, "codex");
+  await mkdir10(cursorDir, { recursive: true });
+  const sources = [
+    { path: input.transcript_path, cursorPath: join16(cursorDir, "rollout_cursor.json") }
+  ];
+  if (input.agent_transcript_path && input.agent_id) {
+    sources.push({
+      path: input.agent_transcript_path,
+      cursorPath: join16(cursorDir, `subagent-${cursorKey(input.agent_id)}.json`),
+      stamp: { subsession_id: input.agent_id, agent_type: input.agent_type }
+    });
+  }
+  const events = [];
+  const commits = [];
+  let seq = 0;
+  for (const source of sources) {
+    let read;
+    try {
+      read = await readSource(source, sessionId, seq);
+    } catch (err) {
+      await logError(ctx.errorLogPath, source.path, err);
+      continue;
+    }
+    if (!read)
+      continue;
+    events.push(...read.events);
+    seq += read.events.length;
+    commits.push(read.commit);
+  }
+  await sink(events);
+  for (const commit of commits) {
+    await commit();
+  }
+}
+async function readSource(source, sessionId, sequenceBase) {
+  let release;
+  try {
+    try {
+      await readFile11(source.cursorPath);
+    } catch {
+      await writeFile8(source.cursorPath, "{}", "utf8");
+    }
+    release = await import_proper_lockfile4.default.lock(source.cursorPath, { retries: 0, realpath: false });
+  } catch {
+    return null;
+  }
+  try {
+    const { byte_offset: startOffset, parser_state } = await readCursor(source.cursorPath);
+    const state = { ...parser_state };
+    const uuidScope = source.stamp?.subsession_id ?? "";
+    let events;
+    let endOffset;
+    let truncated;
+    try {
+      ({ events, endOffset, truncated } = await readWindow({
+        path: source.path,
+        startOffset,
+        sequenceBase,
+        maxReadBytes: DEFAULT_MAX_READ_BYTES,
+        state,
+        parseWindow: (lines, seqBase, st) => parseRolloutWindow(lines, sessionId, seqBase, st, uuidScope)
+      }));
+    } catch (err) {
+      if (err?.code === "ENOENT") {
+        await release();
+        return { events: [], commit: async () => {
+        } };
+      }
+      await release();
+      throw err;
+    }
+    const stamped = source.stamp ? events.map((e) => applyStamp(e, source.stamp)) : events;
+    return {
+      events: stamped,
+      commit: async () => {
+        try {
+          if (truncated || endOffset > startOffset) {
+            await writeCursor(source.cursorPath, { byte_offset: endOffset, parser_state: state });
+          } else if (state.model !== parser_state.model) {
+            await writeCursor(source.cursorPath, { byte_offset: startOffset, parser_state: state });
+          }
+        } finally {
+          await release();
+        }
+      }
+    };
+  } catch (err) {
+    await release();
+    throw err;
+  }
+}
+function applyStamp(event, stamp) {
+  const attributes = {
+    ...event.attributes,
+    subsession_id: stamp.subsession_id
+  };
+  if (stamp.agent_type)
+    attributes.agent_type = stamp.agent_type;
+  return { ...event, attributes };
+}
+async function readCursor(cursorPath) {
+  try {
+    const buf = await readFile11(cursorPath, "utf8");
+    const parsed = JSON.parse(buf);
+    return {
+      byte_offset: parsed.byte_offset ?? 0,
+      parser_state: parsed.parser_state ?? {}
+    };
+  } catch {
+    return { byte_offset: 0, parser_state: {} };
+  }
+}
+async function writeCursor(cursorPath, body) {
+  const tmp = `${cursorPath}.tmp`;
+  await writeFile8(tmp, JSON.stringify(body), "utf8");
+  await rename10(tmp, cursorPath);
+}
+function isValidSessionId2(s) {
+  return typeof s === "string" && SESSION_ID_RE2.test(s);
+}
+function cursorKey(agentId) {
+  return createHash4("sha256").update(agentId).digest("hex").slice(0, 16);
+}
+async function logError(errorLogPath, path, err) {
+  const msg = err instanceof Error ? err.message : String(err);
+  const line = `${(/* @__PURE__ */ new Date()).toISOString()} codex-rollout-tail ${path}: ${msg}
+`;
+  try {
+    await appendFile4(errorLogPath, line);
+  } catch {
+  }
+}
+
+// dist/agents/codex/adapter.mjs
+var CodexAdapter = class {
+  agent = "codex-cli";
+  mapHookEvent(input) {
+    return Promise.resolve(mapHookToEvent(input, 0));
+  }
+  async tailTranscript(input, ctx, sink) {
+    await tailCodexRollout(input, ctx, sink);
   }
 };
-async function readInstallId(path) {
-  let buf;
-  try {
-    buf = await readFile8(path, "utf8");
-  } catch {
-    return null;
-  }
-  let parsed;
-  try {
-    parsed = JSON.parse(buf);
-  } catch {
-    return null;
-  }
-  if (typeof parsed !== "object" || parsed === null)
-    return null;
-  const id = parsed.install_id;
-  return typeof id === "string" && id.length > 0 ? id : null;
+
+// dist/agents/codex/collect.mjs
+var HOOK_BUDGET_MS2 = 1800;
+async function runCollectOnce(opts) {
+  return runCollect(new CodexAdapter(), opts);
 }
-async function writeInstallFile(path, body) {
-  const tmp = `${path}.${process.pid}.${randomBytes2(4).toString("hex")}.tmp`;
-  let renamed = false;
+function readStdin() {
   try {
-    const fh = await open5(tmp, "wx", 384);
+    const buf = readFileSync4(0, "utf8");
+    return JSON.parse(buf);
+  } catch {
+    return null;
+  }
+}
+async function main() {
+  const killer = setTimeout(() => process.exit(0), HOOK_BUDGET_MS2);
+  killer.unref?.();
+  try {
+    const hookPayload = readStdin();
+    if (!hookPayload)
+      return;
     try {
-      await fh.writeFile(JSON.stringify(body));
-      await fh.sync();
-    } finally {
-      await fh.close();
+      const result = await runCollectOnce({ hookPayload });
+      if (result.stderr)
+        process.stderr.write(result.stderr);
+    } catch {
     }
-    await rename7(tmp, path);
-    renamed = true;
   } finally {
-    if (!renamed) {
-      try {
-        await unlink3(tmp);
-      } catch {
-      }
-    }
+    clearTimeout(killer);
   }
-}
-function toResourceAttributes(id, opts) {
-  const attrs = {
-    "service.name": "fancysauce",
-    "service.version": opts.pluginVersion,
-    "fancysauce.schema_version": opts.schemaVersion,
-    "fancysauce.install_id": id.install_id
-  };
-  if (id.handle_email)
-    attrs["fancysauce.user.handle_email"] = id.handle_email;
-  if (id.handle_os)
-    attrs["fancysauce.user.handle_os"] = id.handle_os;
-  if (id.identity_source)
-    attrs["fancysauce.user.identity_source"] = id.identity_source;
-  if (id.email)
-    attrs["fancysauce.user.email"] = id.email;
-  if (id.upn)
-    attrs["fancysauce.user.upn"] = id.upn;
-  return attrs;
-}
-function defaultGitAccess() {
-  return {
-    gitRemoteUrl: (cwd) => gitRead(["-C", cwd, "remote", "get-url", "origin"])
-  };
-}
-function gitRead(args) {
-  return new Promise((resolve) => {
-    execFile2("git", args, { timeout: GIT_TIMEOUT_MS }, (err, stdout) => {
-      if (err)
-        return resolve(null);
-      const trimmed = stdout.toString().trim();
-      resolve(trimmed.length ? trimmed : null);
-    });
-  });
-}
-
-// dist/team/lib/schema-version.mjs
-var SCHEMA_VERSION = "1.0.6";
-
-// dist/team/bin/backfill-runner.mjs
-var DEFAULT_IDLE_TIMEOUT_MS = 5 * 6e4;
-var DEFAULT_MAX_WALL_MS = 30 * 6e4;
-var BATCH_BUDGET_MS = 5e3;
-var POST_BATCH_SLEEP_MS = 50;
-var EMPTY_READ_THRESHOLD = 3;
-async function runBackfill(opts) {
-  const stateDir = join9(opts.dataDir, "state");
-  const outboundDir = join9(opts.dataDir, "outbound");
-  const acquire = await acquirePidGuard(stateDir);
-  if (acquire.kind === "already-running") {
-    return { kind: "error", reason: `another runner is active (pid ${acquire.pid})` };
-  }
-  const cleanup = async (phase, lastError) => {
-    const current = await readStatus(stateDir);
-    const final = {
-      phase,
-      started_at: current?.started_at ?? (/* @__PURE__ */ new Date()).toISOString(),
-      pid: process.pid,
-      events_uploaded: current?.events_uploaded ?? 0,
-      last_error: lastError,
-      notified: false
-    };
-    await writeStatus(stateDir, final);
-    await releasePidGuard(stateDir);
-  };
-  let stopRequested = null;
-  const makeOnSig = (sig) => () => {
-    if (stopRequested === null)
-      stopRequested = sig;
-  };
-  const onSigTerm = makeOnSig("SIGTERM");
-  const onSigInt = makeOnSig("SIGINT");
-  process.on("SIGTERM", onSigTerm);
-  process.on("SIGINT", onSigInt);
-  await writeStatus(stateDir, {
-    phase: "running",
-    started_at: (/* @__PURE__ */ new Date()).toISOString(),
-    pid: process.pid,
-    events_uploaded: 0,
-    last_error: null,
-    notified: false
-  });
-  const config = await loadConfig({ endpointOverride: opts.endpointOverride });
-  if (!config || !config.credential) {
-    if (config?.credentialError) {
-      await cleanup("failed", `credential malformed (${config.credentialError.source}): ${config.credentialError.reason}`);
-    } else {
-      await cleanup("failed", "no credential present at runner start");
-    }
-    process.off("SIGTERM", onSigTerm);
-    process.off("SIGINT", onSigInt);
-    return { kind: "error", reason: config?.credentialError ? "credential malformed" : "no credential" };
-  }
-  const identity = await new IdentityResolver(opts.dataDir).resolve(opts.dataDir);
-  const resource = opts.resource ?? toResourceAttributes(identity, {
-    pluginVersion: "0.5.0",
-    schemaVersion: SCHEMA_VERSION
-  });
-  const idleTimeoutMs = opts.idleTimeoutMs ?? DEFAULT_IDLE_TIMEOUT_MS;
-  const maxWallMs = opts.maxWallMs ?? DEFAULT_MAX_WALL_MS;
-  const startedAt = Date.now();
-  let lastProgressAt = startedAt;
-  let emptyReads = 0;
-  let eventsUploaded = 0;
-  const finalize = async (result, phase, lastError) => {
-    await cleanup(phase, lastError);
-    process.off("SIGTERM", onSigTerm);
-    process.off("SIGINT", onSigInt);
-    return result;
-  };
-  while (true) {
-    if (stopRequested !== null) {
-      const sig = stopRequested;
-      return finalize({ kind: "error", reason: `interrupted by ${sig}` }, "interrupted", `interrupted by ${sig}`);
-    }
-    if (Date.now() - startedAt > maxWallMs) {
-      return finalize({ kind: "error", reason: "max wall exceeded" }, "interrupted", `max wall time (${maxWallMs}ms) exceeded`);
-    }
-    if (Date.now() - lastProgressAt > idleTimeoutMs) {
-      return finalize({ kind: "ok" }, "completed", null);
-    }
-    const result = await tryFlush({
-      dataDir: outboundDir,
-      stateDir,
-      credential: config.credential,
-      endpoint: config.endpoint,
-      resource,
-      budgetMs: BATCH_BUDGET_MS
-    });
-    if (result.skipped) {
-      await sleep(POST_BATCH_SLEEP_MS * 4);
-      continue;
-    }
-    if (result.outcome === void 0) {
-      emptyReads++;
-      if (emptyReads >= EMPTY_READ_THRESHOLD) {
-        return finalize({ kind: "ok" }, "completed", null);
-      }
-      await sleep(POST_BATCH_SLEEP_MS * 4);
-      continue;
-    }
-    if (result.outcome === "ok" || result.outcome === "drop") {
-      const n = result.eventsFlushed ?? 0;
-      emptyReads = 0;
-      eventsUploaded += n;
-      if (n > 0) {
-        lastProgressAt = Date.now();
-        const status = await readStatus(stateDir);
-        await writeStatus(stateDir, {
-          phase: "running",
-          started_at: status?.started_at ?? (/* @__PURE__ */ new Date()).toISOString(),
-          pid: process.pid,
-          events_uploaded: eventsUploaded,
-          last_error: null,
-          notified: false
-        });
-      }
-      await sleep(POST_BATCH_SLEEP_MS);
-      continue;
-    }
-    if (result.outcome === "auth-failed") {
-      await writeRenewalMarker(stateDir);
-      return finalize({ kind: "error", reason: "401 auth failed" }, "failed", "auth failed (401)");
-    }
-    if (result.outcome === "rate-limited" || result.outcome === "transient") {
-      await sleep(POST_BATCH_SLEEP_MS * 20);
-      continue;
-    }
-    if (result.outcome === "too-large") {
-      return finalize({ kind: "error", reason: "413 too large" }, "failed", "ingest reported batch too large");
-    }
-  }
-}
-function sleep(ms) {
-  return new Promise((res) => setTimeout(res, ms));
-}
-async function writeRenewalMarker(stateDir) {
-  const path = join9(stateDir, "credential-needs-renewal.backfill");
-  await writeFile5(path, JSON.stringify({ noticed_at: (/* @__PURE__ */ new Date()).toISOString() }), { mode: 384 }).catch(() => {
-  });
 }
 var isMain = import.meta.url === `file://${process.argv[1]}`;
 if (isMain) {
-  const args = process.argv.slice(2);
-  const getArg = (name) => {
-    const i = args.indexOf(name);
-    return i >= 0 ? args[i + 1] : void 0;
-  };
-  const dataDir = getArg("--data-dir");
-  const credPath = getArg("--credential-path");
-  if (!dataDir || !credPath) {
-    process.stderr.write("backfill-runner requires --data-dir and --credential-path\n");
-    process.exit(2);
-  }
-  void runBackfill({ dataDir, credentialUserPath: credPath, mode: "detached" }).then((r) => {
-    process.exit(r.kind === "ok" ? 0 : 1);
-  });
+  void main();
 }
 export {
-  runBackfill
+  runCollectOnce,
+  serializeForQueue
 };

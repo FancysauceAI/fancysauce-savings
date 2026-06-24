@@ -1,0 +1,34 @@
+{
+  "hooks": {
+    "SessionStart": [
+      { "matcher": "", "hooks": [{ "type": "command", "command": "node ${CLAUDE_PLUGIN_ROOT}/dist/agents/codex/collect.mjs" }] }
+    ],
+    "UserPromptSubmit": [
+      { "matcher": "", "hooks": [{ "type": "command", "command": "node ${CLAUDE_PLUGIN_ROOT}/dist/agents/codex/collect.mjs" }] }
+    ],
+    "PreToolUse": [
+      { "matcher": "", "hooks": [{ "type": "command", "command": "node ${CLAUDE_PLUGIN_ROOT}/dist/agents/codex/collect.mjs" }] }
+    ],
+    "PermissionRequest": [
+      { "matcher": "", "hooks": [{ "type": "command", "command": "node ${CLAUDE_PLUGIN_ROOT}/dist/agents/codex/collect.mjs" }] }
+    ],
+    "PostToolUse": [
+      { "matcher": "", "hooks": [{ "type": "command", "command": "node ${CLAUDE_PLUGIN_ROOT}/dist/agents/codex/collect.mjs" }] }
+    ],
+    "PreCompact": [
+      { "matcher": "", "hooks": [{ "type": "command", "command": "node ${CLAUDE_PLUGIN_ROOT}/dist/agents/codex/collect.mjs" }] }
+    ],
+    "PostCompact": [
+      { "matcher": "", "hooks": [{ "type": "command", "command": "node ${CLAUDE_PLUGIN_ROOT}/dist/agents/codex/collect.mjs" }] }
+    ],
+    "SubagentStart": [
+      { "matcher": "", "hooks": [{ "type": "command", "command": "node ${CLAUDE_PLUGIN_ROOT}/dist/agents/codex/collect.mjs" }] }
+    ],
+    "SubagentStop": [
+      { "matcher": "", "hooks": [{ "type": "command", "command": "node ${CLAUDE_PLUGIN_ROOT}/dist/agents/codex/collect.mjs" }] }
+    ],
+    "Stop": [
+      { "matcher": "", "hooks": [{ "type": "command", "command": "node ${CLAUDE_PLUGIN_ROOT}/dist/agents/codex/collect.mjs" }] }
+    ]
+  }
+}

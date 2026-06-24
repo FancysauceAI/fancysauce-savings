@@ -2,7 +2,7 @@
 description: Sign in to fancysauce and write a credential to disk
 ---
 
-Run `${CLAUDE_PLUGIN_ROOT}/dist/team/bin/login.mjs` via the Bash tool. The binary takes no arguments.
+Run `${CLAUDE_PLUGIN_ROOT}/dist/shared/bin/login.mjs` via the Bash tool. The binary takes no arguments.
 
 The binary binds a loopback listener, opens the user's browser to the dashboard's sign-in / approve page, waits for the dashboard to redirect back to the loopback with the minted credential, and writes the credential file. Surface all stderr from the binary to the user verbatim.
 
