@@ -2,6 +2,29 @@
 
 All public releases of `fancysauce-savings`. Most recent first.
 
+## v0.11.0 — 2026-07-01
+
+### Features
+
+- Subscription usage-limit / overage telemetry: the Claude Code collect agent
+  now captures account posture and usage-limit / overage signals (new
+  account-posture / usage-config / usage-limit modules). (#46)
+
+### Fixes
+
+- Codex marketplace now lists its plugin: the published marketplace manifest was
+  missing the `source: "local"` discriminator, so Codex silently dropped the
+  entry (marketplace registered, but zero plugins listed). (#58)
+
+### Changes
+
+- Codex marketplace/plugin renamed to match Claude Code — marketplace
+  `fancysauce` and plugin `fancysauce-savings` (were `fancysauce-codex` /
+  `fancysauce-savings-codex`). (#58)
+- Normalize GitHub org casing `FancySauceAI` -> `FancysauceAI` across manifests,
+  release templates, and install commands to match GitHub's canonical login
+  (previously resolved only via case-insensitive redirect). (#58)
+
 ## v0.10.0 — 2026-06-24
 
 ### Features
@@ -215,7 +238,7 @@ v0.5.0 reshapes the install flow around local-first capture and a long-lived bea
 
 ### Features
 
-- feat(team): per-tenant URL marketplace install flow — eliminates the managed-settings `env` block by serving a per-tenant `marketplace.json` from the dashboard backend with the API key + endpoint inlined into the hook command args. See [`docs/plans/2026-04-29-per-tenant-url-marketplace-design.md`](https://github.com/FancySauceAI/fancytab/blob/main/docs/plans/2026-04-29-per-tenant-url-marketplace-design.md).
+- feat(team): per-tenant URL marketplace install flow — eliminates the managed-settings `env` block by serving a per-tenant `marketplace.json` from the dashboard backend with the API key + endpoint inlined into the hook command args. See [`docs/plans/2026-04-29-per-tenant-url-marketplace-design.md`](https://github.com/FancysauceAI/fancytab/blob/main/docs/plans/2026-04-29-per-tenant-url-marketplace-design.md).
 - feat(team): `loadConfig` reads `--api-key` / `--endpoint` from argv (env vars remain as a fallback for backward compatibility).
 
 ### Build

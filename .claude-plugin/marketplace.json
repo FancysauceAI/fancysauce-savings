@@ -1,20 +1,20 @@
 {
   "name": "fancysauce",
   "owner": {
-    "name": "FancySauceAI"
+    "name": "FancysauceAI"
   },
   "metadata": {
-    "description": "FancySauceAI team-build plugin for Claude Code",
-    "version": "0.10.0"
+    "description": "FancysauceAI team-build plugin for Claude Code",
+    "version": "0.11.0"
   },
   "plugins": [
     {
       "name": "fancysauce-savings",
       "source": "./claude-code",
       "description": "Cost and usage observability for Claude Code (team build)",
-      "version": "0.10.0",
+      "version": "0.11.0",
       "author": {
-        "name": "FancySauceAI"
+        "name": "FancysauceAI"
       },
       "keywords": [
         "observability",

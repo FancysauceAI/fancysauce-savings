@@ -76,6 +76,28 @@ function defaultPolicy() {
     "compaction.before": Object.freeze([]),
     "compaction.after": Object.freeze([]),
     "config.changed": Object.freeze([]),
+    "usage_config.changed": Object.freeze([
+      "plan_type",
+      "rate_limit_tier",
+      "billing_type",
+      "extra_usage_enabled",
+      "extra_usage_disabled_reason",
+      "overage_credit_available",
+      "overage_credit_eligible"
+    ]),
+    "usage_limit.exceeded": Object.freeze([
+      "limit_message",
+      "limit_kind_guess",
+      "reset_at_guess",
+      "api_error_status",
+      "request_id",
+      "transcript_message_uuid",
+      "plan_type",
+      "rate_limit_tier",
+      "billing_type",
+      "extra_usage_enabled",
+      "extra_usage_disabled_reason"
+    ]),
     "api.request": Object.freeze([
       "cost_usd",
       "tokens_input",

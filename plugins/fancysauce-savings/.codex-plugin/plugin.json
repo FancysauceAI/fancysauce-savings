@@ -1,12 +1,12 @@
 {
-  "name": "fancysauce-savings-codex",
+  "name": "fancysauce-savings",
   "description": "Cost and usage observability for OpenAI Codex CLI",
-  "version": "0.10.0",
+  "version": "0.11.0",
   "author": {
-    "name": "FancySauceAI"
+    "name": "FancysauceAI"
   },
-  "homepage": "https://github.com/FancySauceAI/fancytab",
-  "repository": "https://github.com/FancySauceAI/fancytab",
+  "homepage": "https://github.com/FancysauceAI/fancytab",
+  "repository": "https://github.com/FancysauceAI/fancytab",
   "license": "MIT",
   "hooks": "./hooks.json",
   "keywords": [

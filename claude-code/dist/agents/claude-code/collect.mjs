@@ -66,9 +66,9 @@ var init_credential_paths = __esm({
   }
 });
 
-// ../../../node_modules/graceful-fs/polyfills.js
+// node_modules/graceful-fs/polyfills.js
 var require_polyfills = __commonJS({
-  "../../../node_modules/graceful-fs/polyfills.js"(exports, module) {
+  "node_modules/graceful-fs/polyfills.js"(exports, module) {
     var constants = __require("constants");
     var origCwd = process.cwd;
     var cwd = null;
@@ -133,7 +133,7 @@ var require_polyfills = __commonJS({
       }
       if (platform === "win32") {
         fs.rename = typeof fs.rename !== "function" ? fs.rename : (function(fs$rename) {
-          function rename12(from, to, cb) {
+          function rename13(from, to, cb) {
             var start = Date.now();
             var backoff = 0;
             fs$rename(from, to, function CB(er) {
@@ -153,8 +153,8 @@ var require_polyfills = __commonJS({
               if (cb) cb(er);
             });
           }
-          if (Object.setPrototypeOf) Object.setPrototypeOf(rename12, fs$rename);
-          return rename12;
+          if (Object.setPrototypeOf) Object.setPrototypeOf(rename13, fs$rename);
+          return rename13;
         })(fs.rename);
       }
       fs.read = typeof fs.read !== "function" ? fs.read : (function(fs$read) {
@@ -354,9 +354,9 @@ var require_polyfills = __commonJS({
   }
 });
 
-// ../../../node_modules/graceful-fs/legacy-streams.js
+// node_modules/graceful-fs/legacy-streams.js
 var require_legacy_streams = __commonJS({
-  "../../../node_modules/graceful-fs/legacy-streams.js"(exports, module) {
+  "node_modules/graceful-fs/legacy-streams.js"(exports, module) {
     var Stream = __require("stream").Stream;
     module.exports = legacy;
     function legacy(fs) {
@@ -450,9 +450,9 @@ var require_legacy_streams = __commonJS({
   }
 });
 
-// ../../../node_modules/graceful-fs/clone.js
+// node_modules/graceful-fs/clone.js
 var require_clone = __commonJS({
-  "../../../node_modules/graceful-fs/clone.js"(exports, module) {
+  "node_modules/graceful-fs/clone.js"(exports, module) {
     "use strict";
     module.exports = clone;
     var getPrototypeOf = Object.getPrototypeOf || function(obj) {
@@ -473,9 +473,9 @@ var require_clone = __commonJS({
   }
 });
 
-// ../../../node_modules/graceful-fs/graceful-fs.js
+// node_modules/graceful-fs/graceful-fs.js
 var require_graceful_fs = __commonJS({
-  "../../../node_modules/graceful-fs/graceful-fs.js"(exports, module) {
+  "node_modules/graceful-fs/graceful-fs.js"(exports, module) {
     var fs = __require("fs");
     var polyfills = require_polyfills();
     var legacy = require_legacy_streams();
@@ -558,8 +558,8 @@ var require_graceful_fs = __commonJS({
       fs2.createReadStream = createReadStream;
       fs2.createWriteStream = createWriteStream;
       var fs$readFile = fs2.readFile;
-      fs2.readFile = readFile14;
-      function readFile14(path, options, cb) {
+      fs2.readFile = readFile16;
+      function readFile16(path, options, cb) {
         if (typeof options === "function")
           cb = options, options = null;
         return go$readFile(path, options, cb);
@@ -575,8 +575,8 @@ var require_graceful_fs = __commonJS({
         }
       }
       var fs$writeFile = fs2.writeFile;
-      fs2.writeFile = writeFile10;
-      function writeFile10(path, data, options, cb) {
+      fs2.writeFile = writeFile11;
+      function writeFile11(path, data, options, cb) {
         if (typeof options === "function")
           cb = options, options = null;
         return go$writeFile(path, data, options, cb);
@@ -843,9 +843,9 @@ var require_graceful_fs = __commonJS({
   }
 });
 
-// ../../../node_modules/retry/lib/retry_operation.js
+// node_modules/retry/lib/retry_operation.js
 var require_retry_operation = __commonJS({
-  "../../../node_modules/retry/lib/retry_operation.js"(exports, module) {
+  "node_modules/retry/lib/retry_operation.js"(exports, module) {
     function RetryOperation(timeouts, options) {
       if (typeof options === "boolean") {
         options = { forever: options };
@@ -974,9 +974,9 @@ var require_retry_operation = __commonJS({
   }
 });
 
-// ../../../node_modules/retry/lib/retry.js
+// node_modules/retry/lib/retry.js
 var require_retry = __commonJS({
-  "../../../node_modules/retry/lib/retry.js"(exports) {
+  "node_modules/retry/lib/retry.js"(exports) {
     var RetryOperation = require_retry_operation();
     exports.operation = function(options) {
       var timeouts = exports.timeouts(options);
@@ -1060,16 +1060,16 @@ var require_retry = __commonJS({
   }
 });
 
-// ../../../node_modules/retry/index.js
+// node_modules/retry/index.js
 var require_retry2 = __commonJS({
-  "../../../node_modules/retry/index.js"(exports, module) {
+  "node_modules/retry/index.js"(exports, module) {
     module.exports = require_retry();
   }
 });
 
-// ../../../node_modules/proper-lockfile/node_modules/signal-exit/signals.js
+// node_modules/proper-lockfile/node_modules/signal-exit/signals.js
 var require_signals = __commonJS({
-  "../../../node_modules/proper-lockfile/node_modules/signal-exit/signals.js"(exports, module) {
+  "node_modules/proper-lockfile/node_modules/signal-exit/signals.js"(exports, module) {
     module.exports = [
       "SIGABRT",
       "SIGALRM",
@@ -1104,9 +1104,9 @@ var require_signals = __commonJS({
   }
 });
 
-// ../../../node_modules/proper-lockfile/node_modules/signal-exit/index.js
+// node_modules/proper-lockfile/node_modules/signal-exit/index.js
 var require_signal_exit = __commonJS({
-  "../../../node_modules/proper-lockfile/node_modules/signal-exit/index.js"(exports, module) {
+  "node_modules/proper-lockfile/node_modules/signal-exit/index.js"(exports, module) {
     var process2 = global.process;
     var processOk = function(process3) {
       return process3 && typeof process3 === "object" && typeof process3.removeListener === "function" && typeof process3.emit === "function" && typeof process3.reallyExit === "function" && typeof process3.listeners === "function" && typeof process3.kill === "function" && typeof process3.pid === "number" && typeof process3.on === "function";
@@ -1263,19 +1263,19 @@ var require_signal_exit = __commonJS({
   }
 });
 
-// ../../../node_modules/proper-lockfile/lib/mtime-precision.js
+// node_modules/proper-lockfile/lib/mtime-precision.js
 var require_mtime_precision = __commonJS({
-  "../../../node_modules/proper-lockfile/lib/mtime-precision.js"(exports, module) {
+  "node_modules/proper-lockfile/lib/mtime-precision.js"(exports, module) {
     "use strict";
     var cacheSymbol = /* @__PURE__ */ Symbol();
     function probe(file, fs, callback) {
       const cachedPrecision = fs[cacheSymbol];
       if (cachedPrecision) {
-        return fs.stat(file, (err, stat4) => {
+        return fs.stat(file, (err, stat5) => {
           if (err) {
             return callback(err);
           }
-          callback(null, stat4.mtime, cachedPrecision);
+          callback(null, stat5.mtime, cachedPrecision);
         });
       }
       const mtime = new Date(Math.ceil(Date.now() / 1e3) * 1e3 + 5);
@@ -1283,13 +1283,13 @@ var require_mtime_precision = __commonJS({
         if (err) {
           return callback(err);
         }
-        fs.stat(file, (err2, stat4) => {
+        fs.stat(file, (err2, stat5) => {
           if (err2) {
             return callback(err2);
           }
-          const precision = stat4.mtime.getTime() % 1e3 === 0 ? "s" : "ms";
+          const precision = stat5.mtime.getTime() % 1e3 === 0 ? "s" : "ms";
           Object.defineProperty(fs, cacheSymbol, { value: precision });
-          callback(null, stat4.mtime, precision);
+          callback(null, stat5.mtime, precision);
         });
       });
     }
@@ -1305,9 +1305,9 @@ var require_mtime_precision = __commonJS({
   }
 });
 
-// ../../../node_modules/proper-lockfile/lib/lockfile.js
+// node_modules/proper-lockfile/lib/lockfile.js
 var require_lockfile = __commonJS({
-  "../../../node_modules/proper-lockfile/lib/lockfile.js"(exports, module) {
+  "node_modules/proper-lockfile/lib/lockfile.js"(exports, module) {
     "use strict";
     var path = __require("path");
     var fs = require_graceful_fs();
@@ -1343,14 +1343,14 @@ var require_lockfile = __commonJS({
         if (options.stale <= 0) {
           return callback(Object.assign(new Error("Lock file is already being held"), { code: "ELOCKED", file }));
         }
-        options.fs.stat(lockfilePath, (err2, stat4) => {
+        options.fs.stat(lockfilePath, (err2, stat5) => {
           if (err2) {
             if (err2.code === "ENOENT") {
               return acquireLock(file, { ...options, stale: 0 }, callback);
             }
             return callback(err2);
           }
-          if (!isLockStale(stat4, options)) {
+          if (!isLockStale(stat5, options)) {
             return callback(Object.assign(new Error("Lock file is already being held"), { code: "ELOCKED", file }));
           }
           removeLock(file, options, (err3) => {
@@ -1362,8 +1362,8 @@ var require_lockfile = __commonJS({
         });
       });
     }
-    function isLockStale(stat4, options) {
-      return stat4.mtime.getTime() < Date.now() - options.stale;
+    function isLockStale(stat5, options) {
+      return stat5.mtime.getTime() < Date.now() - options.stale;
     }
     function removeLock(file, options, callback) {
       options.fs.rmdir(getLockFile(file, options), (err) => {
@@ -1381,7 +1381,7 @@ var require_lockfile = __commonJS({
       lock2.updateDelay = lock2.updateDelay || options.update;
       lock2.updateTimeout = setTimeout(() => {
         lock2.updateTimeout = null;
-        options.fs.stat(lock2.lockfilePath, (err, stat4) => {
+        options.fs.stat(lock2.lockfilePath, (err, stat5) => {
           const isOverThreshold = lock2.lastUpdate + options.stale < Date.now();
           if (err) {
             if (err.code === "ENOENT" || isOverThreshold) {
@@ -1390,7 +1390,7 @@ var require_lockfile = __commonJS({
             lock2.updateDelay = 1e3;
             return updateLock(file, options);
           }
-          const isMtimeOurs = lock2.mtime.getTime() === stat4.mtime.getTime();
+          const isMtimeOurs = lock2.mtime.getTime() === stat5.mtime.getTime();
           if (!isMtimeOurs) {
             return setLockAsCompromised(
               file,
@@ -1515,11 +1515,11 @@ var require_lockfile = __commonJS({
         if (err) {
           return callback(err);
         }
-        options.fs.stat(getLockFile(file2, options), (err2, stat4) => {
+        options.fs.stat(getLockFile(file2, options), (err2, stat5) => {
           if (err2) {
             return err2.code === "ENOENT" ? callback(null, false) : callback(err2);
           }
-          return callback(null, !isLockStale(stat4, options));
+          return callback(null, !isLockStale(stat5, options));
         });
       });
     }
@@ -1542,9 +1542,9 @@ var require_lockfile = __commonJS({
   }
 });
 
-// ../../../node_modules/proper-lockfile/lib/adapter.js
+// node_modules/proper-lockfile/lib/adapter.js
 var require_adapter = __commonJS({
-  "../../../node_modules/proper-lockfile/lib/adapter.js"(exports, module) {
+  "node_modules/proper-lockfile/lib/adapter.js"(exports, module) {
     "use strict";
     var fs = require_graceful_fs();
     function createSyncFs(fs2) {
@@ -1607,9 +1607,9 @@ var require_adapter = __commonJS({
   }
 });
 
-// ../../../node_modules/proper-lockfile/index.js
+// node_modules/proper-lockfile/index.js
 var require_proper_lockfile = __commonJS({
-  "../../../node_modules/proper-lockfile/index.js"(exports, module) {
+  "node_modules/proper-lockfile/index.js"(exports, module) {
     "use strict";
     var lockfile5 = require_lockfile();
     var { toPromise, toSync, toSyncOptions } = require_adapter();
@@ -1884,6 +1884,28 @@ function defaultPolicy() {
     "compaction.before": Object.freeze([]),
     "compaction.after": Object.freeze([]),
     "config.changed": Object.freeze([]),
+    "usage_config.changed": Object.freeze([
+      "plan_type",
+      "rate_limit_tier",
+      "billing_type",
+      "extra_usage_enabled",
+      "extra_usage_disabled_reason",
+      "overage_credit_available",
+      "overage_credit_eligible"
+    ]),
+    "usage_limit.exceeded": Object.freeze([
+      "limit_message",
+      "limit_kind_guess",
+      "reset_at_guess",
+      "api_error_status",
+      "request_id",
+      "transcript_message_uuid",
+      "plan_type",
+      "rate_limit_tier",
+      "billing_type",
+      "extra_usage_enabled",
+      "extra_usage_disabled_reason"
+    ]),
     "api.request": Object.freeze([
       "cost_usd",
       "tokens_input",
@@ -2294,6 +2316,8 @@ function buildRules(policy) {
     "compaction.before": k("compaction.before"),
     "compaction.after": k("compaction.after"),
     "config.changed": k("config.changed"),
+    "usage_config.changed": k("usage_config.changed"),
+    "usage_limit.exceeded": k("usage_limit.exceeded"),
     "api.request": k("api.request")
   };
 }
@@ -3116,7 +3140,21 @@ var ATTR_TYPE = {
   subsession_id: "string",
   cwd_hash: "string",
   last_assistant_message_size_bytes: "int",
-  last_assistant_message_hash: "string"
+  last_assistant_message_hash: "string",
+  // usage_config.changed
+  plan_type: "string",
+  rate_limit_tier: "string",
+  billing_type: "string",
+  extra_usage_enabled: "bool",
+  extra_usage_disabled_reason: "string",
+  overage_credit_available: "bool",
+  overage_credit_eligible: "bool",
+  // usage_limit.exceeded
+  limit_message: "string",
+  limit_kind_guess: "string",
+  reset_at_guess: "int",
+  api_error_status: "int"
+  // request_id + transcript_message_uuid already typed above (api.request).
 };
 function encodeOtlp(events, resource, observedTimeUnixNano) {
   const observed = observedTimeUnixNano ?? BigInt(Date.now()) * 1000000n;
@@ -3324,12 +3362,12 @@ async function readBatch(queuePath, startOffset, maxEvents, maxBytes) {
     } catch {
       return { events: [], endOffset: startOffset };
     }
-    const stat4 = await fh.stat();
-    if (stat4.size < startOffset)
-      return { events: [], endOffset: startOffset, cursorPastEof: true, queueSize: stat4.size };
-    if (stat4.size <= startOffset)
+    const stat5 = await fh.stat();
+    if (stat5.size < startOffset)
+      return { events: [], endOffset: startOffset, cursorPastEof: true, queueSize: stat5.size };
+    if (stat5.size <= startOffset)
       return { events: [], endOffset: startOffset };
-    const toRead = Math.min(stat4.size - startOffset, maxBytes);
+    const toRead = Math.min(stat5.size - startOffset, maxBytes);
     const buf = Buffer.alloc(toRead);
     await fh.read(buf, 0, toRead, startOffset);
     const lastNl = buf.lastIndexOf("\n".charCodeAt(0));
@@ -3377,15 +3415,15 @@ async function maybeCompact(dataDir2, cursor, queuePath) {
       } catch {
         return;
       }
-      const stat4 = await fh.stat();
-      if (flushedOffset >= stat4.size) {
+      const stat5 = await fh.stat();
+      if (flushedOffset >= stat5.size) {
         await fh.close();
         fh = null;
         await cursor.resetUnlocked();
         await writeFile4(queuePath, "");
         return;
       }
-      const tailLen = stat4.size - flushedOffset;
+      const tailLen = stat5.size - flushedOffset;
       const buf = Buffer.alloc(tailLen);
       await fh.read(buf, 0, tailLen, flushedOffset);
       await fh.close();
@@ -3879,7 +3917,8 @@ async function runCollect(adapter, opts) {
     let tailFilterDropped = 0;
     const ctx = {
       stateDir: join15(root, "state"),
-      errorLogPath: join15(root, "collect-error.log")
+      errorLogPath: join15(root, "collect-error.log"),
+      transcriptRoot: opts.transcriptRoot
     };
     await adapter.tailTranscript(hookPayload, ctx, async (tailEvents) => {
       const filteredTail = [];
@@ -3973,6 +4012,9 @@ ${err.stack ?? ""}` : String(err);
   }
   return { stderr: stderrBuf };
 }
+
+// dist/agents/claude-code/adapter.mjs
+import { homedir as homedir5 } from "node:os";
 
 // dist/shared/stable-stringify.mjs
 function stableStringify(value) {
@@ -4112,18 +4154,18 @@ async function computeSubagentDuration(transcriptPath) {
   let fh = null;
   try {
     fh = await open7(transcriptPath, "r");
-    const stat4 = await fh.stat();
-    if (stat4.size === 0)
+    const stat5 = await fh.stat();
+    if (stat5.size === 0)
       return null;
-    const headSize = Math.min(stat4.size, READ_WINDOW_BYTES);
+    const headSize = Math.min(stat5.size, READ_WINDOW_BYTES);
     const headBuf = Buffer.alloc(headSize);
     await fh.read(headBuf, 0, headSize, 0);
     const firstNewline = headBuf.indexOf("\n".charCodeAt(0));
     if (firstNewline < 0)
       return null;
     const firstLine = headBuf.slice(0, firstNewline).toString("utf8");
-    const tailSize = Math.min(stat4.size, READ_WINDOW_BYTES);
-    const tailStart = stat4.size - tailSize;
+    const tailSize = Math.min(stat5.size, READ_WINDOW_BYTES);
+    const tailStart = stat5.size - tailSize;
     const tailBuf = Buffer.alloc(tailSize);
     await fh.read(tailBuf, 0, tailSize, tailStart);
     let usableEnd = tailBuf.length;
@@ -4190,7 +4232,7 @@ var import_proper_lockfile4 = __toESM(require_proper_lockfile(), 1);
 import { mkdir as mkdir10, readFile as readFile13, readdir, writeFile as writeFile9, appendFile as appendFile4, rename as rename11 } from "node:fs/promises";
 import { basename as basename2, dirname as dirname6, isAbsolute, join as join17, sep } from "node:path";
 import { homedir as homedir4 } from "node:os";
-import { randomUUID as randomUUID3 } from "node:crypto";
+import { randomUUID as randomUUID4 } from "node:crypto";
 
 // dist/agents/claude-code/subagent-cursor.mjs
 import { readFile as readFile12, rename as rename10, writeFile as writeFile8 } from "node:fs/promises";
@@ -4256,13 +4298,13 @@ async function readWindow(opts) {
       }
       throw err;
     }
-    const stat4 = await fh.stat();
-    const truncated = stat4.size < startOffset;
+    const stat5 = await fh.stat();
+    const truncated = stat5.size < startOffset;
     const effectiveStart = truncated ? 0 : startOffset;
-    if (stat4.size <= effectiveStart) {
+    if (stat5.size <= effectiveStart) {
       return { events: [], endOffset: effectiveStart, truncated };
     }
-    const toRead = Math.min(stat4.size - effectiveStart, maxReadBytes);
+    const toRead = Math.min(stat5.size - effectiveStart, maxReadBytes);
     const buf = Buffer.alloc(toRead);
     await fh.read(buf, 0, toRead, effectiveStart);
     const lastNewline = buf.lastIndexOf("\n".charCodeAt(0));
@@ -4277,6 +4319,134 @@ async function readWindow(opts) {
     if (fh)
       await fh.close();
   }
+}
+
+// dist/shared/usage-limit.mjs
+import { randomUUID as randomUUID3 } from "node:crypto";
+function classifyLimitKind(text) {
+  if (/not your usage limit/i.test(text) || /temporarily limiting/i.test(text)) {
+    return "server_throttle";
+  }
+  if (/weekly limit/i.test(text))
+    return "weekly";
+  if (/hit your session limit/i.test(text) || /session limit/i.test(text))
+    return "session";
+  return "unknown";
+}
+function guessResetEpochSeconds(text, nowMs) {
+  const m = /resets\s+(\d{1,2}):(\d{2})\s*([ap]m)\b(?:\s*\(([^)]+)\))?/i.exec(text);
+  if (!m)
+    return void 0;
+  let hour = parseInt(m[1], 10) % 12;
+  if (/pm/i.test(m[3]))
+    hour += 12;
+  const minute = parseInt(m[2], 10);
+  const tz = m[4];
+  if (tz) {
+    const off = tzOffsetMs(tz, nowMs);
+    if (off === void 0)
+      return void 0;
+    const ymd = tzDateParts(tz, nowMs);
+    if (!ymd)
+      return void 0;
+    const candUtc = Date.UTC(ymd.y, ymd.mo - 1, ymd.d, hour, minute, 0);
+    let epoch2 = candUtc - off;
+    if (epoch2 <= nowMs)
+      epoch2 += 864e5;
+    return Math.floor(epoch2 / 1e3);
+  }
+  const now = new Date(nowMs);
+  const cand = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hour, minute, 0, 0);
+  let epoch = cand.getTime();
+  if (epoch <= nowMs)
+    epoch += 864e5;
+  return Math.floor(epoch / 1e3);
+}
+function tzParts(tz, atMs) {
+  try {
+    const dtf = new Intl.DateTimeFormat("en-US", {
+      timeZone: tz,
+      hour12: false,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit"
+    });
+    const map = {};
+    for (const p of dtf.formatToParts(new Date(atMs)))
+      map[p.type] = p.value;
+    return map;
+  } catch {
+    return void 0;
+  }
+}
+function tzDateParts(tz, atMs) {
+  const m = tzParts(tz, atMs);
+  if (!m)
+    return void 0;
+  return { y: Number(m.year), mo: Number(m.month), d: Number(m.day) };
+}
+function tzOffsetMs(tz, atMs) {
+  const m = tzParts(tz, atMs);
+  if (!m)
+    return void 0;
+  const hour = m.hour === "24" ? 0 : Number(m.hour);
+  const asUtc = Date.UTC(Number(m.year), Number(m.month) - 1, Number(m.day), hour, Number(m.minute), Number(m.second));
+  return asUtc - atMs;
+}
+function firstText(content) {
+  if (!Array.isArray(content))
+    return "";
+  const first = content[0];
+  if (typeof first === "object" && first !== null) {
+    const t = first.text;
+    if (typeof t === "string")
+      return t;
+  }
+  return "";
+}
+function detectUsageLimit(rec, sessionId, sequence, nowMs) {
+  if (typeof rec !== "object" || rec === null)
+    return null;
+  const r = rec;
+  if (r.type !== "assistant")
+    return null;
+  if (r.isApiErrorMessage !== true)
+    return null;
+  if (r.apiErrorStatus !== 429)
+    return null;
+  if (typeof r.uuid !== "string")
+    return null;
+  if (typeof r.timestamp !== "string" || !Number.isFinite(Date.parse(r.timestamp)))
+    return null;
+  const msg = r.message;
+  if (typeof msg !== "object" || msg === null)
+    return null;
+  if (msg.model !== "<synthetic>")
+    return null;
+  const text = firstText(msg.content);
+  const requestId = typeof r.requestId === "string" ? r.requestId : typeof msg.id === "string" ? msg.id : "";
+  const attributes = {
+    limit_message: text,
+    limit_kind_guess: classifyLimitKind(text),
+    api_error_status: 429,
+    request_id: requestId,
+    transcript_message_uuid: r.uuid
+  };
+  const reset = guessResetEpochSeconds(text, nowMs);
+  if (reset !== void 0)
+    attributes.reset_at_guess = reset;
+  return {
+    event_uuid: randomUUID3(),
+    event_type: "usage_limit.exceeded",
+    session_id: sessionId,
+    source: "transcript.tail",
+    sequence,
+    timestamp_ns: BigInt(Date.parse(r.timestamp)) * 1000000n,
+    attributes
+  };
 }
 
 // dist/agents/claude-code/transcript-tail.mjs
@@ -4423,11 +4593,11 @@ var TranscriptTail = class {
       sequenceBase,
       maxReadBytes,
       state: {},
-      parseWindow: ccParseWindow((r, seq) => toApiRequestEvent(r, sessionId, seq))
+      parseWindow: ccParseWindow((r, seq) => toApiRequestEvent(r, sessionId, seq), (rec, seq) => detectUsageLimit(rec, sessionId, seq, Date.now()))
     });
   }
 };
-function ccParseWindow(stamp) {
+function ccParseWindow(stamp, detectLimit) {
   return (lines, sequenceBase) => {
     const events = [];
     let seq = sequenceBase;
@@ -4439,6 +4609,13 @@ function ccParseWindow(stamp) {
         rec = JSON.parse(line);
       } catch {
         continue;
+      }
+      if (detectLimit) {
+        const limitEv = detectLimit(rec, seq);
+        if (limitEv) {
+          events.push(limitEv);
+          seq++;
+        }
       }
       if (!isAssistantRecord(rec))
         continue;
@@ -4550,7 +4727,7 @@ function toApiRequestEvent(r, sessionId, sequence) {
     attrs.stop_reason = r.message.stop_reason;
   }
   return {
-    event_uuid: randomUUID3(),
+    event_uuid: randomUUID4(),
     event_type: "api.request",
     session_id: sessionId,
     source: "transcript.tail",
@@ -4558,6 +4735,152 @@ function toApiRequestEvent(r, sessionId, sequence) {
     timestamp_ns: BigInt(Date.parse(r.timestamp)) * 1000000n,
     attributes: attrs
   };
+}
+
+// dist/shared/account-posture.mjs
+import { readFile as readFile14 } from "node:fs/promises";
+import { join as join18 } from "node:path";
+function resolveClaudeConfigPath(env, homeDir) {
+  const base = env.CLAUDE_CONFIG_DIR && env.CLAUDE_CONFIG_DIR.length > 0 ? env.CLAUDE_CONFIG_DIR : homeDir;
+  return join18(base, ".claude.json");
+}
+function str(v) {
+  return typeof v === "string" && v.length > 0 ? v : void 0;
+}
+function bool(v) {
+  return typeof v === "boolean" ? v : void 0;
+}
+async function readPosture(path) {
+  let raw;
+  try {
+    raw = await readFile14(path, "utf8");
+  } catch {
+    return null;
+  }
+  let doc;
+  try {
+    doc = JSON.parse(raw);
+  } catch {
+    return null;
+  }
+  if (typeof doc !== "object" || doc === null)
+    return null;
+  const d = doc;
+  const oauth = typeof d.oauthAccount === "object" && d.oauthAccount !== null ? d.oauthAccount : {};
+  const posture = {};
+  const planType = str(oauth.organizationType);
+  if (planType)
+    posture.plan_type = planType;
+  const tier = str(oauth.organizationRateLimitTier);
+  if (tier)
+    posture.rate_limit_tier = tier;
+  const billing = str(oauth.billingType);
+  if (billing)
+    posture.billing_type = billing;
+  const extra = bool(oauth.hasExtraUsageEnabled);
+  if (extra !== void 0)
+    posture.extra_usage_enabled = extra;
+  const reason = str(d.cachedExtraUsageDisabledReason);
+  if (reason)
+    posture.extra_usage_disabled_reason = reason;
+  const grants = typeof d.overageCreditGrantCache === "object" && d.overageCreditGrantCache !== null ? Object.values(d.overageCreditGrantCache) : [];
+  const firstGrant = grants[0];
+  if (typeof firstGrant === "object" && firstGrant !== null) {
+    const info = firstGrant.info;
+    if (typeof info === "object" && info !== null) {
+      const avail = bool(info.available);
+      if (avail !== void 0)
+        posture.overage_credit_available = avail;
+      const elig = bool(info.eligible);
+      if (elig !== void 0)
+        posture.overage_credit_eligible = elig;
+    }
+  }
+  return posture;
+}
+function postureHasFields(p) {
+  return Object.keys(p).length > 0;
+}
+function postureHash(p) {
+  const entries = Object.entries(p).filter(([, v]) => v !== void 0).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0);
+  return sha256Hex(JSON.stringify(entries));
+}
+function postureAttributes(p) {
+  const out = {};
+  for (const [k, v] of Object.entries(p)) {
+    if (v !== void 0)
+      out[k] = v;
+  }
+  return out;
+}
+
+// dist/shared/usage-config.mjs
+import { randomUUID as randomUUID5 } from "node:crypto";
+import { stat as stat4, readFile as readFile15, writeFile as writeFile10, rename as rename12, mkdir as mkdir11 } from "node:fs/promises";
+import { join as join19 } from "node:path";
+var noopCommit = async () => {
+};
+async function prepareUsageConfigEvent(opts) {
+  const statePath = join19(opts.stateDir, "usage-config.json");
+  const prev = await readState(statePath);
+  let mtimeMs;
+  try {
+    mtimeMs = (await stat4(opts.configPath)).mtimeMs;
+  } catch {
+    return { event: null, commit: noopCommit };
+  }
+  if (prev && mtimeMs === prev.last_mtime_ms) {
+    return { event: null, commit: noopCommit };
+  }
+  const posture = await opts.getPosture();
+  if (posture === null) {
+    return { event: null, commit: noopCommit };
+  }
+  const commitState = async (hash2) => {
+    await writeStateAtomic(opts.stateDir, statePath, {
+      last_mtime_ms: mtimeMs,
+      last_hash: hash2,
+      last_emitted_at: new Date(opts.now()).toISOString()
+    });
+  };
+  if (!postureHasFields(posture)) {
+    return { event: null, commit: () => commitState("") };
+  }
+  const hash = postureHash(posture);
+  if (prev && hash === prev.last_hash) {
+    return { event: null, commit: () => commitState(hash) };
+  }
+  const event = {
+    event_uuid: randomUUID5(),
+    event_type: "usage_config.changed",
+    session_id: opts.sessionId,
+    source: "transcript.tail",
+    sequence: 0,
+    timestamp_ns: BigInt(opts.now()) * 1000000n,
+    attributes: postureAttributes(posture)
+  };
+  return { event, commit: () => commitState(hash) };
+}
+async function readState(path) {
+  try {
+    const parsed = JSON.parse(await readFile15(path, "utf8"));
+    if (typeof parsed.last_mtime_ms !== "number" || typeof parsed.last_hash !== "string") {
+      return null;
+    }
+    return {
+      last_mtime_ms: parsed.last_mtime_ms,
+      last_hash: parsed.last_hash,
+      last_emitted_at: typeof parsed.last_emitted_at === "string" ? parsed.last_emitted_at : ""
+    };
+  } catch {
+    return null;
+  }
+}
+async function writeStateAtomic(stateDir, path, body) {
+  await mkdir11(stateDir, { recursive: true, mode: 448 });
+  const tmp = `${path}.${process.pid}.tmp`;
+  await writeFile10(tmp, JSON.stringify(body), "utf8");
+  await rename12(tmp, path);
 }
 
 // dist/agents/claude-code/adapter.mjs
@@ -4570,8 +4893,39 @@ var ClaudeCodeAdapter = class {
     return enrichSubagentComplete(raw, input.agent_transcript_path);
   }
   async tailTranscript(input, ctx, sink) {
-    const tail = new TranscriptTail(ctx.stateDir, { errorLogPath: ctx.errorLogPath });
-    await tail.tail(input.session_id, input.transcript_path, 1, sink);
+    const tail = new TranscriptTail(ctx.stateDir, {
+      errorLogPath: ctx.errorLogPath,
+      transcriptRoot: ctx.transcriptRoot
+    });
+    const configPath = resolveClaudeConfigPath(process.env, homedir5());
+    let postureCache;
+    const getPosture = async () => {
+      if (postureCache === void 0) {
+        postureCache = await readPosture(configPath);
+      }
+      return postureCache;
+    };
+    await tail.tail(input.session_id, input.transcript_path, 1, async (tailEvents) => {
+      const enriched = [];
+      for (const ev of tailEvents) {
+        if (ev.event_type === "usage_limit.exceeded") {
+          const posture = await getPosture();
+          const snapshot = posture ? postureAttributes(posture) : {};
+          enriched.push({ ...ev, attributes: { ...snapshot, ...ev.attributes } });
+        } else {
+          enriched.push(ev);
+        }
+      }
+      const uc = await prepareUsageConfigEvent({
+        stateDir: ctx.stateDir,
+        configPath,
+        sessionId: input.session_id,
+        getPosture,
+        now: () => Date.now()
+      });
+      await sink(uc.event ? [...enriched, uc.event] : enriched);
+      await uc.commit();
+    });
   }
 };
 

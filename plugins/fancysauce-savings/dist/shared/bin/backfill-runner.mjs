@@ -32,9 +32,9 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
   mod
 ));
 
-// ../../../node_modules/graceful-fs/polyfills.js
+// node_modules/graceful-fs/polyfills.js
 var require_polyfills = __commonJS({
-  "../../../node_modules/graceful-fs/polyfills.js"(exports, module) {
+  "node_modules/graceful-fs/polyfills.js"(exports, module) {
     var constants = __require("constants");
     var origCwd = process.cwd;
     var cwd = null;
@@ -320,9 +320,9 @@ var require_polyfills = __commonJS({
   }
 });
 
-// ../../../node_modules/graceful-fs/legacy-streams.js
+// node_modules/graceful-fs/legacy-streams.js
 var require_legacy_streams = __commonJS({
-  "../../../node_modules/graceful-fs/legacy-streams.js"(exports, module) {
+  "node_modules/graceful-fs/legacy-streams.js"(exports, module) {
     var Stream = __require("stream").Stream;
     module.exports = legacy;
     function legacy(fs) {
@@ -416,9 +416,9 @@ var require_legacy_streams = __commonJS({
   }
 });
 
-// ../../../node_modules/graceful-fs/clone.js
+// node_modules/graceful-fs/clone.js
 var require_clone = __commonJS({
-  "../../../node_modules/graceful-fs/clone.js"(exports, module) {
+  "node_modules/graceful-fs/clone.js"(exports, module) {
     "use strict";
     module.exports = clone;
     var getPrototypeOf = Object.getPrototypeOf || function(obj) {
@@ -439,9 +439,9 @@ var require_clone = __commonJS({
   }
 });
 
-// ../../../node_modules/graceful-fs/graceful-fs.js
+// node_modules/graceful-fs/graceful-fs.js
 var require_graceful_fs = __commonJS({
-  "../../../node_modules/graceful-fs/graceful-fs.js"(exports, module) {
+  "node_modules/graceful-fs/graceful-fs.js"(exports, module) {
     var fs = __require("fs");
     var polyfills = require_polyfills();
     var legacy = require_legacy_streams();
@@ -809,9 +809,9 @@ var require_graceful_fs = __commonJS({
   }
 });
 
-// ../../../node_modules/retry/lib/retry_operation.js
+// node_modules/retry/lib/retry_operation.js
 var require_retry_operation = __commonJS({
-  "../../../node_modules/retry/lib/retry_operation.js"(exports, module) {
+  "node_modules/retry/lib/retry_operation.js"(exports, module) {
     function RetryOperation(timeouts, options) {
       if (typeof options === "boolean") {
         options = { forever: options };
@@ -940,9 +940,9 @@ var require_retry_operation = __commonJS({
   }
 });
 
-// ../../../node_modules/retry/lib/retry.js
+// node_modules/retry/lib/retry.js
 var require_retry = __commonJS({
-  "../../../node_modules/retry/lib/retry.js"(exports) {
+  "node_modules/retry/lib/retry.js"(exports) {
     var RetryOperation = require_retry_operation();
     exports.operation = function(options) {
       var timeouts = exports.timeouts(options);
@@ -1026,16 +1026,16 @@ var require_retry = __commonJS({
   }
 });
 
-// ../../../node_modules/retry/index.js
+// node_modules/retry/index.js
 var require_retry2 = __commonJS({
-  "../../../node_modules/retry/index.js"(exports, module) {
+  "node_modules/retry/index.js"(exports, module) {
     module.exports = require_retry();
   }
 });
 
-// ../../../node_modules/proper-lockfile/node_modules/signal-exit/signals.js
+// node_modules/proper-lockfile/node_modules/signal-exit/signals.js
 var require_signals = __commonJS({
-  "../../../node_modules/proper-lockfile/node_modules/signal-exit/signals.js"(exports, module) {
+  "node_modules/proper-lockfile/node_modules/signal-exit/signals.js"(exports, module) {
     module.exports = [
       "SIGABRT",
       "SIGALRM",
@@ -1070,9 +1070,9 @@ var require_signals = __commonJS({
   }
 });
 
-// ../../../node_modules/proper-lockfile/node_modules/signal-exit/index.js
+// node_modules/proper-lockfile/node_modules/signal-exit/index.js
 var require_signal_exit = __commonJS({
-  "../../../node_modules/proper-lockfile/node_modules/signal-exit/index.js"(exports, module) {
+  "node_modules/proper-lockfile/node_modules/signal-exit/index.js"(exports, module) {
     var process2 = global.process;
     var processOk = function(process3) {
       return process3 && typeof process3 === "object" && typeof process3.removeListener === "function" && typeof process3.emit === "function" && typeof process3.reallyExit === "function" && typeof process3.listeners === "function" && typeof process3.kill === "function" && typeof process3.pid === "number" && typeof process3.on === "function";
@@ -1229,9 +1229,9 @@ var require_signal_exit = __commonJS({
   }
 });
 
-// ../../../node_modules/proper-lockfile/lib/mtime-precision.js
+// node_modules/proper-lockfile/lib/mtime-precision.js
 var require_mtime_precision = __commonJS({
-  "../../../node_modules/proper-lockfile/lib/mtime-precision.js"(exports, module) {
+  "node_modules/proper-lockfile/lib/mtime-precision.js"(exports, module) {
     "use strict";
     var cacheSymbol = /* @__PURE__ */ Symbol();
     function probe(file, fs, callback) {
@@ -1271,9 +1271,9 @@ var require_mtime_precision = __commonJS({
   }
 });
 
-// ../../../node_modules/proper-lockfile/lib/lockfile.js
+// node_modules/proper-lockfile/lib/lockfile.js
 var require_lockfile = __commonJS({
-  "../../../node_modules/proper-lockfile/lib/lockfile.js"(exports, module) {
+  "node_modules/proper-lockfile/lib/lockfile.js"(exports, module) {
     "use strict";
     var path = __require("path");
     var fs = require_graceful_fs();
@@ -1508,9 +1508,9 @@ var require_lockfile = __commonJS({
   }
 });
 
-// ../../../node_modules/proper-lockfile/lib/adapter.js
+// node_modules/proper-lockfile/lib/adapter.js
 var require_adapter = __commonJS({
-  "../../../node_modules/proper-lockfile/lib/adapter.js"(exports, module) {
+  "node_modules/proper-lockfile/lib/adapter.js"(exports, module) {
     "use strict";
     var fs = require_graceful_fs();
     function createSyncFs(fs2) {
@@ -1573,9 +1573,9 @@ var require_adapter = __commonJS({
   }
 });
 
-// ../../../node_modules/proper-lockfile/index.js
+// node_modules/proper-lockfile/index.js
 var require_proper_lockfile = __commonJS({
-  "../../../node_modules/proper-lockfile/index.js"(exports, module) {
+  "node_modules/proper-lockfile/index.js"(exports, module) {
     "use strict";
     var lockfile4 = require_lockfile();
     var { toPromise, toSync, toSyncOptions } = require_adapter();
@@ -1666,6 +1666,28 @@ function defaultPolicy() {
     "compaction.before": Object.freeze([]),
     "compaction.after": Object.freeze([]),
     "config.changed": Object.freeze([]),
+    "usage_config.changed": Object.freeze([
+      "plan_type",
+      "rate_limit_tier",
+      "billing_type",
+      "extra_usage_enabled",
+      "extra_usage_disabled_reason",
+      "overage_credit_available",
+      "overage_credit_eligible"
+    ]),
+    "usage_limit.exceeded": Object.freeze([
+      "limit_message",
+      "limit_kind_guess",
+      "reset_at_guess",
+      "api_error_status",
+      "request_id",
+      "transcript_message_uuid",
+      "plan_type",
+      "rate_limit_tier",
+      "billing_type",
+      "extra_usage_enabled",
+      "extra_usage_disabled_reason"
+    ]),
     "api.request": Object.freeze([
       "cost_usd",
       "tokens_input",
@@ -2342,7 +2364,21 @@ var ATTR_TYPE = {
   subsession_id: "string",
   cwd_hash: "string",
   last_assistant_message_size_bytes: "int",
-  last_assistant_message_hash: "string"
+  last_assistant_message_hash: "string",
+  // usage_config.changed
+  plan_type: "string",
+  rate_limit_tier: "string",
+  billing_type: "string",
+  extra_usage_enabled: "bool",
+  extra_usage_disabled_reason: "string",
+  overage_credit_available: "bool",
+  overage_credit_eligible: "bool",
+  // usage_limit.exceeded
+  limit_message: "string",
+  limit_kind_guess: "string",
+  reset_at_guess: "int",
+  api_error_status: "int"
+  // request_id + transcript_message_uuid already typed above (api.request).
 };
 function encodeOtlp(events, resource, observedTimeUnixNano) {
   const observed = observedTimeUnixNano ?? BigInt(Date.now()) * 1000000n;

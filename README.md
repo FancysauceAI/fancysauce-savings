@@ -2,7 +2,7 @@
 
 Cost and usage observability for Claude Code and OpenAI Codex CLI.
 
-**Version:** 0.10.0
+**Version:** 0.11.0
 
 This repo is the canonical distribution for both the Claude Code plugin and the
 OpenAI Codex plugin. Each tool installs only its own plugin.
@@ -10,7 +10,7 @@ OpenAI Codex plugin. Each tool installs only its own plugin.
 ## Claude Code
 To install and setup the plugin in Claude Code:
 ```
-/plugin marketplace add FancySauceAI/fancysauce-savings
+/plugin marketplace add FancysauceAI/fancysauce-savings
 /plugin install fancysauce-savings@fancysauce
 /reload-plugins
 /fancysauce-savings:login
@@ -26,7 +26,7 @@ To install and setup the plugin in Claude Code:
 ## OpenAI Codex
 To install and setup the plugin in Codex:
 ```
-codex plugin marketplace add FancySauceAI/fancysauce-savings
+codex plugin marketplace add FancysauceAI/fancysauce-savings
 @fancysauce-login
 ```
 
