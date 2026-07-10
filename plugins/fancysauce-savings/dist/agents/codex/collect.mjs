@@ -69,7 +69,7 @@ var init_credential_paths = __esm({
 // node_modules/graceful-fs/polyfills.js
 var require_polyfills = __commonJS({
   "node_modules/graceful-fs/polyfills.js"(exports, module) {
-    var constants = __require("constants");
+    var constants2 = __require("constants");
     var origCwd = process.cwd;
     var cwd = null;
     var platform = process.env.GRACEFUL_FS_PLATFORM || process.platform;
@@ -93,7 +93,7 @@ var require_polyfills = __commonJS({
     var chdir;
     module.exports = patch;
     function patch(fs) {
-      if (constants.hasOwnProperty("O_SYMLINK") && process.version.match(/^v0\.6\.[0-2]|^v0\.5\./)) {
+      if (constants2.hasOwnProperty("O_SYMLINK") && process.version.match(/^v0\.6\.[0-2]|^v0\.5\./)) {
         patchLchmod(fs);
       }
       if (!fs.lutimes) {
@@ -195,7 +195,7 @@ var require_polyfills = __commonJS({
         fs2.lchmod = function(path, mode, callback) {
           fs2.open(
             path,
-            constants.O_WRONLY | constants.O_SYMLINK,
+            constants2.O_WRONLY | constants2.O_SYMLINK,
             mode,
             function(err, fd) {
               if (err) {
@@ -211,7 +211,7 @@ var require_polyfills = __commonJS({
           );
         };
         fs2.lchmodSync = function(path, mode) {
-          var fd = fs2.openSync(path, constants.O_WRONLY | constants.O_SYMLINK, mode);
+          var fd = fs2.openSync(path, constants2.O_WRONLY | constants2.O_SYMLINK, mode);
           var threw = true;
           var ret;
           try {
@@ -231,9 +231,9 @@ var require_polyfills = __commonJS({
         };
       }
       function patchLutimes(fs2) {
-        if (constants.hasOwnProperty("O_SYMLINK") && fs2.futimes) {
+        if (constants2.hasOwnProperty("O_SYMLINK") && fs2.futimes) {
           fs2.lutimes = function(path, at, mt, cb) {
-            fs2.open(path, constants.O_SYMLINK, function(er, fd) {
+            fs2.open(path, constants2.O_SYMLINK, function(er, fd) {
               if (er) {
                 if (cb) cb(er);
                 return;
@@ -246,7 +246,7 @@ var require_polyfills = __commonJS({
             });
           };
           fs2.lutimesSync = function(path, at, mt) {
-            var fd = fs2.openSync(path, constants.O_SYMLINK);
+            var fd = fs2.openSync(path, constants2.O_SYMLINK);
             var ret;
             var threw = true;
             try {
@@ -1651,10 +1651,10 @@ __export(pid_guard_exports, {
   releasePidGuard: () => releasePidGuard
 });
 import { readFile as readFile9, rm as rm2, mkdir as mkdir7, open as open5 } from "node:fs/promises";
-import { join as join12 } from "node:path";
+import { join as join15 } from "node:path";
 async function isBackfillActive(stateDir) {
   try {
-    const raw = await readFile9(join12(stateDir, "backfill.pid"), "utf8");
+    const raw = await readFile9(join15(stateDir, "backfill.pid"), "utf8");
     const pid = Number(raw.trim());
     if (!Number.isFinite(pid) || pid <= 0)
       return null;
@@ -1670,7 +1670,7 @@ async function isBackfillActive(stateDir) {
 }
 async function acquirePidGuard(stateDir) {
   await mkdir7(stateDir, { recursive: true });
-  const path = join12(stateDir, "backfill.pid");
+  const path = join15(stateDir, "backfill.pid");
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
       const fh = await open5(path, "wx", 384);
@@ -1694,7 +1694,7 @@ async function acquirePidGuard(stateDir) {
   return live !== null ? { kind: "already-running", pid: live } : { kind: "already-running", pid: -1 };
 }
 async function releasePidGuard(stateDir) {
-  await rm2(join12(stateDir, "backfill.pid"), { force: true });
+  await rm2(join15(stateDir, "backfill.pid"), { force: true });
 }
 var init_pid_guard = __esm({
   "dist/shared/backfill/pid-guard.mjs"() {
@@ -1739,11 +1739,11 @@ __export(runner_spawn_exports, {
   spawnBackfillRunner: () => spawnBackfillRunner
 });
 import { spawn } from "node:child_process";
-import { join as join13, dirname as dirname4 } from "node:path";
+import { join as join16, dirname as dirname5 } from "node:path";
 import { fileURLToPath as fileURLToPath2 } from "node:url";
 async function spawnBackfillRunner(input) {
-  const here = dirname4(fileURLToPath2(import.meta.url));
-  const binPath = join13(here, "..", "..", "bin", "backfill-runner.mjs");
+  const here = dirname5(fileURLToPath2(import.meta.url));
+  const binPath = join16(here, "..", "..", "bin", "backfill-runner.mjs");
   const args = ["--data-dir", input.dataDir, "--credential-path", input.credentialPath];
   const spawner = input.spawner ?? defaultSpawner;
   try {
@@ -1782,20 +1782,20 @@ __export(status_exports, {
   writeStatus: () => writeStatus
 });
 import { readFile as readFile10, open as open6, rename as rename9, mkdir as mkdir8, unlink as unlink3 } from "node:fs/promises";
-import { join as join14, dirname as dirname5 } from "node:path";
-import { randomBytes as randomBytes2 } from "node:crypto";
+import { join as join17, dirname as dirname6 } from "node:path";
+import { randomBytes as randomBytes4 } from "node:crypto";
 async function readStatus(stateDir) {
   try {
-    const raw = await readFile10(join14(stateDir, "backfill.status"), "utf8");
+    const raw = await readFile10(join17(stateDir, "backfill.status"), "utf8");
     return JSON.parse(raw);
   } catch {
     return null;
   }
 }
 async function writeStatus(stateDir, s) {
-  const path = join14(stateDir, "backfill.status");
-  await mkdir8(dirname5(path), { recursive: true });
-  const tmp = `${path}.${process.pid}.${randomBytes2(4).toString("hex")}.tmp`;
+  const path = join17(stateDir, "backfill.status");
+  await mkdir8(dirname6(path), { recursive: true });
+  const tmp = `${path}.${process.pid}.${randomBytes4(4).toString("hex")}.tmp`;
   let renamed = false;
   try {
     const fh = await open6(tmp, "wx", 384);
@@ -1823,13 +1823,13 @@ var init_status = __esm({
 });
 
 // dist/agents/codex/collect.mjs
-import { readFileSync as readFileSync4 } from "node:fs";
+import { readFileSync as readFileSync7 } from "node:fs";
 
 // dist/shared/run-collect.mjs
-import { readFileSync as readFileSync2 } from "node:fs";
+import { readFileSync as readFileSync5 } from "node:fs";
 import { randomUUID as randomUUID2 } from "node:crypto";
 import { mkdir as mkdir9, writeFile as writeFile7, appendFile as appendFile3, stat as stat3, rm as rm3 } from "node:fs/promises";
-import { join as join15 } from "node:path";
+import { join as join18 } from "node:path";
 
 // dist/shared/config.mjs
 import { join } from "node:path";
@@ -1931,6 +1931,36 @@ function defaultPolicy() {
 
 // dist/shared/credential-file.mjs
 import { mkdir, rename, open, chmod, unlink, readFile, stat } from "node:fs/promises";
+import { dirname } from "node:path";
+import { randomBytes } from "node:crypto";
+async function writeCredential(path, cred) {
+  const parent = dirname(path);
+  await mkdir(parent, { recursive: true, mode: 448 });
+  if (process.platform !== "win32") {
+    await chmod(parent, 448).catch(() => {
+    });
+  }
+  const tmp = `${path}.${process.pid}.${randomBytes(4).toString("hex")}.tmp`;
+  let renamed = false;
+  try {
+    const fh = await open(tmp, "wx", 384);
+    try {
+      await fh.writeFile(JSON.stringify(cred));
+      await fh.sync();
+    } finally {
+      await fh.close();
+    }
+    await rename(tmp, path);
+    renamed = true;
+  } finally {
+    if (!renamed) {
+      try {
+        await unlink(tmp);
+      } catch {
+      }
+    }
+  }
+}
 async function readCredential(paths) {
   const sys = await tryReadOne(paths.system);
   if (sys.kind === "ok")
@@ -1992,7 +2022,7 @@ function validate(v) {
     return hint;
   const endpoint = typeof o.endpoint === "string" && o.endpoint ? o.endpoint : void 0;
   const identity_type = o.identity_type === "full" || o.identity_type === "hash" ? o.identity_type : void 0;
-  const provenance = o.provenance === "marketplace_url" ? "marketplace_url" : void 0;
+  const provenance = o.provenance === "marketplace_url" || o.provenance === "login" || o.provenance === "env_tenant_key" ? o.provenance : void 0;
   return {
     kind: "ok",
     cred: {
@@ -2031,7 +2061,70 @@ function validateIdentityHint(v) {
       }
     };
   }
+  if (o.source === "plugin_login") {
+    const s = (k) => typeof o[k] === "string" && o[k] ? o[k] : void 0;
+    return {
+      kind: "ok",
+      value: {
+        source: "plugin_login",
+        ...s("email") ? { email: s("email") } : {},
+        ...s("account_id") ? { account_id: s("account_id") } : {},
+        ...s("user_id") ? { user_id: s("user_id") } : {},
+        ...s("org_id") ? { org_id: s("org_id") } : {},
+        ...s("org_name") ? { org_name: s("org_name") } : {},
+        ...s("plan") ? { plan: s("plan") } : {}
+      }
+    };
+  }
   return { kind: "bad", reason: `identity_hint.source unknown: ${String(o.source)}` };
+}
+
+// dist/shared/tenant-key-bootstrap.mjs
+var KEY_RE = /^fs_(live|test)_t_[A-Za-z0-9_-]{43}$/;
+function decide(existing, args) {
+  switch (existing.source) {
+    case "absent":
+      return { write: true };
+    case "system":
+      return { write: false, reason: "system (MDM) credential is authoritative" };
+    case "malformed-system":
+      return { write: false, reason: "system credential unreadable; not overwriting" };
+    case "malformed-user":
+      return { write: false, reason: "user credential unreadable; not overwriting" };
+    case "user": {
+      const c = existing.credential;
+      if (c.provenance !== args.ownProvenance) {
+        return { write: false, reason: "user credential not owned by this writer" };
+      }
+      const unchanged = c.credential === args.tenantKey && (c.identity_type ?? void 0) === args.identity;
+      return unchanged ? { write: false, reason: "unchanged" } : { write: true };
+    }
+  }
+}
+async function ensureAmbientTenantCredential(existing, paths, opts = {}) {
+  const env = opts.env ?? process.env;
+  const tenantKey = env.FANCYSAUCE_TENANT_KEY ?? "";
+  if (!KEY_RE.test(tenantKey))
+    return { result: existing, wrote: false };
+  const identity = env.FANCYSAUCE_IDENTITY_TYPE === "full" ? "full" : "hash";
+  const d = decide(existing, { tenantKey, identity, ownProvenance: "env_tenant_key" });
+  if (!d.write)
+    return { result: existing, wrote: false };
+  const cred = {
+    schema_version: 1,
+    issued_at: (opts.now ?? (() => (/* @__PURE__ */ new Date()).toISOString()))(),
+    credential: tenantKey,
+    identity_hint: null,
+    provenance: "env_tenant_key",
+    identity_type: identity
+  };
+  try {
+    await writeCredential(paths.user, cred);
+    return { result: { source: "user", credential: cred }, wrote: true };
+  } catch (err) {
+    (opts.logger ?? ((m) => process.stderr.write(m + "\n")))(`fancysauce: ambient tenant-key write failed: ${err.message}`);
+    return { result: existing, wrote: false, inMemory: cred };
+  }
 }
 
 // dist/shared/config.mjs
@@ -2041,7 +2134,8 @@ var DEFAULT_LOGIN_STATE_DIR = join(homedir2(), ".config", "fancysauce");
 var KNOWN_FANCYSAUCE_VARS = /* @__PURE__ */ new Set([
   "FANCYSAUCE_CREDENTIAL_PATHS",
   "FANCYSAUCE_API_KEY",
-  "FANCYSAUCE_IDENTITY_TYPE"
+  "FANCYSAUCE_IDENTITY_TYPE",
+  "FANCYSAUCE_TENANT_KEY"
 ]);
 function parseCredentialPathsEnv() {
   if (process.env.VITEST !== "true")
@@ -2085,7 +2179,22 @@ async function loadConfig(opts = {}) {
   const endpoint = opts.endpointOverride ?? INGEST_ENDPOINT;
   const loginStateDir = parsed?.login_state_dir ?? DEFAULT_LOGIN_STATE_DIR;
   const paths = opts.paths ?? (parsed ? { system: parsed.system, user: parsed.user } : credentialPaths());
-  const result = await readCredential(paths);
+  const read = await readCredential(paths);
+  const ambient = await ensureAmbientTenantCredential(read, paths);
+  if (ambient.inMemory) {
+    return {
+      credential: ambient.inMemory.credential,
+      endpoint,
+      loginStateDir,
+      policy: defaultPolicy(),
+      identity_type: ambient.inMemory.identity_type ?? "hash",
+      // Degraded fail-open for this single fire: skip the richer identity
+      // resolution the file-backed path performs; the durable write will retry
+      // and enrich on a later fire.
+      identity_hint: null
+    };
+  }
+  const result = ambient.result;
   switch (result.source) {
     case "absent": {
       const apiKey = process.env.FANCYSAUCE_API_KEY;
@@ -2133,7 +2242,7 @@ function defaultUnknownEnvVarHandler(_name, _value) {
 
 // dist/shared/data-dir.mjs
 import { readFileSync } from "node:fs";
-import { basename, join as join2, dirname } from "node:path";
+import { basename, join as join2, dirname as dirname2 } from "node:path";
 import { fileURLToPath } from "node:url";
 import { homedir as homedir3 } from "node:os";
 function resolveDataDir(opts = {}) {
@@ -2158,7 +2267,7 @@ function resolveDataDir(opts = {}) {
   return join2(home, ".claude-plugin-data");
 }
 function defaultPluginRoot() {
-  const here = dirname(fileURLToPath(import.meta.url));
+  const here = dirname2(fileURLToPath(import.meta.url));
   return join2(here, "..", "..", "..");
 }
 function trimTrailingSlash(p) {
@@ -2292,9 +2401,6 @@ init_credential_paths();
 import { createHash, createHmac } from "node:crypto";
 function sha256Hex(input) {
   return createHash("sha256").update(input, "utf8").digest("hex");
-}
-function hmacIdentity(apiKey, value) {
-  return createHmac("sha256", apiKey).update(value.toLowerCase(), "utf8").digest("hex");
 }
 
 // dist/shared/content-filter.mjs
@@ -2435,9 +2541,8 @@ function filterEvent(raw, policy) {
 import { createHash as createHash2, randomUUID } from "node:crypto";
 import { execFile as execFile2 } from "node:child_process";
 import { open as open2, readFile as readFile2, rename as rename2, unlink as unlink2 } from "node:fs/promises";
-import { join as join3 } from "node:path";
-import { randomBytes } from "node:crypto";
-import { userInfo } from "node:os";
+import { join as join6 } from "node:path";
+import { randomBytes as randomBytes3 } from "node:crypto";
 
 // dist/shared/locking.mjs
 var import_proper_lockfile = __toESM(require_proper_lockfile(), 1);
@@ -2509,6 +2614,213 @@ async function readWindowsUpn(deps = {}) {
   }
 }
 
+// dist/shared/secure-envelope.mjs
+import { randomBytes as randomBytes2, createCipheriv, publicEncrypt, constants, createPublicKey } from "node:crypto";
+function seal(plaintext, key) {
+  const aesKey = randomBytes2(32);
+  const iv = randomBytes2(12);
+  const cipher = createCipheriv("aes-256-gcm", aesKey, iv);
+  const body = Buffer.concat([cipher.update(plaintext), cipher.final()]);
+  const tag = cipher.getAuthTag();
+  const ct = Buffer.concat([body, tag]);
+  const ek = publicEncrypt({ key: createPublicKey(key.publicKeyPem), padding: constants.RSA_PKCS1_OAEP_PADDING, oaepHash: "sha256" }, aesKey);
+  return {
+    v: 1,
+    keyid: key.keyid,
+    alg: "RSA-OAEP-256+A256GCM",
+    ek: ek.toString("base64"),
+    iv: iv.toString("base64"),
+    ct: ct.toString("base64")
+  };
+}
+
+// dist/shared/server-key.mjs
+import { readFileSync as readFileSync2 } from "node:fs";
+import { join as join3 } from "node:path";
+var BAKED_SERVER_KEY = {
+  keyid: "env-production-1",
+  alg: "RSA-OAEP-256+A256GCM",
+  publicKeyPem: "-----BEGIN PUBLIC KEY-----\nMIIBojANBgkqhkiG9w0BAQEFAAOCAY8AMIIBigKCAYEA4Dh42p0kvReuiL194qp3\n8j0BSjOmwW9WU9NUUSlBSA1Kn0WPdfMKywsD+DPrlt/KyOKdNLoUXsXrriM212Si\nMgabz4e4pK8ItqgqCg1wPFArY8SEoy8MioMj8iZVz/UPeR3/7Rng8LT50HiaB/kc\nwkBjjLnSU2xYQkKROKMGuTlKDZ4BCpP/uVCFTrZ5BUFEn3r2WyAl3Z6NBjO9hTPB\njKx1AH+CitIZeWVmn39EUwrzUW+LiXbEe1Y+0SXkpTgdqvVMzMjytlEp5Ojisvs1\n/GqoHRoN/NcESILK2s4Rabe3PTquCmZItYbw2sBpFe/6xhHPn/LA2TVjEjx5d+GJ\ndxQnhUWlNPInWul8TCePBAhz6MGThrcVWj6b+V3K4CrjetFIlvF7R2dk/SlWLCUZ\nozfDPZnQfvSZInVSrSRiCqA3OXArmptmFzeZii1RDQsJnNA+Vc2lTvuf2ScepvgG\nWJPZewNj7dknrCLAyj79ZZrQH31cIjgPt3XpT7SHnkaLAgMBAAE=\n-----END PUBLIC KEY-----\n"
+};
+var CACHE_FILE = "server-key.json";
+var DEFAULT_TTL_MS = 24 * 60 * 60 * 1e3;
+function isServerKeyShape(v) {
+  if (typeof v !== "object" || v === null)
+    return false;
+  const o = v;
+  return typeof o.keyid === "string" && !!o.keyid && typeof o.alg === "string" && !!o.alg && typeof o.publicKeyPem === "string" && o.publicKeyPem.includes("BEGIN PUBLIC KEY");
+}
+function loadServerKey(deps) {
+  const ttl = deps.ttlMs ?? DEFAULT_TTL_MS;
+  const read = deps.readFileImpl ?? ((p) => readFileSync2(p, "utf8"));
+  try {
+    const parsed = JSON.parse(read(join3(deps.cacheDir, CACHE_FILE)));
+    if (!isServerKeyShape(parsed) || typeof parsed.fetched_at !== "number")
+      return BAKED_SERVER_KEY;
+    if (deps.now - parsed.fetched_at > ttl)
+      return BAKED_SERVER_KEY;
+    return { keyid: parsed.keyid, alg: parsed.alg, publicKeyPem: parsed.publicKeyPem };
+  } catch {
+    return BAKED_SERVER_KEY;
+  }
+}
+
+// dist/shared/native-identity.mjs
+import { readFileSync as readFileSync3 } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { join as join4 } from "node:path";
+import { homedir as homedir4 } from "node:os";
+var CLI_TIMEOUT_MS = 500;
+function defaultClaudeStatus() {
+  try {
+    return execFileSync("claude", ["auth", "status", "--json"], {
+      timeout: CLI_TIMEOUT_MS,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"]
+    });
+  } catch {
+    return null;
+  }
+}
+function pick(o, k) {
+  const v = o[k];
+  return typeof v === "string" && v.length > 0 ? v : void 0;
+}
+function readNativeIdentity(agent, deps = {}) {
+  const home = deps.home ?? homedir4();
+  const read = deps.readFileImpl ?? ((p) => readFileSync3(p, "utf8"));
+  return agent === "claude-code" ? readClaude(home, read, deps.claudeStatus ?? defaultClaudeStatus) : readCodex(home, read);
+}
+function readClaude(home, read, status) {
+  try {
+    const parsed = JSON.parse(read(join4(home, ".claude.json")));
+    const oa = parsed.oauthAccount;
+    if (oa && typeof oa === "object") {
+      const email = pick(oa, "emailAddress");
+      const account_id = pick(oa, "accountUuid");
+      if (email || account_id) {
+        return {
+          source: "native_claude",
+          ...email ? { email } : {},
+          ...account_id ? { account_id } : {},
+          ...pick(oa, "organizationUuid") ? { org_id: pick(oa, "organizationUuid") } : {},
+          ...pick(oa, "organizationName") ? { org_name: pick(oa, "organizationName") } : {},
+          ...pick(oa, "organizationType") ? { plan: pick(oa, "organizationType") } : {}
+        };
+      }
+    }
+  } catch {
+  }
+  const raw = status();
+  if (!raw)
+    return null;
+  try {
+    const s = JSON.parse(raw);
+    if (s.apiProvider !== "firstParty")
+      return null;
+    const email = pick(s, "email");
+    const org_id = pick(s, "orgId");
+    if (!email && !org_id)
+      return null;
+    return {
+      source: "native_claude",
+      ...email ? { email } : {},
+      ...org_id ? { org_id } : {},
+      ...pick(s, "orgName") ? { org_name: pick(s, "orgName") } : {},
+      ...pick(s, "subscriptionType") ? { plan: pick(s, "subscriptionType") } : {}
+    };
+  } catch {
+    return null;
+  }
+}
+function readCodex(home, read) {
+  let auth;
+  try {
+    auth = JSON.parse(read(join4(home, ".codex", "auth.json")));
+  } catch {
+    return null;
+  }
+  const tokens = typeof auth === "object" && auth !== null ? auth.tokens : void 0;
+  const idToken = tokens?.id_token;
+  if (typeof idToken !== "string")
+    return null;
+  const payload = decodeJwtPayload(idToken);
+  if (!payload)
+    return null;
+  const claims = payload["https://api.openai.com/auth"];
+  const au = typeof claims === "object" && claims !== null ? claims : {};
+  const orgs = Array.isArray(au["organizations"]) ? au["organizations"] : [];
+  const org0 = orgs[0] ?? {};
+  const email = pick(payload, "email");
+  const user_id = pick(au, "chatgpt_user_id");
+  const account_id = pick(au, "chatgpt_account_id");
+  const plan = pick(au, "chatgpt_plan_type");
+  const org_id = pick(org0, "id");
+  const org_name = pick(org0, "title");
+  if (!email && !account_id && !pick(payload, "sub"))
+    return null;
+  return {
+    source: "native_codex",
+    ...email ? { email } : {},
+    ...account_id ? { account_id } : {},
+    ...user_id ? { user_id } : {},
+    ...org_id ? { org_id } : {},
+    ...org_name ? { org_name } : {},
+    ...plan ? { plan } : {}
+  };
+}
+function decodeJwtPayload(token) {
+  const parts = token.split(".");
+  if (parts.length !== 3)
+    return null;
+  try {
+    const json = Buffer.from(parts[1], "base64url").toString("utf8");
+    const obj = JSON.parse(json);
+    return typeof obj === "object" && obj !== null ? obj : null;
+  } catch {
+    return null;
+  }
+}
+
+// dist/shared/identity-cache.mjs
+import { readFileSync as readFileSync4, writeFileSync } from "node:fs";
+import { join as join5 } from "node:path";
+var CACHE_FILE2 = "identity-cache.json";
+var DEFAULT_TTL_MS2 = 12 * 60 * 60 * 1e3;
+function readIdentityCache(deps) {
+  const ttl = deps.ttlMs ?? DEFAULT_TTL_MS2;
+  const read = deps.readFileImpl ?? ((p) => readFileSync4(p, "utf8"));
+  try {
+    const parsed = JSON.parse(read(join5(deps.dir, CACHE_FILE2)));
+    if (typeof parsed !== "object" || parsed === null)
+      return { fresh: false };
+    const entry = parsed;
+    if (typeof entry.fetched_at !== "number")
+      return { fresh: false };
+    if (deps.now - entry.fetched_at > ttl)
+      return { fresh: false };
+    const identity = entry.identity;
+    if (identity === null || identity === void 0)
+      return { fresh: true, identity: null };
+    if (typeof identity !== "object")
+      return { fresh: false };
+    const source = identity.source;
+    if (source !== "native_claude" && source !== "native_codex")
+      return { fresh: false };
+    return { fresh: true, identity };
+  } catch {
+    return { fresh: false };
+  }
+}
+function writeIdentityCache(deps) {
+  const write = deps.writeFileImpl ?? ((p, data) => writeFileSync(p, data, { mode: 384 }));
+  try {
+    const entry = { identity: deps.identity, fetched_at: deps.now };
+    write(join5(deps.dir, CACHE_FILE2), JSON.stringify(entry));
+  } catch {
+  }
+}
+
 // dist/shared/identity-resolver.mjs
 var TENANT_KEY_PREFIXES = ["fs_live_t_", "fs_test_t_"];
 function isTenantKey(credential) {
@@ -2521,7 +2833,7 @@ var IdentityResolver = class {
   git;
   constructor(dir, git = defaultGitAccess()) {
     this.dir = dir;
-    this.installPath = join3(dir, "install.json");
+    this.installPath = join6(dir, "install.json");
     this.git = git;
   }
   async resolve(cwd, opts) {
@@ -2532,46 +2844,20 @@ var IdentityResolver = class {
       return base;
     if (!isTenantKey(opts.credential))
       return base;
-    const sources = opts.identitySources ?? {
-      dsclEmail: () => readMacOsDsclEmail(),
-      winUpn: () => readWindowsUpn(),
-      gitEmail: () => readGitConfigEmail()
-    };
-    const osUsername = (opts.osUsername ?? (() => userInfo().username))();
-    let email;
-    let identitySource;
-    if (opts.identity_hint?.source === "mdm_file" && opts.identity_hint.user_email) {
-      email = opts.identity_hint.user_email;
-      identitySource = "mdm_file";
-    } else {
-      const dscl = await sources.dsclEmail?.();
-      if (dscl) {
-        email = dscl;
-        identitySource = "dscl";
-      } else {
-        const upn = await sources.winUpn?.();
-        if (upn) {
-          email = upn;
-          identitySource = "whoami_upn";
-        } else {
-          const git = await sources.gitEmail?.();
-          if (git) {
-            email = git;
-            identitySource = "git_config";
-          }
+    const record = await resolveIdentityRecord(this.dir, opts);
+    const result = { ...base };
+    if (record) {
+      result.identity_source = record.source;
+    }
+    if (record && opts.identity_type === "full") {
+      const key = (opts.serverKeyLoader ?? (() => loadServerKey({ cacheDir: this.dir, now: opts.now ?? Date.now() })))();
+      if (key.publicKeyPem.includes("BEGIN PUBLIC KEY")) {
+        try {
+          const sealer = opts.sealer ?? seal;
+          const plaintext = Buffer.from(JSON.stringify({ v: 1, agent: opts.agent, ...record }), "utf8");
+          result.secure_envelope = JSON.stringify(sealer(plaintext, { keyid: key.keyid, publicKeyPem: key.publicKeyPem }));
+        } catch {
         }
-      }
-    }
-    const result = { ...base, handle_os: hmacIdentity(opts.credential, osUsername) };
-    if (email) {
-      result.handle_email = hmacIdentity(opts.credential, email);
-      result.identity_source = identitySource;
-    }
-    if (opts.identity_type === "full") {
-      if (email)
-        result.email = email;
-      if (opts.identity_hint?.source === "mdm_file" && opts.identity_hint.user_upn) {
-        result.upn = opts.identity_hint.user_upn;
       }
     }
     return result;
@@ -2613,7 +2899,7 @@ async function readInstallId(path) {
   return typeof id === "string" && id.length > 0 ? id : null;
 }
 async function writeInstallFile(path, body) {
-  const tmp = `${path}.${process.pid}.${randomBytes(4).toString("hex")}.tmp`;
+  const tmp = `${path}.${process.pid}.${randomBytes3(4).toString("hex")}.tmp`;
   let renamed = false;
   try {
     const fh = await open2(tmp, "wx", 384);
@@ -2642,17 +2928,60 @@ function toResourceAttributes(id, opts) {
     "fancysauce.install_id": id.install_id,
     "fancysauce.agent": opts.agent
   };
-  if (id.handle_email)
-    attrs["fancysauce.user.handle_email"] = id.handle_email;
-  if (id.handle_os)
-    attrs["fancysauce.user.handle_os"] = id.handle_os;
   if (id.identity_source)
     attrs["fancysauce.user.identity_source"] = id.identity_source;
-  if (id.email)
-    attrs["fancysauce.user.email"] = id.email;
-  if (id.upn)
-    attrs["fancysauce.user.upn"] = id.upn;
+  if (id.secure_envelope)
+    attrs["fancysauce.secure_envelope"] = id.secure_envelope;
   return attrs;
+}
+async function resolveIdentityRecord(dir, opts) {
+  const hint = opts.identity_hint;
+  if (hint?.source === "mdm_file" && (hint.user_email || hint.user_upn)) {
+    return {
+      source: "mdm_file",
+      ...hint.user_email ? { email: hint.user_email } : {},
+      ...hint.user_upn ? { upn: hint.user_upn } : {}
+    };
+  }
+  if (hint?.source === "plugin_login" && (hint.email || hint.account_id || hint.user_id || hint.org_id || hint.org_name || hint.plan)) {
+    return {
+      source: "plugin_login",
+      ...hint.email ? { email: hint.email } : {},
+      ...hint.account_id ? { account_id: hint.account_id } : {},
+      ...hint.user_id ? { user_id: hint.user_id } : {},
+      ...hint.org_id ? { org_id: hint.org_id } : {},
+      ...hint.org_name ? { org_name: hint.org_name } : {},
+      ...hint.plan ? { plan: hint.plan } : {}
+    };
+  }
+  const now = opts.now ?? Date.now();
+  const hit = readIdentityCache({ dir, now });
+  let native;
+  if (hit.fresh) {
+    native = hit.identity;
+  } else {
+    native = (opts.nativeReader ?? readNativeIdentity)(opts.agent);
+    writeIdentityCache({ dir, now, identity: native });
+  }
+  if (native) {
+    const { source, ...rest } = native;
+    return { source, ...rest };
+  }
+  const sources = opts.identitySources ?? {
+    dsclEmail: () => readMacOsDsclEmail(),
+    winUpn: () => readWindowsUpn(),
+    gitEmail: () => readGitConfigEmail()
+  };
+  const dscl = await sources.dsclEmail?.();
+  if (dscl)
+    return { source: "dscl", email: dscl };
+  const upn = await sources.winUpn?.();
+  if (upn)
+    return { source: "whoami_upn", upn, email: upn };
+  const git = await sources.gitEmail?.();
+  if (git)
+    return { source: "git_config", email: git };
+  return null;
 }
 function defaultGitAccess() {
   return {
@@ -2672,14 +3001,14 @@ function gitRead(args) {
 
 // dist/shared/queue.mjs
 import { open as open3, stat as stat2 } from "node:fs/promises";
-import { join as join4 } from "node:path";
+import { join as join7 } from "node:path";
 var Queue = class {
   dir;
   path;
   capBytes;
   constructor(dir, capBytes) {
     this.dir = dir;
-    this.path = join4(dir, "queue.ndjson");
+    this.path = join7(dir, "queue.ndjson");
     this.capBytes = capBytes;
   }
   async size() {
@@ -2723,7 +3052,7 @@ var Queue = class {
 // dist/shared/health.mjs
 var import_proper_lockfile2 = __toESM(require_proper_lockfile(), 1);
 import { mkdir as mkdir3, readFile as readFile3, rename as rename3, writeFile } from "node:fs/promises";
-import { join as join5 } from "node:path";
+import { join as join8 } from "node:path";
 var DEFAULT = { dropped_event_count: 0 };
 var LOCK_RETRIES = {
   retries: 100,
@@ -2737,7 +3066,7 @@ var HealthState = class {
   tmp;
   constructor(dir) {
     this.dir = dir;
-    this.path = join5(dir, "health.json");
+    this.path = join8(dir, "health.json");
     this.tmp = `${this.path}.tmp`;
   }
   async read() {
@@ -2788,18 +3117,18 @@ var HealthState = class {
 // dist/shared/flusher.mjs
 var import_proper_lockfile3 = __toESM(require_proper_lockfile(), 1);
 import { appendFile, open as open4, readFile as readFile6, rename as rename6, writeFile as writeFile4 } from "node:fs/promises";
-import { join as join8 } from "node:path";
+import { join as join11 } from "node:path";
 
 // dist/shared/flush-cursor.mjs
 import { readFile as readFile4, rename as rename4, writeFile as writeFile2 } from "node:fs/promises";
-import { join as join6 } from "node:path";
+import { join as join9 } from "node:path";
 var FlushCursor = class {
   dir;
   path;
   tmpPath;
   constructor(dir) {
     this.dir = dir;
-    this.path = join6(dir, "flush_cursor.json");
+    this.path = join9(dir, "flush_cursor.json");
     this.tmpPath = `${this.path}.tmp`;
   }
   async read() {
@@ -2837,7 +3166,7 @@ var FlushCursor = class {
 
 // dist/shared/backoff-state.mjs
 import { mkdir as mkdir4, readFile as readFile5, rename as rename5, writeFile as writeFile3 } from "node:fs/promises";
-import { join as join7 } from "node:path";
+import { join as join10 } from "node:path";
 var DEFAULT2 = {
   consecutiveAuthFailures: 0,
   transientAttempts: 0
@@ -2850,7 +3179,7 @@ var BackoffState = class {
   tmpPath;
   constructor(dir) {
     this.dir = dir;
-    this.path = join7(dir, "backoff.json");
+    this.path = join10(dir, "backoff.json");
     this.tmpPath = `${this.path}.tmp`;
   }
   async read() {
@@ -3180,11 +3509,8 @@ function encodeResourceAttributes(r) {
     "fancysauce.schema_version",
     "fancysauce.install_id",
     "fancysauce.agent",
-    "fancysauce.user.handle_email",
-    "fancysauce.user.handle_os",
     "fancysauce.user.identity_source",
-    "fancysauce.user.email",
-    "fancysauce.user.upn"
+    "fancysauce.secure_envelope"
   ];
   for (const key of order) {
     const v = r[key];
@@ -3254,8 +3580,8 @@ var COMPACT_THRESHOLD_BYTES = 1e6;
 async function tryFlush(input) {
   const start = Date.now();
   const deadline = start + input.budgetMs;
-  const queuePath = join8(input.dataDir, "queue.ndjson");
-  const flushLockPath = join8(input.dataDir, ".flush.lock");
+  const queuePath = join11(input.dataDir, "queue.ndjson");
+  const flushLockPath = join11(input.dataDir, ".flush.lock");
   const backoff = new BackoffState(input.dataDir);
   const cursor = new FlushCursor(input.dataDir);
   const health = new HealthState(input.stateDir);
@@ -3283,7 +3609,7 @@ async function tryFlush(input) {
     let startOffset = await cursor.read();
     let batch = await readBatch(queuePath, startOffset, input.batchMaxEvents ?? DEFAULT_MAX_EVENTS, input.batchMaxBytes ?? DEFAULT_MAX_BYTES);
     if (batch.events.length === 0 && batch.cursorPastEof) {
-      await appendFile(join8(input.dataDir, "collect-error.log"), `${(/* @__PURE__ */ new Date()).toISOString()} fancysauce: flush cursor (${startOffset}) past queue EOF (${batch.queueSize}); resetting (at-least-once dedup applies)
+      await appendFile(join11(input.dataDir, "collect-error.log"), `${(/* @__PURE__ */ new Date()).toISOString()} fancysauce: flush cursor (${startOffset}) past queue EOF (${batch.queueSize}); resetting (at-least-once dedup applies)
 `).catch(() => {
       });
       await cursor.resetUnlocked();
@@ -3301,7 +3627,7 @@ async function tryFlush(input) {
     try {
       envelope = encodeOtlp(events, input.resource);
     } catch (err) {
-      await appendFile(join8(input.dataDir, "collect-error.log"), `${(/* @__PURE__ */ new Date()).toISOString()} fancysauce: encoder rejected batch of ${events.length} events (cursor ${startOffset}\u2192${endOffset}); dropping: ${err.message}
+      await appendFile(join11(input.dataDir, "collect-error.log"), `${(/* @__PURE__ */ new Date()).toISOString()} fancysauce: encoder rejected batch of ${events.length} events (cursor ${startOffset}\u2192${endOffset}); dropping: ${err.message}
 `).catch(() => {
       });
       await cursor.advance(endOffset);
@@ -3462,7 +3788,7 @@ async function logRebind(dataDir2, rebind) {
   const truncated = body.length > REBIND_LOG_BODY_BUDGET ? `${body.slice(0, REBIND_LOG_BODY_BUDGET)}...[truncated ${body.length - REBIND_LOG_BODY_BUDGET}B]` : body;
   const line = `${(/* @__PURE__ */ new Date()).toISOString()} fancysauce: rebind directive received and ignored (v0.5.0 closed-schema): ${truncated}
 `;
-  await appendFile(join8(dataDir2, "collect-error.log"), line).catch(() => {
+  await appendFile(join11(dataDir2, "collect-error.log"), line).catch(() => {
   });
 }
 async function dropQueue(dataDir2, queuePath, cursor) {
@@ -3523,12 +3849,12 @@ function defaultOnError(_name, _err) {
 
 // dist/shared/sinks/event-log.mjs
 import { appendFile as appendFile2 } from "node:fs/promises";
-import { join as join9 } from "node:path";
+import { join as join12 } from "node:path";
 function eventLogSink() {
   return {
     name: "event-log",
     async onEvents(events, ctx) {
-      const path = join9(ctx.sessionDir, "events.v1.jsonl");
+      const path = join12(ctx.sessionDir, "events.v1.jsonl");
       const body = events.map(serialize).join("\n") + "\n";
       await appendFile2(path, body, { encoding: "utf8", mode: 384 });
     }
@@ -3548,7 +3874,7 @@ function serialize(e) {
 
 // dist/shared/sinks/summary-updater.mjs
 import { readFile as readFile7, writeFile as writeFile5, rename as rename7, mkdir as mkdir5 } from "node:fs/promises";
-import { join as join10, dirname as dirname2 } from "node:path";
+import { join as join13, dirname as dirname3 } from "node:path";
 
 // dist/shared/sinks/coalescers.mjs
 function initialSummary(sessionId, startTs, version) {
@@ -3712,7 +4038,7 @@ function summaryUpdaterSink(opts) {
   return {
     name: "summary-updater",
     async onEvents(events, ctx) {
-      const path = join10(ctx.sessionDir, "summary.json");
+      const path = join13(ctx.sessionDir, "summary.json");
       await withDirLock(ctx.sessionDir, async () => {
         let summary;
         try {
@@ -3726,7 +4052,7 @@ function summaryUpdaterSink(opts) {
         }
         for (const e of events)
           summary = applyEvent(summary, e);
-        await mkdir5(dirname2(path), { recursive: true, mode: 448 });
+        await mkdir5(dirname3(path), { recursive: true, mode: 448 });
         const tmp = `${path}.${process.pid}.${Math.random().toString(36).slice(2, 10)}.tmp`;
         await writeFile5(tmp, JSON.stringify(summary), { encoding: "utf8", mode: 384 });
         await rename7(tmp, path);
@@ -3737,7 +4063,7 @@ function summaryUpdaterSink(opts) {
 
 // dist/shared/sinks/session-index.mjs
 import { readFile as readFile8, writeFile as writeFile6, rename as rename8, mkdir as mkdir6, rm } from "node:fs/promises";
-import { join as join11, dirname as dirname3 } from "node:path";
+import { join as join14, dirname as dirname4 } from "node:path";
 
 // dist/shared/session-id.mjs
 var SESSION_ID_RE = /^[A-Za-z0-9_-]{1,128}$/;
@@ -3758,7 +4084,7 @@ function sessionIndexSink(opts = {}) {
       if (relevant.length === 0)
         return;
       await withDirLock(ctx.dataDir, async () => {
-        const indexPath = join11(ctx.dataDir, "session-index.json");
+        const indexPath = join14(ctx.dataDir, "session-index.json");
         let idx;
         try {
           idx = JSON.parse(await readFile8(indexPath, "utf8"));
@@ -3767,7 +4093,7 @@ function sessionIndexSink(opts = {}) {
             throw err;
           idx = { schema_version: 1, updated_ts: (/* @__PURE__ */ new Date()).toISOString(), sessions: [] };
         }
-        const summaryPath = join11(ctx.sessionDir, "summary.json");
+        const summaryPath = join14(ctx.sessionDir, "summary.json");
         let summary = null;
         try {
           summary = JSON.parse(await readFile8(summaryPath, "utf8"));
@@ -3820,10 +4146,10 @@ function sessionIndexSink(opts = {}) {
         for (const s of expired) {
           if (!isValidSessionId(s.session_id))
             continue;
-          await rm(join11(ctx.dataDir, "sessions", s.session_id), { recursive: true, force: true });
+          await rm(join14(ctx.dataDir, "sessions", s.session_id), { recursive: true, force: true });
         }
         idx.updated_ts = (/* @__PURE__ */ new Date()).toISOString();
-        await mkdir6(dirname3(indexPath), { recursive: true, mode: 448 });
+        await mkdir6(dirname4(indexPath), { recursive: true, mode: 448 });
         const tmp = `${indexPath}.${process.pid}.${Math.random().toString(36).slice(2, 10)}.tmp`;
         await writeFile6(tmp, JSON.stringify(idx), { encoding: "utf8", mode: 384 });
         await rename8(tmp, indexPath);
@@ -3842,12 +4168,12 @@ var QUEUE_CAP_BYTES = 100 * 1024 * 1024;
 function pluginVersion() {
   try {
     const candidatePaths = [
-      join15(import.meta.dirname, "../../../package.json"),
-      join15(process.cwd(), "package.json")
+      join18(import.meta.dirname, "../../../package.json"),
+      join18(process.cwd(), "package.json")
     ];
     for (const p of candidatePaths) {
       try {
-        const pkg = JSON.parse(readFileSync2(p, "utf8"));
+        const pkg = JSON.parse(readFileSync5(p, "utf8"));
         if (pkg.version)
           return pkg.version;
       } catch {
@@ -3899,7 +4225,8 @@ async function runCollect(adapter, opts) {
     const identity = await new IdentityResolver(root).resolve(hookPayload.cwd ?? process.cwd(), {
       credential: config.credential,
       identity_type: config.identity_type ?? "hash",
-      identity_hint: config.identity_hint ?? null
+      identity_hint: config.identity_hint ?? null,
+      agent: adapter.agent
     });
     const resource = toResourceAttributes(identity, {
       pluginVersion: pluginVersion(),
@@ -3910,14 +4237,14 @@ async function runCollect(adapter, opts) {
     const stamped = enrichedRaw && enrichedRaw.event_type === "session.start" && identity.repo_url_hash ? { ...enrichedRaw, attributes: { ...enrichedRaw.attributes, "fancysauce.repo_url_hash": identity.repo_url_hash } } : enrichedRaw;
     const withId = stamped === null ? null : { ...stamped, event_uuid: randomUUID2() };
     const primary = withId === null ? null : filterEvent(withId, config.policy);
-    const outboundDir = join15(root, "outbound");
+    const outboundDir = join18(root, "outbound");
     await mkdir9(outboundDir, { recursive: true, mode: 448 });
     const queue = new Queue(outboundDir, QUEUE_CAP_BYTES);
     let queueDropped = 0;
     let tailFilterDropped = 0;
     const ctx = {
-      stateDir: join15(root, "state"),
-      errorLogPath: join15(root, "collect-error.log"),
+      stateDir: join18(root, "state"),
+      errorLogPath: join18(root, "collect-error.log"),
       transcriptRoot: opts.transcriptRoot
     };
     await adapter.tailTranscript(hookPayload, ctx, async (tailEvents) => {
@@ -3934,7 +4261,7 @@ async function runCollect(adapter, opts) {
         return;
       const result = await queue.append(all.map(serializeForQueue));
       queueDropped = result.dropped;
-      const sessionDir = join15(root, "sessions", hookPayload.session_id);
+      const sessionDir = join18(root, "sessions", hookPayload.session_id);
       await mkdir9(sessionDir, { recursive: true, mode: 448 });
       const sinks = [
         eventLogSink(),
@@ -3948,14 +4275,14 @@ async function runCollect(adapter, opts) {
       }, async (name, err) => {
         const msg = err instanceof Error ? err.stack ?? err.message : String(err);
         try {
-          await appendFile3(join15(root, "collect-error.log"), `${(/* @__PURE__ */ new Date()).toISOString()} sink ${name}: ${msg}
+          await appendFile3(join18(root, "collect-error.log"), `${(/* @__PURE__ */ new Date()).toISOString()} sink ${name}: ${msg}
 `);
         } catch {
         }
       });
     });
     const primaryFilterDropped = stamped !== null && primary === null ? 1 : 0;
-    const health = new HealthState(join15(root, "state"));
+    const health = new HealthState(join18(root, "state"));
     await health.touch();
     const dropped = queueDropped + tailFilterDropped + primaryFilterDropped;
     if (dropped > 0)
@@ -3964,7 +4291,7 @@ async function runCollect(adapter, opts) {
     if (remaining > 300) {
       await tryFlush({
         dataDir: outboundDir,
-        stateDir: join15(root, "state"),
+        stateDir: join18(root, "state"),
         credential: config.credential,
         endpoint: config.endpoint,
         resource,
@@ -3972,8 +4299,8 @@ async function runCollect(adapter, opts) {
       });
     }
     try {
-      const stateDir = join15(root, "state");
-      const pendingPath = join15(config.loginStateDir, "backfill-pending");
+      const stateDir = join18(root, "state");
+      const pendingPath = join18(config.loginStateDir, "backfill-pending");
       const pendingExists = await stat3(pendingPath).then(() => true).catch(() => false);
       if (pendingExists) {
         const { isBackfillActive: isBackfillActive2 } = await Promise.resolve().then(() => (init_pid_guard(), pid_guard_exports));
@@ -3989,7 +4316,7 @@ async function runCollect(adapter, opts) {
     } catch {
     }
     try {
-      const stateDir = join15(root, "state");
+      const stateDir = join18(root, "state");
       const { readStatus: readStatus2, writeStatus: writeStatus2 } = await Promise.resolve().then(() => (init_status(), status_exports));
       const status = await readStatus2(stateDir);
       if (status && status.phase === "completed" && !status.notified) {
@@ -4003,7 +4330,7 @@ async function runCollect(adapter, opts) {
     const msg = err instanceof Error ? `${err.message}
 ${err.stack ?? ""}` : String(err);
     try {
-      const logPath = join15(dataDir(), "collect-error.log");
+      const logPath = join18(dataDir(), "collect-error.log");
       await writeFile7(logPath, `${(/* @__PURE__ */ new Date()).toISOString()} ${msg}
 `, { flag: "a" });
     } catch {
@@ -4104,7 +4431,7 @@ function mapHookToEvent(input, sequence) {
 // dist/agents/codex/rollout-tail.mjs
 var import_proper_lockfile4 = __toESM(require_proper_lockfile(), 1);
 import { mkdir as mkdir10, readFile as readFile11, writeFile as writeFile8, rename as rename10, appendFile as appendFile4 } from "node:fs/promises";
-import { join as join16 } from "node:path";
+import { join as join19 } from "node:path";
 import { createHash as createHash4 } from "node:crypto";
 
 // dist/shared/tail-engine.mjs
@@ -4146,9 +4473,9 @@ async function readWindow(opts) {
 }
 
 // dist/agents/codex/cost.mjs
-import { readFileSync as readFileSync3 } from "node:fs";
+import { readFileSync as readFileSync6 } from "node:fs";
 import { fileURLToPath as fileURLToPath3 } from "node:url";
-var TABLE = JSON.parse(readFileSync3(fileURLToPath3(new URL("./pricing.json", import.meta.url)), "utf8"));
+var TABLE = JSON.parse(readFileSync6(fileURLToPath3(new URL("./pricing.json", import.meta.url)), "utf8"));
 function computeCostUsd(model, t) {
   const r = TABLE[model];
   if (!r)
@@ -4229,15 +4556,15 @@ async function tailCodexRollout(input, ctx, sink) {
     await sink([]);
     return;
   }
-  const cursorDir = join16(ctx.stateDir, "sessions", sessionId, "codex");
+  const cursorDir = join19(ctx.stateDir, "sessions", sessionId, "codex");
   await mkdir10(cursorDir, { recursive: true });
   const sources = [
-    { path: input.transcript_path, cursorPath: join16(cursorDir, "rollout_cursor.json") }
+    { path: input.transcript_path, cursorPath: join19(cursorDir, "rollout_cursor.json") }
   ];
   if (input.agent_transcript_path && input.agent_id) {
     sources.push({
       path: input.agent_transcript_path,
-      cursorPath: join16(cursorDir, `subagent-${cursorKey(input.agent_id)}.json`),
+      cursorPath: join19(cursorDir, `subagent-${cursorKey(input.agent_id)}.json`),
       stamp: { subsession_id: input.agent_id, agent_type: input.agent_type }
     });
   }
@@ -4380,7 +4707,7 @@ async function runCollectOnce(opts) {
 }
 function readStdin() {
   try {
-    const buf = readFileSync4(0, "utf8");
+    const buf = readFileSync7(0, "utf8");
     return JSON.parse(buf);
   } catch {
     return null;

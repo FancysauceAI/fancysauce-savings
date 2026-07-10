@@ -116,7 +116,7 @@ function validate(v) {
     return hint;
   const endpoint = typeof o.endpoint === "string" && o.endpoint ? o.endpoint : void 0;
   const identity_type = o.identity_type === "full" || o.identity_type === "hash" ? o.identity_type : void 0;
-  const provenance = o.provenance === "marketplace_url" ? "marketplace_url" : void 0;
+  const provenance = o.provenance === "marketplace_url" || o.provenance === "login" || o.provenance === "env_tenant_key" ? o.provenance : void 0;
   return {
     kind: "ok",
     cred: {
@@ -155,7 +155,50 @@ function validateIdentityHint(v) {
       }
     };
   }
+  if (o.source === "plugin_login") {
+    const s = (k) => typeof o[k] === "string" && o[k] ? o[k] : void 0;
+    return {
+      kind: "ok",
+      value: {
+        source: "plugin_login",
+        ...s("email") ? { email: s("email") } : {},
+        ...s("account_id") ? { account_id: s("account_id") } : {},
+        ...s("user_id") ? { user_id: s("user_id") } : {},
+        ...s("org_id") ? { org_id: s("org_id") } : {},
+        ...s("org_name") ? { org_name: s("org_name") } : {},
+        ...s("plan") ? { plan: s("plan") } : {}
+      }
+    };
+  }
   return { kind: "bad", reason: `identity_hint.source unknown: ${String(o.source)}` };
+}
+
+// dist/shared/tenant-key-bootstrap.mjs
+var KEY_RE = /^fs_(live|test)_t_[A-Za-z0-9_-]{43}$/;
+function parseIdentity(argv) {
+  const i = argv.indexOf("--identity");
+  const v = i >= 0 && i + 1 < argv.length ? argv[i + 1] : void 0;
+  return v === "full" ? "full" : v === "hash" ? "hash" : void 0;
+}
+function decide(existing, args) {
+  switch (existing.source) {
+    case "absent":
+      return { write: true };
+    case "system":
+      return { write: false, reason: "system (MDM) credential is authoritative" };
+    case "malformed-system":
+      return { write: false, reason: "system credential unreadable; not overwriting" };
+    case "malformed-user":
+      return { write: false, reason: "user credential unreadable; not overwriting" };
+    case "user": {
+      const c = existing.credential;
+      if (c.provenance !== args.ownProvenance) {
+        return { write: false, reason: "user credential not owned by this writer" };
+      }
+      const unchanged = c.credential === args.tenantKey && (c.identity_type ?? void 0) === args.identity;
+      return unchanged ? { write: false, reason: "unchanged" } : { write: true };
+    }
+  }
 }
 
 // dist/shared/config.mjs
@@ -187,39 +230,13 @@ function parseCredentialPathsEnv() {
 }
 
 // dist/shared/bin/bootstrap-credential.mjs
-var KEY_RE = /^fs_(live|test)_t_[A-Za-z0-9_-]{43}$/;
-function parseIdentity(argv) {
-  const i = argv.indexOf("--identity");
-  const v = i >= 0 && i + 1 < argv.length ? argv[i + 1] : void 0;
-  return v === "full" ? "full" : v === "hash" ? "hash" : void 0;
-}
-function decide(existing, args) {
-  switch (existing.source) {
-    case "absent":
-      return { write: true };
-    case "system":
-      return { write: false, reason: "system (MDM) credential is authoritative" };
-    case "malformed-system":
-      return { write: false, reason: "system credential unreadable; not overwriting" };
-    case "malformed-user":
-      return { write: false, reason: "user credential unreadable; not overwriting" };
-    case "user": {
-      const c = existing.credential;
-      if (c.provenance !== "marketplace_url") {
-        return { write: false, reason: "user credential not marketplace-planted" };
-      }
-      const unchanged = c.credential === args.tenantKey && (c.identity_type ?? void 0) === args.identity;
-      return unchanged ? { write: false, reason: "unchanged" } : { write: true };
-    }
-  }
-}
 async function main(argv = process.argv.slice(2), now = () => (/* @__PURE__ */ new Date()).toISOString()) {
   const tenantKey = process.env.FANCYSAUCE_TENANT_KEY ?? "";
   if (!KEY_RE.test(tenantKey)) {
     process.stderr.write("bootstrap-credential: missing or malformed FANCYSAUCE_TENANT_KEY\n");
     return 2;
   }
-  const args = { tenantKey, identity: parseIdentity(argv) };
+  const args = { tenantKey, identity: parseIdentity(argv), ownProvenance: "marketplace_url" };
   const envPaths = parseCredentialPathsEnv();
   const paths = envPaths ? { system: envPaths.system, user: envPaths.user } : credentialPaths();
   const existing = await readCredential(paths);

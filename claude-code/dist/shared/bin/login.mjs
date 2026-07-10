@@ -60,6 +60,18 @@ async function startLoopback(opts) {
     const state = url.searchParams.get("state") ?? "";
     const credential = url.searchParams.get("credential") ?? "";
     const intent = url.searchParams.get("backfill_intent") ?? "unspecified";
+    const idParam = (k) => {
+      const v = url.searchParams.get(k);
+      return v && v.length > 0 ? v : void 0;
+    };
+    const identity = {
+      ...idParam("email") ? { email: idParam("email") } : {},
+      ...idParam("account_id") ? { account_id: idParam("account_id") } : {},
+      ...idParam("user_id") ? { user_id: idParam("user_id") } : {},
+      ...idParam("org_id") ? { org_id: idParam("org_id") } : {},
+      ...idParam("org_name") ? { org_name: idParam("org_name") } : {},
+      ...idParam("plan") ? { plan: idParam("plan") } : {}
+    };
     if (!verifyState(opts.state, state)) {
       res.writeHead(400, {
         "Content-Type": "text/html; charset=utf-8",
@@ -81,7 +93,8 @@ async function startLoopback(opts) {
     resolve({
       kind: "ok",
       credential,
-      backfill_intent: ["accepted", "unspecified", "declined"].includes(intent) ? intent : "unspecified"
+      backfill_intent: ["accepted", "unspecified", "declined"].includes(intent) ? intent : "unspecified",
+      ...Object.keys(identity).length ? { identity } : {}
     });
   });
   await new Promise((res) => server.listen(0, "127.0.0.1", () => res()));
@@ -167,6 +180,123 @@ async function writeCredential(path, cred) {
     }
   }
 }
+async function readCredential(paths) {
+  const sys = await tryReadOne(paths.system);
+  if (sys.kind === "ok")
+    return { source: "system", credential: sys.cred };
+  if (sys.kind === "malformed")
+    return { source: "malformed-system", credential: null, reason: sys.reason };
+  const usr = await tryReadOne(paths.user);
+  if (usr.kind === "ok")
+    return { source: "user", credential: usr.cred };
+  if (usr.kind === "malformed")
+    return { source: "malformed-user", credential: null, reason: usr.reason };
+  return { source: "absent", credential: null };
+}
+async function tryReadOne(path) {
+  let raw;
+  try {
+    raw = await readFile(path, "utf8");
+  } catch (err) {
+    if (err.code === "ENOENT")
+      return { kind: "absent" };
+    return { kind: "malformed", reason: `read failed: ${err.message}` };
+  }
+  if (process.platform !== "win32") {
+    try {
+      const st = await stat(path);
+      if ((st.mode & 63) !== 0) {
+        return {
+          kind: "malformed",
+          reason: `file mode ${(st.mode & 511).toString(8)} too permissive; must be 0600`
+        };
+      }
+    } catch (err) {
+      return { kind: "malformed", reason: `stat failed: ${err.message}` };
+    }
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (err) {
+    return { kind: "malformed", reason: `JSON parse failed: ${err.message}` };
+  }
+  const v = validate(parsed);
+  if (v.kind === "ok")
+    return { kind: "ok", cred: v.cred };
+  return { kind: "malformed", reason: v.reason };
+}
+function validate(v) {
+  if (typeof v !== "object" || v === null)
+    return { kind: "bad", reason: "not an object" };
+  const o = v;
+  if (o.schema_version !== 1)
+    return { kind: "bad", reason: `unknown schema_version: ${String(o.schema_version)}` };
+  if (typeof o.credential !== "string" || !o.credential)
+    return { kind: "bad", reason: "credential missing or empty" };
+  if (typeof o.issued_at !== "string")
+    return { kind: "bad", reason: "issued_at missing" };
+  const hint = validateIdentityHint(o.identity_hint);
+  if (hint.kind === "bad")
+    return hint;
+  const endpoint = typeof o.endpoint === "string" && o.endpoint ? o.endpoint : void 0;
+  const identity_type = o.identity_type === "full" || o.identity_type === "hash" ? o.identity_type : void 0;
+  const provenance = o.provenance === "marketplace_url" || o.provenance === "login" || o.provenance === "env_tenant_key" ? o.provenance : void 0;
+  return {
+    kind: "ok",
+    cred: {
+      schema_version: 1,
+      issued_at: o.issued_at,
+      credential: o.credential,
+      identity_hint: hint.value,
+      ...endpoint !== void 0 ? { endpoint } : {},
+      ...identity_type !== void 0 ? { identity_type } : {},
+      ...provenance !== void 0 ? { provenance } : {}
+    }
+  };
+}
+function validateIdentityHint(v) {
+  if (v === null)
+    return { kind: "ok", value: null };
+  if (typeof v !== "object")
+    return { kind: "bad", reason: "identity_hint must be null or object" };
+  const o = v;
+  if (o.source === "os_user")
+    return { kind: "ok", value: { source: "os_user" } };
+  if (o.source === "directory") {
+    if (typeof o.value !== "string" || !o.value)
+      return { kind: "bad", reason: "identity_hint.value required for source=directory" };
+    return { kind: "ok", value: { source: "directory", value: o.value } };
+  }
+  if (o.source === "mdm_file") {
+    const user_email = typeof o.user_email === "string" ? o.user_email : void 0;
+    const user_upn = typeof o.user_upn === "string" ? o.user_upn : void 0;
+    return {
+      kind: "ok",
+      value: {
+        source: "mdm_file",
+        ...user_email !== void 0 ? { user_email } : {},
+        ...user_upn !== void 0 ? { user_upn } : {}
+      }
+    };
+  }
+  if (o.source === "plugin_login") {
+    const s = (k) => typeof o[k] === "string" && o[k] ? o[k] : void 0;
+    return {
+      kind: "ok",
+      value: {
+        source: "plugin_login",
+        ...s("email") ? { email: s("email") } : {},
+        ...s("account_id") ? { account_id: s("account_id") } : {},
+        ...s("user_id") ? { user_id: s("user_id") } : {},
+        ...s("org_id") ? { org_id: s("org_id") } : {},
+        ...s("org_name") ? { org_name: s("org_name") } : {},
+        ...s("plan") ? { plan: s("plan") } : {}
+      }
+    };
+  }
+  return { kind: "bad", reason: `identity_hint.source unknown: ${String(o.source)}` };
+}
 
 // dist/shared/credential-paths.mjs
 import { homedir } from "node:os";
@@ -186,8 +316,77 @@ function credentialPaths() {
   };
 }
 
+// dist/shared/tenant-key-bootstrap.mjs
+var KEY_RE = /^fs_(live|test)_t_[A-Za-z0-9_-]{43}$/;
+function decide(existing, args) {
+  switch (existing.source) {
+    case "absent":
+      return { write: true };
+    case "system":
+      return { write: false, reason: "system (MDM) credential is authoritative" };
+    case "malformed-system":
+      return { write: false, reason: "system credential unreadable; not overwriting" };
+    case "malformed-user":
+      return { write: false, reason: "user credential unreadable; not overwriting" };
+    case "user": {
+      const c = existing.credential;
+      if (c.provenance !== args.ownProvenance) {
+        return { write: false, reason: "user credential not owned by this writer" };
+      }
+      const unchanged = c.credential === args.tenantKey && (c.identity_type ?? void 0) === args.identity;
+      return unchanged ? { write: false, reason: "unchanged" } : { write: true };
+    }
+  }
+}
+async function ensureAmbientTenantCredential(existing, paths, opts = {}) {
+  const env = opts.env ?? process.env;
+  const tenantKey = env.FANCYSAUCE_TENANT_KEY ?? "";
+  if (!KEY_RE.test(tenantKey))
+    return { result: existing, wrote: false };
+  const identity = env.FANCYSAUCE_IDENTITY_TYPE === "full" ? "full" : "hash";
+  const d = decide(existing, { tenantKey, identity, ownProvenance: "env_tenant_key" });
+  if (!d.write)
+    return { result: existing, wrote: false };
+  const cred = {
+    schema_version: 1,
+    issued_at: (opts.now ?? (() => (/* @__PURE__ */ new Date()).toISOString()))(),
+    credential: tenantKey,
+    identity_hint: null,
+    provenance: "env_tenant_key",
+    identity_type: identity
+  };
+  try {
+    await writeCredential(paths.user, cred);
+    return { result: { source: "user", credential: cred }, wrote: true };
+  } catch (err) {
+    (opts.logger ?? ((m) => process.stderr.write(m + "\n")))(`fancysauce: ambient tenant-key write failed: ${err.message}`);
+    return { result: existing, wrote: false, inMemory: cred };
+  }
+}
+
 // dist/shared/login/orchestrator.mjs
 async function runLogin(opts) {
+  const envKey = process.env.FANCYSAUCE_TENANT_KEY ?? "";
+  if (KEY_RE.test(envKey)) {
+    const sysPath = opts.systemCredentialPath ?? credentialPaths().system;
+    const paths = { system: sysPath, user: opts.credentialUserPath };
+    const existing = await readCredential(paths);
+    if (existing.source === "system" || existing.source === "malformed-system") {
+      opts.logger.warn(`a managed credential is already in effect at ${sysPath}`);
+      return { kind: "refused-system-credential-present", systemPath: sysPath };
+    }
+    const ambient = await ensureAmbientTenantCredential(existing, paths, {
+      logger: (m) => opts.logger.warn(m)
+    });
+    if (ambient.wrote) {
+      opts.logger.info("signed in (tenant key from environment).");
+    } else if (ambient.inMemory) {
+      opts.logger.warn("tenant key present but the credential file could not be written; it will be used in-memory only this session.");
+    } else {
+      opts.logger.info("tenant key already in effect; nothing to do.");
+    }
+    return { kind: "ok", credential: envKey, backfill_intent: "unspecified" };
+  }
   const systemPath = opts.systemCredentialPath ?? credentialPaths().system;
   const systemExists = await stat2(systemPath).then(() => true).catch(() => false);
   if (systemExists) {
@@ -212,11 +411,14 @@ async function runLogin(opts) {
     opts.logger.error(`login failed: ${transferResult.reason}`);
     return { kind: "error", reason: transferResult.reason };
   }
+  const loginIdentity = transferResult.identity;
+  const hasIdentity = loginIdentity && Object.keys(loginIdentity).length > 0;
   const cred = {
     schema_version: 1,
     issued_at: (/* @__PURE__ */ new Date()).toISOString(),
     credential: transferResult.credential,
-    identity_hint: null
+    identity_hint: hasIdentity ? { source: "plugin_login", ...loginIdentity } : null,
+    ...hasIdentity ? { provenance: "login" } : {}
   };
   await writeCredential(opts.credentialUserPath, cred);
   await writeIntentMarker(opts.stateDir, transferResult.backfill_intent);

@@ -35,7 +35,7 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
 // node_modules/graceful-fs/polyfills.js
 var require_polyfills = __commonJS({
   "node_modules/graceful-fs/polyfills.js"(exports, module) {
-    var constants = __require("constants");
+    var constants2 = __require("constants");
     var origCwd = process.cwd;
     var cwd = null;
     var platform = process.env.GRACEFUL_FS_PLATFORM || process.platform;
@@ -59,7 +59,7 @@ var require_polyfills = __commonJS({
     var chdir;
     module.exports = patch;
     function patch(fs) {
-      if (constants.hasOwnProperty("O_SYMLINK") && process.version.match(/^v0\.6\.[0-2]|^v0\.5\./)) {
+      if (constants2.hasOwnProperty("O_SYMLINK") && process.version.match(/^v0\.6\.[0-2]|^v0\.5\./)) {
         patchLchmod(fs);
       }
       if (!fs.lutimes) {
@@ -161,7 +161,7 @@ var require_polyfills = __commonJS({
         fs2.lchmod = function(path, mode, callback) {
           fs2.open(
             path,
-            constants.O_WRONLY | constants.O_SYMLINK,
+            constants2.O_WRONLY | constants2.O_SYMLINK,
             mode,
             function(err, fd) {
               if (err) {
@@ -177,7 +177,7 @@ var require_polyfills = __commonJS({
           );
         };
         fs2.lchmodSync = function(path, mode) {
-          var fd = fs2.openSync(path, constants.O_WRONLY | constants.O_SYMLINK, mode);
+          var fd = fs2.openSync(path, constants2.O_WRONLY | constants2.O_SYMLINK, mode);
           var threw = true;
           var ret;
           try {
@@ -197,9 +197,9 @@ var require_polyfills = __commonJS({
         };
       }
       function patchLutimes(fs2) {
-        if (constants.hasOwnProperty("O_SYMLINK") && fs2.futimes) {
+        if (constants2.hasOwnProperty("O_SYMLINK") && fs2.futimes) {
           fs2.lutimes = function(path, at, mt, cb) {
-            fs2.open(path, constants.O_SYMLINK, function(er, fd) {
+            fs2.open(path, constants2.O_SYMLINK, function(er, fd) {
               if (er) {
                 if (cb) cb(er);
                 return;
@@ -212,7 +212,7 @@ var require_polyfills = __commonJS({
             });
           };
           fs2.lutimesSync = function(path, at, mt) {
-            var fd = fs2.openSync(path, constants.O_SYMLINK);
+            var fd = fs2.openSync(path, constants2.O_SYMLINK);
             var ret;
             var threw = true;
             try {
@@ -1611,7 +1611,7 @@ var require_proper_lockfile = __commonJS({
 
 // dist/shared/bin/backfill-runner.mjs
 import { writeFile as writeFile5 } from "node:fs/promises";
-import { join as join9 } from "node:path";
+import { join as join12 } from "node:path";
 
 // dist/shared/config.mjs
 import { join } from "node:path";
@@ -1713,6 +1713,36 @@ function defaultPolicy() {
 
 // dist/shared/credential-file.mjs
 import { mkdir, rename, open, chmod, unlink, readFile, stat } from "node:fs/promises";
+import { dirname } from "node:path";
+import { randomBytes } from "node:crypto";
+async function writeCredential(path, cred) {
+  const parent = dirname(path);
+  await mkdir(parent, { recursive: true, mode: 448 });
+  if (process.platform !== "win32") {
+    await chmod(parent, 448).catch(() => {
+    });
+  }
+  const tmp = `${path}.${process.pid}.${randomBytes(4).toString("hex")}.tmp`;
+  let renamed = false;
+  try {
+    const fh = await open(tmp, "wx", 384);
+    try {
+      await fh.writeFile(JSON.stringify(cred));
+      await fh.sync();
+    } finally {
+      await fh.close();
+    }
+    await rename(tmp, path);
+    renamed = true;
+  } finally {
+    if (!renamed) {
+      try {
+        await unlink(tmp);
+      } catch {
+      }
+    }
+  }
+}
 async function readCredential(paths) {
   const sys = await tryReadOne(paths.system);
   if (sys.kind === "ok")
@@ -1774,7 +1804,7 @@ function validate(v) {
     return hint;
   const endpoint = typeof o.endpoint === "string" && o.endpoint ? o.endpoint : void 0;
   const identity_type = o.identity_type === "full" || o.identity_type === "hash" ? o.identity_type : void 0;
-  const provenance = o.provenance === "marketplace_url" ? "marketplace_url" : void 0;
+  const provenance = o.provenance === "marketplace_url" || o.provenance === "login" || o.provenance === "env_tenant_key" ? o.provenance : void 0;
   return {
     kind: "ok",
     cred: {
@@ -1813,7 +1843,70 @@ function validateIdentityHint(v) {
       }
     };
   }
+  if (o.source === "plugin_login") {
+    const s = (k) => typeof o[k] === "string" && o[k] ? o[k] : void 0;
+    return {
+      kind: "ok",
+      value: {
+        source: "plugin_login",
+        ...s("email") ? { email: s("email") } : {},
+        ...s("account_id") ? { account_id: s("account_id") } : {},
+        ...s("user_id") ? { user_id: s("user_id") } : {},
+        ...s("org_id") ? { org_id: s("org_id") } : {},
+        ...s("org_name") ? { org_name: s("org_name") } : {},
+        ...s("plan") ? { plan: s("plan") } : {}
+      }
+    };
+  }
   return { kind: "bad", reason: `identity_hint.source unknown: ${String(o.source)}` };
+}
+
+// dist/shared/tenant-key-bootstrap.mjs
+var KEY_RE = /^fs_(live|test)_t_[A-Za-z0-9_-]{43}$/;
+function decide(existing, args) {
+  switch (existing.source) {
+    case "absent":
+      return { write: true };
+    case "system":
+      return { write: false, reason: "system (MDM) credential is authoritative" };
+    case "malformed-system":
+      return { write: false, reason: "system credential unreadable; not overwriting" };
+    case "malformed-user":
+      return { write: false, reason: "user credential unreadable; not overwriting" };
+    case "user": {
+      const c = existing.credential;
+      if (c.provenance !== args.ownProvenance) {
+        return { write: false, reason: "user credential not owned by this writer" };
+      }
+      const unchanged = c.credential === args.tenantKey && (c.identity_type ?? void 0) === args.identity;
+      return unchanged ? { write: false, reason: "unchanged" } : { write: true };
+    }
+  }
+}
+async function ensureAmbientTenantCredential(existing, paths, opts = {}) {
+  const env = opts.env ?? process.env;
+  const tenantKey = env.FANCYSAUCE_TENANT_KEY ?? "";
+  if (!KEY_RE.test(tenantKey))
+    return { result: existing, wrote: false };
+  const identity = env.FANCYSAUCE_IDENTITY_TYPE === "full" ? "full" : "hash";
+  const d = decide(existing, { tenantKey, identity, ownProvenance: "env_tenant_key" });
+  if (!d.write)
+    return { result: existing, wrote: false };
+  const cred = {
+    schema_version: 1,
+    issued_at: (opts.now ?? (() => (/* @__PURE__ */ new Date()).toISOString()))(),
+    credential: tenantKey,
+    identity_hint: null,
+    provenance: "env_tenant_key",
+    identity_type: identity
+  };
+  try {
+    await writeCredential(paths.user, cred);
+    return { result: { source: "user", credential: cred }, wrote: true };
+  } catch (err) {
+    (opts.logger ?? ((m) => process.stderr.write(m + "\n")))(`fancysauce: ambient tenant-key write failed: ${err.message}`);
+    return { result: existing, wrote: false, inMemory: cred };
+  }
 }
 
 // dist/shared/credential-paths.mjs
@@ -1840,7 +1933,8 @@ var DEFAULT_LOGIN_STATE_DIR = join(homedir2(), ".config", "fancysauce");
 var KNOWN_FANCYSAUCE_VARS = /* @__PURE__ */ new Set([
   "FANCYSAUCE_CREDENTIAL_PATHS",
   "FANCYSAUCE_API_KEY",
-  "FANCYSAUCE_IDENTITY_TYPE"
+  "FANCYSAUCE_IDENTITY_TYPE",
+  "FANCYSAUCE_TENANT_KEY"
 ]);
 function parseCredentialPathsEnv() {
   if (process.env.VITEST !== "true")
@@ -1878,7 +1972,22 @@ async function loadConfig(opts = {}) {
   const endpoint = opts.endpointOverride ?? INGEST_ENDPOINT;
   const loginStateDir = parsed?.login_state_dir ?? DEFAULT_LOGIN_STATE_DIR;
   const paths = opts.paths ?? (parsed ? { system: parsed.system, user: parsed.user } : credentialPaths());
-  const result = await readCredential(paths);
+  const read = await readCredential(paths);
+  const ambient = await ensureAmbientTenantCredential(read, paths);
+  if (ambient.inMemory) {
+    return {
+      credential: ambient.inMemory.credential,
+      endpoint,
+      loginStateDir,
+      policy: defaultPolicy(),
+      identity_type: ambient.inMemory.identity_type ?? "hash",
+      // Degraded fail-open for this single fire: skip the richer identity
+      // resolution the file-backed path performs; the durable write will retry
+      // and enrich on a later fire.
+      identity_hint: null
+    };
+  }
+  const result = ambient.result;
   switch (result.source) {
     case "absent": {
       const apiKey = process.env.FANCYSAUCE_API_KEY;
@@ -2404,11 +2513,8 @@ function encodeResourceAttributes(r) {
     "fancysauce.schema_version",
     "fancysauce.install_id",
     "fancysauce.agent",
-    "fancysauce.user.handle_email",
-    "fancysauce.user.handle_os",
     "fancysauce.user.identity_source",
-    "fancysauce.user.email",
-    "fancysauce.user.upn"
+    "fancysauce.secure_envelope"
   ];
   for (const key of order) {
     const v = r[key];
@@ -2774,8 +2880,8 @@ async function releasePidGuard(stateDir) {
 
 // dist/shared/backfill/status.mjs
 import { readFile as readFile7, open as open4, rename as rename6, mkdir as mkdir6, unlink as unlink2 } from "node:fs/promises";
-import { join as join7, dirname } from "node:path";
-import { randomBytes } from "node:crypto";
+import { join as join7, dirname as dirname2 } from "node:path";
+import { randomBytes as randomBytes2 } from "node:crypto";
 async function readStatus(stateDir) {
   try {
     const raw = await readFile7(join7(stateDir, "backfill.status"), "utf8");
@@ -2786,8 +2892,8 @@ async function readStatus(stateDir) {
 }
 async function writeStatus(stateDir, s) {
   const path = join7(stateDir, "backfill.status");
-  await mkdir6(dirname(path), { recursive: true });
-  const tmp = `${path}.${process.pid}.${randomBytes(4).toString("hex")}.tmp`;
+  await mkdir6(dirname2(path), { recursive: true });
+  const tmp = `${path}.${process.pid}.${randomBytes2(4).toString("hex")}.tmp`;
   let renamed = false;
   try {
     const fh = await open4(tmp, "wx", 384);
@@ -2810,18 +2916,11 @@ async function writeStatus(stateDir, s) {
 }
 
 // dist/shared/identity-resolver.mjs
-import { createHash as createHash3, randomUUID } from "node:crypto";
+import { createHash as createHash2, randomUUID } from "node:crypto";
 import { execFile as execFile2 } from "node:child_process";
 import { open as open5, readFile as readFile8, rename as rename7, unlink as unlink3 } from "node:fs/promises";
-import { join as join8 } from "node:path";
-import { randomBytes as randomBytes2 } from "node:crypto";
-import { userInfo } from "node:os";
-
-// dist/shared/hash.mjs
-import { createHash as createHash2, createHmac } from "node:crypto";
-function hmacIdentity(apiKey, value) {
-  return createHmac("sha256", apiKey).update(value.toLowerCase(), "utf8").digest("hex");
-}
+import { join as join11 } from "node:path";
+import { randomBytes as randomBytes4 } from "node:crypto";
 
 // dist/shared/identity-sources.mjs
 import { execFile } from "node:child_process";
@@ -2875,6 +2974,213 @@ async function readWindowsUpn(deps = {}) {
   }
 }
 
+// dist/shared/secure-envelope.mjs
+import { randomBytes as randomBytes3, createCipheriv, publicEncrypt, constants, createPublicKey } from "node:crypto";
+function seal(plaintext, key) {
+  const aesKey = randomBytes3(32);
+  const iv = randomBytes3(12);
+  const cipher = createCipheriv("aes-256-gcm", aesKey, iv);
+  const body = Buffer.concat([cipher.update(plaintext), cipher.final()]);
+  const tag = cipher.getAuthTag();
+  const ct = Buffer.concat([body, tag]);
+  const ek = publicEncrypt({ key: createPublicKey(key.publicKeyPem), padding: constants.RSA_PKCS1_OAEP_PADDING, oaepHash: "sha256" }, aesKey);
+  return {
+    v: 1,
+    keyid: key.keyid,
+    alg: "RSA-OAEP-256+A256GCM",
+    ek: ek.toString("base64"),
+    iv: iv.toString("base64"),
+    ct: ct.toString("base64")
+  };
+}
+
+// dist/shared/server-key.mjs
+import { readFileSync } from "node:fs";
+import { join as join8 } from "node:path";
+var BAKED_SERVER_KEY = {
+  keyid: "env-production-1",
+  alg: "RSA-OAEP-256+A256GCM",
+  publicKeyPem: "-----BEGIN PUBLIC KEY-----\nMIIBojANBgkqhkiG9w0BAQEFAAOCAY8AMIIBigKCAYEA4Dh42p0kvReuiL194qp3\n8j0BSjOmwW9WU9NUUSlBSA1Kn0WPdfMKywsD+DPrlt/KyOKdNLoUXsXrriM212Si\nMgabz4e4pK8ItqgqCg1wPFArY8SEoy8MioMj8iZVz/UPeR3/7Rng8LT50HiaB/kc\nwkBjjLnSU2xYQkKROKMGuTlKDZ4BCpP/uVCFTrZ5BUFEn3r2WyAl3Z6NBjO9hTPB\njKx1AH+CitIZeWVmn39EUwrzUW+LiXbEe1Y+0SXkpTgdqvVMzMjytlEp5Ojisvs1\n/GqoHRoN/NcESILK2s4Rabe3PTquCmZItYbw2sBpFe/6xhHPn/LA2TVjEjx5d+GJ\ndxQnhUWlNPInWul8TCePBAhz6MGThrcVWj6b+V3K4CrjetFIlvF7R2dk/SlWLCUZ\nozfDPZnQfvSZInVSrSRiCqA3OXArmptmFzeZii1RDQsJnNA+Vc2lTvuf2ScepvgG\nWJPZewNj7dknrCLAyj79ZZrQH31cIjgPt3XpT7SHnkaLAgMBAAE=\n-----END PUBLIC KEY-----\n"
+};
+var CACHE_FILE = "server-key.json";
+var DEFAULT_TTL_MS = 24 * 60 * 60 * 1e3;
+function isServerKeyShape(v) {
+  if (typeof v !== "object" || v === null)
+    return false;
+  const o = v;
+  return typeof o.keyid === "string" && !!o.keyid && typeof o.alg === "string" && !!o.alg && typeof o.publicKeyPem === "string" && o.publicKeyPem.includes("BEGIN PUBLIC KEY");
+}
+function loadServerKey(deps) {
+  const ttl = deps.ttlMs ?? DEFAULT_TTL_MS;
+  const read = deps.readFileImpl ?? ((p) => readFileSync(p, "utf8"));
+  try {
+    const parsed = JSON.parse(read(join8(deps.cacheDir, CACHE_FILE)));
+    if (!isServerKeyShape(parsed) || typeof parsed.fetched_at !== "number")
+      return BAKED_SERVER_KEY;
+    if (deps.now - parsed.fetched_at > ttl)
+      return BAKED_SERVER_KEY;
+    return { keyid: parsed.keyid, alg: parsed.alg, publicKeyPem: parsed.publicKeyPem };
+  } catch {
+    return BAKED_SERVER_KEY;
+  }
+}
+
+// dist/shared/native-identity.mjs
+import { readFileSync as readFileSync2 } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { join as join9 } from "node:path";
+import { homedir as homedir3 } from "node:os";
+var CLI_TIMEOUT_MS = 500;
+function defaultClaudeStatus() {
+  try {
+    return execFileSync("claude", ["auth", "status", "--json"], {
+      timeout: CLI_TIMEOUT_MS,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"]
+    });
+  } catch {
+    return null;
+  }
+}
+function pick(o, k) {
+  const v = o[k];
+  return typeof v === "string" && v.length > 0 ? v : void 0;
+}
+function readNativeIdentity(agent, deps = {}) {
+  const home = deps.home ?? homedir3();
+  const read = deps.readFileImpl ?? ((p) => readFileSync2(p, "utf8"));
+  return agent === "claude-code" ? readClaude(home, read, deps.claudeStatus ?? defaultClaudeStatus) : readCodex(home, read);
+}
+function readClaude(home, read, status) {
+  try {
+    const parsed = JSON.parse(read(join9(home, ".claude.json")));
+    const oa = parsed.oauthAccount;
+    if (oa && typeof oa === "object") {
+      const email = pick(oa, "emailAddress");
+      const account_id = pick(oa, "accountUuid");
+      if (email || account_id) {
+        return {
+          source: "native_claude",
+          ...email ? { email } : {},
+          ...account_id ? { account_id } : {},
+          ...pick(oa, "organizationUuid") ? { org_id: pick(oa, "organizationUuid") } : {},
+          ...pick(oa, "organizationName") ? { org_name: pick(oa, "organizationName") } : {},
+          ...pick(oa, "organizationType") ? { plan: pick(oa, "organizationType") } : {}
+        };
+      }
+    }
+  } catch {
+  }
+  const raw = status();
+  if (!raw)
+    return null;
+  try {
+    const s = JSON.parse(raw);
+    if (s.apiProvider !== "firstParty")
+      return null;
+    const email = pick(s, "email");
+    const org_id = pick(s, "orgId");
+    if (!email && !org_id)
+      return null;
+    return {
+      source: "native_claude",
+      ...email ? { email } : {},
+      ...org_id ? { org_id } : {},
+      ...pick(s, "orgName") ? { org_name: pick(s, "orgName") } : {},
+      ...pick(s, "subscriptionType") ? { plan: pick(s, "subscriptionType") } : {}
+    };
+  } catch {
+    return null;
+  }
+}
+function readCodex(home, read) {
+  let auth;
+  try {
+    auth = JSON.parse(read(join9(home, ".codex", "auth.json")));
+  } catch {
+    return null;
+  }
+  const tokens = typeof auth === "object" && auth !== null ? auth.tokens : void 0;
+  const idToken = tokens?.id_token;
+  if (typeof idToken !== "string")
+    return null;
+  const payload = decodeJwtPayload(idToken);
+  if (!payload)
+    return null;
+  const claims = payload["https://api.openai.com/auth"];
+  const au = typeof claims === "object" && claims !== null ? claims : {};
+  const orgs = Array.isArray(au["organizations"]) ? au["organizations"] : [];
+  const org0 = orgs[0] ?? {};
+  const email = pick(payload, "email");
+  const user_id = pick(au, "chatgpt_user_id");
+  const account_id = pick(au, "chatgpt_account_id");
+  const plan = pick(au, "chatgpt_plan_type");
+  const org_id = pick(org0, "id");
+  const org_name = pick(org0, "title");
+  if (!email && !account_id && !pick(payload, "sub"))
+    return null;
+  return {
+    source: "native_codex",
+    ...email ? { email } : {},
+    ...account_id ? { account_id } : {},
+    ...user_id ? { user_id } : {},
+    ...org_id ? { org_id } : {},
+    ...org_name ? { org_name } : {},
+    ...plan ? { plan } : {}
+  };
+}
+function decodeJwtPayload(token) {
+  const parts = token.split(".");
+  if (parts.length !== 3)
+    return null;
+  try {
+    const json = Buffer.from(parts[1], "base64url").toString("utf8");
+    const obj = JSON.parse(json);
+    return typeof obj === "object" && obj !== null ? obj : null;
+  } catch {
+    return null;
+  }
+}
+
+// dist/shared/identity-cache.mjs
+import { readFileSync as readFileSync3, writeFileSync } from "node:fs";
+import { join as join10 } from "node:path";
+var CACHE_FILE2 = "identity-cache.json";
+var DEFAULT_TTL_MS2 = 12 * 60 * 60 * 1e3;
+function readIdentityCache(deps) {
+  const ttl = deps.ttlMs ?? DEFAULT_TTL_MS2;
+  const read = deps.readFileImpl ?? ((p) => readFileSync3(p, "utf8"));
+  try {
+    const parsed = JSON.parse(read(join10(deps.dir, CACHE_FILE2)));
+    if (typeof parsed !== "object" || parsed === null)
+      return { fresh: false };
+    const entry = parsed;
+    if (typeof entry.fetched_at !== "number")
+      return { fresh: false };
+    if (deps.now - entry.fetched_at > ttl)
+      return { fresh: false };
+    const identity = entry.identity;
+    if (identity === null || identity === void 0)
+      return { fresh: true, identity: null };
+    if (typeof identity !== "object")
+      return { fresh: false };
+    const source = identity.source;
+    if (source !== "native_claude" && source !== "native_codex")
+      return { fresh: false };
+    return { fresh: true, identity };
+  } catch {
+    return { fresh: false };
+  }
+}
+function writeIdentityCache(deps) {
+  const write = deps.writeFileImpl ?? ((p, data) => writeFileSync(p, data, { mode: 384 }));
+  try {
+    const entry = { identity: deps.identity, fetched_at: deps.now };
+    write(join10(deps.dir, CACHE_FILE2), JSON.stringify(entry));
+  } catch {
+  }
+}
+
 // dist/shared/identity-resolver.mjs
 var TENANT_KEY_PREFIXES = ["fs_live_t_", "fs_test_t_"];
 function isTenantKey(credential) {
@@ -2887,7 +3193,7 @@ var IdentityResolver = class {
   git;
   constructor(dir, git = defaultGitAccess()) {
     this.dir = dir;
-    this.installPath = join8(dir, "install.json");
+    this.installPath = join11(dir, "install.json");
     this.git = git;
   }
   async resolve(cwd, opts) {
@@ -2898,46 +3204,20 @@ var IdentityResolver = class {
       return base;
     if (!isTenantKey(opts.credential))
       return base;
-    const sources = opts.identitySources ?? {
-      dsclEmail: () => readMacOsDsclEmail(),
-      winUpn: () => readWindowsUpn(),
-      gitEmail: () => readGitConfigEmail()
-    };
-    const osUsername = (opts.osUsername ?? (() => userInfo().username))();
-    let email;
-    let identitySource;
-    if (opts.identity_hint?.source === "mdm_file" && opts.identity_hint.user_email) {
-      email = opts.identity_hint.user_email;
-      identitySource = "mdm_file";
-    } else {
-      const dscl = await sources.dsclEmail?.();
-      if (dscl) {
-        email = dscl;
-        identitySource = "dscl";
-      } else {
-        const upn = await sources.winUpn?.();
-        if (upn) {
-          email = upn;
-          identitySource = "whoami_upn";
-        } else {
-          const git = await sources.gitEmail?.();
-          if (git) {
-            email = git;
-            identitySource = "git_config";
-          }
+    const record = await resolveIdentityRecord(this.dir, opts);
+    const result = { ...base };
+    if (record) {
+      result.identity_source = record.source;
+    }
+    if (record && opts.identity_type === "full") {
+      const key = (opts.serverKeyLoader ?? (() => loadServerKey({ cacheDir: this.dir, now: opts.now ?? Date.now() })))();
+      if (key.publicKeyPem.includes("BEGIN PUBLIC KEY")) {
+        try {
+          const sealer = opts.sealer ?? seal;
+          const plaintext = Buffer.from(JSON.stringify({ v: 1, agent: opts.agent, ...record }), "utf8");
+          result.secure_envelope = JSON.stringify(sealer(plaintext, { keyid: key.keyid, publicKeyPem: key.publicKeyPem }));
+        } catch {
         }
-      }
-    }
-    const result = { ...base, handle_os: hmacIdentity(opts.credential, osUsername) };
-    if (email) {
-      result.handle_email = hmacIdentity(opts.credential, email);
-      result.identity_source = identitySource;
-    }
-    if (opts.identity_type === "full") {
-      if (email)
-        result.email = email;
-      if (opts.identity_hint?.source === "mdm_file" && opts.identity_hint.user_upn) {
-        result.upn = opts.identity_hint.user_upn;
       }
     }
     return result;
@@ -2946,7 +3226,7 @@ var IdentityResolver = class {
     const url = await this.git.gitRemoteUrl(cwd);
     if (!url)
       return {};
-    return { repo_url_hash: createHash3("sha256").update(url, "utf8").digest("hex") };
+    return { repo_url_hash: createHash2("sha256").update(url, "utf8").digest("hex") };
   }
   async loadOrCreateInstallId() {
     return withDirLock(this.dir, async () => {
@@ -2979,7 +3259,7 @@ async function readInstallId(path) {
   return typeof id === "string" && id.length > 0 ? id : null;
 }
 async function writeInstallFile(path, body) {
-  const tmp = `${path}.${process.pid}.${randomBytes2(4).toString("hex")}.tmp`;
+  const tmp = `${path}.${process.pid}.${randomBytes4(4).toString("hex")}.tmp`;
   let renamed = false;
   try {
     const fh = await open5(tmp, "wx", 384);
@@ -3008,17 +3288,60 @@ function toResourceAttributes(id, opts) {
     "fancysauce.install_id": id.install_id,
     "fancysauce.agent": opts.agent
   };
-  if (id.handle_email)
-    attrs["fancysauce.user.handle_email"] = id.handle_email;
-  if (id.handle_os)
-    attrs["fancysauce.user.handle_os"] = id.handle_os;
   if (id.identity_source)
     attrs["fancysauce.user.identity_source"] = id.identity_source;
-  if (id.email)
-    attrs["fancysauce.user.email"] = id.email;
-  if (id.upn)
-    attrs["fancysauce.user.upn"] = id.upn;
+  if (id.secure_envelope)
+    attrs["fancysauce.secure_envelope"] = id.secure_envelope;
   return attrs;
+}
+async function resolveIdentityRecord(dir, opts) {
+  const hint = opts.identity_hint;
+  if (hint?.source === "mdm_file" && (hint.user_email || hint.user_upn)) {
+    return {
+      source: "mdm_file",
+      ...hint.user_email ? { email: hint.user_email } : {},
+      ...hint.user_upn ? { upn: hint.user_upn } : {}
+    };
+  }
+  if (hint?.source === "plugin_login" && (hint.email || hint.account_id || hint.user_id || hint.org_id || hint.org_name || hint.plan)) {
+    return {
+      source: "plugin_login",
+      ...hint.email ? { email: hint.email } : {},
+      ...hint.account_id ? { account_id: hint.account_id } : {},
+      ...hint.user_id ? { user_id: hint.user_id } : {},
+      ...hint.org_id ? { org_id: hint.org_id } : {},
+      ...hint.org_name ? { org_name: hint.org_name } : {},
+      ...hint.plan ? { plan: hint.plan } : {}
+    };
+  }
+  const now = opts.now ?? Date.now();
+  const hit = readIdentityCache({ dir, now });
+  let native;
+  if (hit.fresh) {
+    native = hit.identity;
+  } else {
+    native = (opts.nativeReader ?? readNativeIdentity)(opts.agent);
+    writeIdentityCache({ dir, now, identity: native });
+  }
+  if (native) {
+    const { source, ...rest } = native;
+    return { source, ...rest };
+  }
+  const sources = opts.identitySources ?? {
+    dsclEmail: () => readMacOsDsclEmail(),
+    winUpn: () => readWindowsUpn(),
+    gitEmail: () => readGitConfigEmail()
+  };
+  const dscl = await sources.dsclEmail?.();
+  if (dscl)
+    return { source: "dscl", email: dscl };
+  const upn = await sources.winUpn?.();
+  if (upn)
+    return { source: "whoami_upn", upn, email: upn };
+  const git = await sources.gitEmail?.();
+  if (git)
+    return { source: "git_config", email: git };
+  return null;
 }
 function defaultGitAccess() {
   return {
@@ -3046,8 +3369,8 @@ var BATCH_BUDGET_MS = 5e3;
 var POST_BATCH_SLEEP_MS = 50;
 var EMPTY_READ_THRESHOLD = 3;
 async function runBackfill(opts) {
-  const stateDir = join9(opts.dataDir, "state");
-  const outboundDir = join9(opts.dataDir, "outbound");
+  const stateDir = join12(opts.dataDir, "state");
+  const outboundDir = join12(opts.dataDir, "outbound");
   const acquire = await acquirePidGuard(stateDir);
   if (acquire.kind === "already-running") {
     return { kind: "error", reason: `another runner is active (pid ${acquire.pid})` };
@@ -3178,7 +3501,7 @@ function sleep(ms) {
   return new Promise((res) => setTimeout(res, ms));
 }
 async function writeRenewalMarker(stateDir) {
-  const path = join9(stateDir, "credential-needs-renewal.backfill");
+  const path = join12(stateDir, "credential-needs-renewal.backfill");
   await writeFile5(path, JSON.stringify({ noticed_at: (/* @__PURE__ */ new Date()).toISOString() }), { mode: 384 }).catch(() => {
   });
 }

@@ -123,6 +123,36 @@ function defaultPolicy() {
 
 // dist/shared/credential-file.mjs
 import { mkdir, rename, open, chmod, unlink, readFile, stat } from "node:fs/promises";
+import { dirname } from "node:path";
+import { randomBytes } from "node:crypto";
+async function writeCredential(path, cred) {
+  const parent = dirname(path);
+  await mkdir(parent, { recursive: true, mode: 448 });
+  if (process.platform !== "win32") {
+    await chmod(parent, 448).catch(() => {
+    });
+  }
+  const tmp = `${path}.${process.pid}.${randomBytes(4).toString("hex")}.tmp`;
+  let renamed = false;
+  try {
+    const fh = await open(tmp, "wx", 384);
+    try {
+      await fh.writeFile(JSON.stringify(cred));
+      await fh.sync();
+    } finally {
+      await fh.close();
+    }
+    await rename(tmp, path);
+    renamed = true;
+  } finally {
+    if (!renamed) {
+      try {
+        await unlink(tmp);
+      } catch {
+      }
+    }
+  }
+}
 async function readCredential(paths) {
   const sys = await tryReadOne(paths.system);
   if (sys.kind === "ok")
@@ -184,7 +214,7 @@ function validate(v) {
     return hint;
   const endpoint = typeof o.endpoint === "string" && o.endpoint ? o.endpoint : void 0;
   const identity_type = o.identity_type === "full" || o.identity_type === "hash" ? o.identity_type : void 0;
-  const provenance = o.provenance === "marketplace_url" ? "marketplace_url" : void 0;
+  const provenance = o.provenance === "marketplace_url" || o.provenance === "login" || o.provenance === "env_tenant_key" ? o.provenance : void 0;
   return {
     kind: "ok",
     cred: {
@@ -223,7 +253,70 @@ function validateIdentityHint(v) {
       }
     };
   }
+  if (o.source === "plugin_login") {
+    const s = (k) => typeof o[k] === "string" && o[k] ? o[k] : void 0;
+    return {
+      kind: "ok",
+      value: {
+        source: "plugin_login",
+        ...s("email") ? { email: s("email") } : {},
+        ...s("account_id") ? { account_id: s("account_id") } : {},
+        ...s("user_id") ? { user_id: s("user_id") } : {},
+        ...s("org_id") ? { org_id: s("org_id") } : {},
+        ...s("org_name") ? { org_name: s("org_name") } : {},
+        ...s("plan") ? { plan: s("plan") } : {}
+      }
+    };
+  }
   return { kind: "bad", reason: `identity_hint.source unknown: ${String(o.source)}` };
+}
+
+// dist/shared/tenant-key-bootstrap.mjs
+var KEY_RE = /^fs_(live|test)_t_[A-Za-z0-9_-]{43}$/;
+function decide(existing, args) {
+  switch (existing.source) {
+    case "absent":
+      return { write: true };
+    case "system":
+      return { write: false, reason: "system (MDM) credential is authoritative" };
+    case "malformed-system":
+      return { write: false, reason: "system credential unreadable; not overwriting" };
+    case "malformed-user":
+      return { write: false, reason: "user credential unreadable; not overwriting" };
+    case "user": {
+      const c = existing.credential;
+      if (c.provenance !== args.ownProvenance) {
+        return { write: false, reason: "user credential not owned by this writer" };
+      }
+      const unchanged = c.credential === args.tenantKey && (c.identity_type ?? void 0) === args.identity;
+      return unchanged ? { write: false, reason: "unchanged" } : { write: true };
+    }
+  }
+}
+async function ensureAmbientTenantCredential(existing, paths, opts = {}) {
+  const env = opts.env ?? process.env;
+  const tenantKey = env.FANCYSAUCE_TENANT_KEY ?? "";
+  if (!KEY_RE.test(tenantKey))
+    return { result: existing, wrote: false };
+  const identity = env.FANCYSAUCE_IDENTITY_TYPE === "full" ? "full" : "hash";
+  const d = decide(existing, { tenantKey, identity, ownProvenance: "env_tenant_key" });
+  if (!d.write)
+    return { result: existing, wrote: false };
+  const cred = {
+    schema_version: 1,
+    issued_at: (opts.now ?? (() => (/* @__PURE__ */ new Date()).toISOString()))(),
+    credential: tenantKey,
+    identity_hint: null,
+    provenance: "env_tenant_key",
+    identity_type: identity
+  };
+  try {
+    await writeCredential(paths.user, cred);
+    return { result: { source: "user", credential: cred }, wrote: true };
+  } catch (err) {
+    (opts.logger ?? ((m) => process.stderr.write(m + "\n")))(`fancysauce: ambient tenant-key write failed: ${err.message}`);
+    return { result: existing, wrote: false, inMemory: cred };
+  }
 }
 
 // dist/shared/config.mjs
@@ -232,7 +325,8 @@ var DEFAULT_LOGIN_STATE_DIR = join(homedir2(), ".config", "fancysauce");
 var KNOWN_FANCYSAUCE_VARS = /* @__PURE__ */ new Set([
   "FANCYSAUCE_CREDENTIAL_PATHS",
   "FANCYSAUCE_API_KEY",
-  "FANCYSAUCE_IDENTITY_TYPE"
+  "FANCYSAUCE_IDENTITY_TYPE",
+  "FANCYSAUCE_TENANT_KEY"
 ]);
 function parseCredentialPathsEnv() {
   if (process.env.VITEST !== "true")
@@ -270,7 +364,22 @@ async function loadConfig(opts = {}) {
   const endpoint = opts.endpointOverride ?? INGEST_ENDPOINT;
   const loginStateDir = parsed?.login_state_dir ?? DEFAULT_LOGIN_STATE_DIR;
   const paths = opts.paths ?? (parsed ? { system: parsed.system, user: parsed.user } : credentialPaths());
-  const result = await readCredential(paths);
+  const read = await readCredential(paths);
+  const ambient = await ensureAmbientTenantCredential(read, paths);
+  if (ambient.inMemory) {
+    return {
+      credential: ambient.inMemory.credential,
+      endpoint,
+      loginStateDir,
+      policy: defaultPolicy(),
+      identity_type: ambient.inMemory.identity_type ?? "hash",
+      // Degraded fail-open for this single fire: skip the richer identity
+      // resolution the file-backed path performs; the durable write will retry
+      // and enrich on a later fire.
+      identity_hint: null
+    };
+  }
+  const result = ambient.result;
   switch (result.source) {
     case "absent": {
       const apiKey = process.env.FANCYSAUCE_API_KEY;
@@ -318,7 +427,7 @@ function defaultUnknownEnvVarHandler(_name, _value) {
 
 // dist/shared/data-dir.mjs
 import { readFileSync } from "node:fs";
-import { basename, join as join2, dirname } from "node:path";
+import { basename, join as join2, dirname as dirname2 } from "node:path";
 import { fileURLToPath } from "node:url";
 import { homedir as homedir3 } from "node:os";
 function resolveDataDir(opts = {}) {
@@ -343,7 +452,7 @@ function resolveDataDir(opts = {}) {
   return join2(home, ".claude-plugin-data");
 }
 function defaultPluginRoot() {
-  const here = dirname(fileURLToPath(import.meta.url));
+  const here = dirname2(fileURLToPath(import.meta.url));
   return join2(here, "..", "..", "..");
 }
 function trimTrailingSlash(p) {
@@ -472,7 +581,7 @@ function parseTomlKey(key) {
 
 // dist/shared/backfill/status.mjs
 import { readFile as readFile2, open as open2, rename as rename2, mkdir as mkdir2, unlink as unlink2 } from "node:fs/promises";
-import { join as join3, dirname as dirname2 } from "node:path";
+import { join as join3, dirname as dirname3 } from "node:path";
 async function readStatus(stateDir) {
   try {
     const raw = await readFile2(join3(stateDir, "backfill.status"), "utf8");
@@ -484,7 +593,7 @@ async function readStatus(stateDir) {
 
 // dist/shared/backfill/runner-spawn.mjs
 import { spawn } from "node:child_process";
-import { join as join4, dirname as dirname3 } from "node:path";
+import { join as join4, dirname as dirname4 } from "node:path";
 import { fileURLToPath as fileURLToPath2 } from "node:url";
 
 // dist/shared/backfill/runner-env.mjs
@@ -514,7 +623,7 @@ function buildRunnerEnv(env) {
 
 // dist/shared/backfill/runner-spawn.mjs
 async function spawnBackfillRunner(input) {
-  const here = dirname3(fileURLToPath2(import.meta.url));
+  const here = dirname4(fileURLToPath2(import.meta.url));
   const binPath = join4(here, "..", "..", "bin", "backfill-runner.mjs");
   const args = ["--data-dir", input.dataDir, "--credential-path", input.credentialPath];
   const spawner = input.spawner ?? defaultSpawner;

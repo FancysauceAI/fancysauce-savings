@@ -2,6 +2,21 @@
 
 All public releases of `fancysauce-savings`. Most recent first.
 
+## v0.12.0 — 2026-07-10
+
+### Features
+
+- Headless / CI authentication: export a tenant-scoped `FANCYSAUCE_TENANT_KEY`
+  before launching Claude Code or Codex and the plugin durably writes the 0600
+  credential on the first hook fire — no browser, no hand-authored
+  credentials.json. Also available as an explicit step via
+  `/fancysauce-savings:login`. Each graduated-key writer owns its own
+  provenance, so the ambient path never clobbers a URL-flow or interactive
+  login credential. (#65)
+- Native identity in a secure envelope: adopt the native Claude Code / Codex
+  account identity, carried in an encryption-gated secure envelope aligned with
+  the server contract. (#60)
+
 ## v0.11.0 — 2026-07-01
 
 ### Features
