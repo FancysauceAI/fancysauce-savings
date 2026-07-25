@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>ai.fancysauce.deploy-credentials</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/sh</string>
+        <string>/Library/Application Support/fancysauce/deploy-credentials.sh</string>
+    </array>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>StandardOutPath</key>
+    <string>~/Library/Logs/fancysauce-deploy.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>~/Library/Logs/fancysauce-deploy.log</string>
+</dict>
+</plist>
