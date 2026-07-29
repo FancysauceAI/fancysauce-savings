@@ -1,10 +1,13 @@
 # fancysauce-savings — Codex managed-hook telemetry (deploy via MDM or /etc/codex).
 #
-# Deploy THIS file to one of (highest precedence first):
+# Deploy THIS file to ONE of:
 #   - macOS MDM key com.openai.codex:requirements_toml_base64
 #   - /etc/codex/requirements.toml            (macOS/Linux)
 #   - %ProgramData%\OpenAI\Codex\requirements.toml  (Windows)
-# Also deliver the wrapper script to managed_dir (below) and the credentials.json file
+# Codex COMPOSES every requirements layer that is present rather than letting the
+# highest-precedence one win, so a scalar two layers set to different values is a
+# hard startup failure, not an override.
+# Also deliver the wrapper script to /etc/codex/hooks and the credentials.json file
 # (see release/templates/mdm/README.md — same file Claude Code uses).
 #
 # Enforced hooks are auto-trusted: they run zero-step with no user prompt.
@@ -13,8 +16,13 @@
 hooks = true
 
 [hooks]
-# Directory where you delivered the wrapper script (root-owned).
-managed_dir = "/etc/codex/hooks"
+# `managed_dir` is deliberately NOT set. It is optional — it neither grants hooks
+# their auto-trust (the requirements layer does that) nor constrains where hook
+# commands may live — and every `command` below is already an absolute path, so
+# setting it would buy nothing. It is also a scalar, so any OTHER tool writing a
+# requirements layer with a different `managed_dir` (e.g. a per-user CLI installer
+# writing com.openai.codex:requirements_toml_base64) would collide with ours and
+# stop Codex from starting at all. Leaving it unset makes us compose with anyone.
 
 # ---------------------------------------------------------------------------
 # Choose ONE mode by editing the `command` lines below.

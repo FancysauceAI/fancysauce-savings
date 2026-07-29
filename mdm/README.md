@@ -123,10 +123,16 @@ auto-trusted — they run zero-step with no user prompt. Three things to deploy
 
 ### 1. Deploy `requirements.toml`
 
-Write `codex/requirements.toml` to one of (highest precedence first):
+Write `codex/requirements.toml` to **one** of:
 - macOS MDM key `com.openai.codex:requirements_toml_base64` (base64 of the file)
 - `/etc/codex/requirements.toml` (macOS/Linux)
 - `%ProgramData%\OpenAI\Codex\requirements.toml` (Windows)
+
+Codex *composes* every requirements layer that is present — a higher-precedence
+layer does not simply win. A scalar that two layers set to **different** values is
+a hard startup failure (`failed to compose requirements field …`), and Codex will
+not start at all until one side gives way. Our template therefore sets no scalar
+that another tool is likely to also set; see `hooks.managed_dir` below.
 
 It sets `[features] hooks = true` and wires every Codex lifecycle event to the
 wrapper. Choose **pinned** (`--ref <tag> --sha <sha>`, deterministic and audited —

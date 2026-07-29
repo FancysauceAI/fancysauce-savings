@@ -2,6 +2,31 @@
 
 All public releases of `fancysauce-savings`. Most recent first.
 
+## v0.12.1 — 2026-07-29
+
+No plugin code changed in this release: the published Claude Code and Codex
+artifacts are byte-identical to v0.12.0. This release ships the MDM deployment
+templates publicly and corrects a Codex interoperability failure in them.
+
+### Fixes
+
+- Codex managed hooks no longer set `hooks.managed_dir`. Codex composes every
+  requirements layer that is present rather than letting the highest-precedence
+  one win, so when another tool deployed its own layer with a different
+  `managed_dir`, Codex failed to load any config and would not start at all. The
+  field is optional and gained us nothing — managed hooks are auto-trusted by
+  virtue of their source layer, not their directory, and our hook commands are
+  already absolute paths. Unset, our layer composes with any other tool's. (#70)
+- The MDM templates and guides are now published to this repo as `mdm/` by the
+  release process instead of being copied in by hand, so they track the tested
+  source and can no longer be silently dropped by a later publish. (#71)
+
+### Features
+
+- Codex zero-step telemetry via an enforced `requirements.toml` managed hook,
+  plus a single Kandji script that deploys both tools. Deployment templates
+  only — no change to the plugin runtime. (#64)
+
 ## v0.12.0 — 2026-07-10
 
 ### Features
