@@ -2,6 +2,12 @@
 
 All public releases of `fancysauce-savings`. Most recent first.
 
+## v0.12.2 — 2026-07-29
+
+### Fixes
+
+- fix(codex): stop the rollout tail replaying its window on derived-sink failure (#76)
+
 ## v0.12.1 — 2026-07-29
 
 No plugin code changed in this release: the published Claude Code and Codex

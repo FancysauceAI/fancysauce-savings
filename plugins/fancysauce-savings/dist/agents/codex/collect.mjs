@@ -4247,6 +4247,7 @@ async function runCollect(adapter, opts) {
       errorLogPath: join18(root, "collect-error.log"),
       transcriptRoot: opts.transcriptRoot
     };
+    let sinkEvents = [];
     await adapter.tailTranscript(hookPayload, ctx, async (tailEvents) => {
       const filteredTail = [];
       for (const ev of tailEvents) {
@@ -4261,26 +4262,34 @@ async function runCollect(adapter, opts) {
         return;
       const result = await queue.append(all.map(serializeForQueue));
       queueDropped = result.dropped;
+      sinkEvents = all;
+    });
+    if (sinkEvents.length > 0) {
       const sessionDir = join18(root, "sessions", hookPayload.session_id);
-      await mkdir9(sessionDir, { recursive: true, mode: 448 });
-      const sinks = [
-        eventLogSink(),
-        summaryUpdaterSink({ pluginVersion: pluginVersion() }),
-        sessionIndexSink()
-      ];
-      await runSinks(sinks, all, {
-        dataDir: root,
-        sessionDir,
-        sessionId: hookPayload.session_id
-      }, async (name, err) => {
+      const onSinkError = async (name, err) => {
         const msg = err instanceof Error ? err.stack ?? err.message : String(err);
         try {
           await appendFile3(join18(root, "collect-error.log"), `${(/* @__PURE__ */ new Date()).toISOString()} sink ${name}: ${msg}
 `);
         } catch {
         }
-      });
-    });
+      };
+      try {
+        await mkdir9(sessionDir, { recursive: true, mode: 448 });
+        const sinks = [
+          eventLogSink(),
+          summaryUpdaterSink({ pluginVersion: pluginVersion() }),
+          sessionIndexSink()
+        ];
+        await runSinks(sinks, sinkEvents, {
+          dataDir: root,
+          sessionDir,
+          sessionId: hookPayload.session_id
+        }, onSinkError);
+      } catch (err) {
+        await onSinkError("session-dir", err);
+      }
+    }
     const primaryFilterDropped = stamped !== null && primary === null ? 1 : 0;
     const health = new HealthState(join18(root, "state"));
     await health.touch();
@@ -4574,7 +4583,7 @@ async function tailCodexRollout(input, ctx, sink) {
   for (const source of sources) {
     let read;
     try {
-      read = await readSource(source, sessionId, seq);
+      read = await readSource(source, sessionId, seq, ctx.errorLogPath);
     } catch (err) {
       await logError(ctx.errorLogPath, source.path, err);
       continue;
@@ -4590,7 +4599,7 @@ async function tailCodexRollout(input, ctx, sink) {
     await commit();
   }
 }
-async function readSource(source, sessionId, sequenceBase) {
+async function readSource(source, sessionId, sequenceBase, errorLogPath) {
   let release;
   try {
     try {
@@ -4603,7 +4612,7 @@ async function readSource(source, sessionId, sequenceBase) {
     return null;
   }
   try {
-    const { byte_offset: startOffset, parser_state } = await readCursor(source.cursorPath);
+    const { byte_offset: startOffset, parser_state } = await readCursor(source.cursorPath, errorLogPath);
     const state = { ...parser_state };
     const uuidScope = source.stamp?.subsession_id ?? "";
     let events;
@@ -4656,15 +4665,24 @@ function applyStamp(event, stamp) {
     attributes.agent_type = stamp.agent_type;
   return { ...event, attributes };
 }
-async function readCursor(cursorPath) {
+async function readCursor(cursorPath, errorLogPath) {
+  let buf;
   try {
-    const buf = await readFile11(cursorPath, "utf8");
+    buf = await readFile11(cursorPath, "utf8");
+  } catch (err) {
+    if (err?.code !== "ENOENT") {
+      await logError(errorLogPath, cursorPath, err);
+    }
+    return { byte_offset: 0, parser_state: {} };
+  }
+  try {
     const parsed = JSON.parse(buf);
     return {
       byte_offset: parsed.byte_offset ?? 0,
       parser_state: parsed.parser_state ?? {}
     };
-  } catch {
+  } catch (err) {
+    await logError(errorLogPath, cursorPath, err);
     return { byte_offset: 0, parser_state: {} };
   }
 }

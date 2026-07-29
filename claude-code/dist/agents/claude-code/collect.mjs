@@ -4247,6 +4247,7 @@ async function runCollect(adapter, opts) {
       errorLogPath: join18(root, "collect-error.log"),
       transcriptRoot: opts.transcriptRoot
     };
+    let sinkEvents = [];
     await adapter.tailTranscript(hookPayload, ctx, async (tailEvents) => {
       const filteredTail = [];
       for (const ev of tailEvents) {
@@ -4261,26 +4262,34 @@ async function runCollect(adapter, opts) {
         return;
       const result = await queue.append(all.map(serializeForQueue));
       queueDropped = result.dropped;
+      sinkEvents = all;
+    });
+    if (sinkEvents.length > 0) {
       const sessionDir = join18(root, "sessions", hookPayload.session_id);
-      await mkdir9(sessionDir, { recursive: true, mode: 448 });
-      const sinks = [
-        eventLogSink(),
-        summaryUpdaterSink({ pluginVersion: pluginVersion() }),
-        sessionIndexSink()
-      ];
-      await runSinks(sinks, all, {
-        dataDir: root,
-        sessionDir,
-        sessionId: hookPayload.session_id
-      }, async (name, err) => {
+      const onSinkError = async (name, err) => {
         const msg = err instanceof Error ? err.stack ?? err.message : String(err);
         try {
           await appendFile3(join18(root, "collect-error.log"), `${(/* @__PURE__ */ new Date()).toISOString()} sink ${name}: ${msg}
 `);
         } catch {
         }
-      });
-    });
+      };
+      try {
+        await mkdir9(sessionDir, { recursive: true, mode: 448 });
+        const sinks = [
+          eventLogSink(),
+          summaryUpdaterSink({ pluginVersion: pluginVersion() }),
+          sessionIndexSink()
+        ];
+        await runSinks(sinks, sinkEvents, {
+          dataDir: root,
+          sessionDir,
+          sessionId: hookPayload.session_id
+        }, onSinkError);
+      } catch (err) {
+        await onSinkError("session-dir", err);
+      }
+    }
     const primaryFilterDropped = stamped !== null && primary === null ? 1 : 0;
     const health = new HealthState(join18(root, "state"));
     await health.touch();
