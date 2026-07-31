@@ -23,8 +23,8 @@ set -eo pipefail
 # --- configuration (edit before uploading to Kandji) ----------------------
 TENANT_KEY="fs_live_t_REPLACE_ME"   # from your fancysauce dashboard
 IDENTITY_TYPE="full"
-CODEX_TAG="v0.13.0"                 # pinned plugin release for Codex telemetry
-CODEX_SHA="5becf72699fb086092ae1588155cf3213627ba80"   # commit sha of CODEX_TAG
+CODEX_TAG="v0.13.1"                 # pinned plugin release for Codex telemetry
+CODEX_SHA="a034a1faf449c5c09e3b54899f8ee94a693081f8"   # commit sha of CODEX_TAG
 
 # Kandji substitutes the assigned user's email here at render time. Leave bare —
 # do NOT wrap in ${...}, or substitution of an address containing @ breaks bash.

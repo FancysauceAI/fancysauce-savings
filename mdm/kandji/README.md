@@ -47,8 +47,8 @@ Open `deploy.sh` and set the four configuration values at the top:
 ```sh
 TENANT_KEY="fs_live_t_REPLACE_ME"   # replace with your tenant key
 IDENTITY_TYPE="full"
-CODEX_TAG="v0.13.0"                 # pinned plugin release for Codex telemetry
-CODEX_SHA="5becf72699fb086092ae1588155cf3213627ba80"   # commit sha of CODEX_TAG
+CODEX_TAG="v0.13.1"                 # pinned plugin release for Codex telemetry
+CODEX_SHA="a034a1faf449c5c09e3b54899f8ee94a693081f8"   # commit sha of CODEX_TAG
 ```
 
 `CODEX_TAG`/`CODEX_SHA` pin exactly which fancysauce release Codex telemetry
