@@ -69,7 +69,7 @@ var init_credential_paths = __esm({
 // node_modules/graceful-fs/polyfills.js
 var require_polyfills = __commonJS({
   "node_modules/graceful-fs/polyfills.js"(exports, module) {
-    var constants2 = __require("constants");
+    var constants4 = __require("constants");
     var origCwd = process.cwd;
     var cwd = null;
     var platform = process.env.GRACEFUL_FS_PLATFORM || process.platform;
@@ -93,7 +93,7 @@ var require_polyfills = __commonJS({
     var chdir;
     module.exports = patch;
     function patch(fs) {
-      if (constants2.hasOwnProperty("O_SYMLINK") && process.version.match(/^v0\.6\.[0-2]|^v0\.5\./)) {
+      if (constants4.hasOwnProperty("O_SYMLINK") && process.version.match(/^v0\.6\.[0-2]|^v0\.5\./)) {
         patchLchmod(fs);
       }
       if (!fs.lutimes) {
@@ -195,7 +195,7 @@ var require_polyfills = __commonJS({
         fs2.lchmod = function(path, mode, callback) {
           fs2.open(
             path,
-            constants2.O_WRONLY | constants2.O_SYMLINK,
+            constants4.O_WRONLY | constants4.O_SYMLINK,
             mode,
             function(err, fd) {
               if (err) {
@@ -211,7 +211,7 @@ var require_polyfills = __commonJS({
           );
         };
         fs2.lchmodSync = function(path, mode) {
-          var fd = fs2.openSync(path, constants2.O_WRONLY | constants2.O_SYMLINK, mode);
+          var fd = fs2.openSync(path, constants4.O_WRONLY | constants4.O_SYMLINK, mode);
           var threw = true;
           var ret;
           try {
@@ -231,9 +231,9 @@ var require_polyfills = __commonJS({
         };
       }
       function patchLutimes(fs2) {
-        if (constants2.hasOwnProperty("O_SYMLINK") && fs2.futimes) {
+        if (constants4.hasOwnProperty("O_SYMLINK") && fs2.futimes) {
           fs2.lutimes = function(path, at, mt, cb) {
-            fs2.open(path, constants2.O_SYMLINK, function(er, fd) {
+            fs2.open(path, constants4.O_SYMLINK, function(er, fd) {
               if (er) {
                 if (cb) cb(er);
                 return;
@@ -246,7 +246,7 @@ var require_polyfills = __commonJS({
             });
           };
           fs2.lutimesSync = function(path, at, mt) {
-            var fd = fs2.openSync(path, constants2.O_SYMLINK);
+            var fd = fs2.openSync(path, constants4.O_SYMLINK);
             var ret;
             var threw = true;
             try {
@@ -575,8 +575,8 @@ var require_graceful_fs = __commonJS({
         }
       }
       var fs$writeFile = fs2.writeFile;
-      fs2.writeFile = writeFile11;
-      function writeFile11(path, data, options, cb) {
+      fs2.writeFile = writeFile12;
+      function writeFile12(path, data, options, cb) {
         if (typeof options === "function")
           cb = options, options = null;
         return go$writeFile(path, data, options, cb);
@@ -1736,18 +1736,32 @@ var init_runner_env = __esm({
 // dist/shared/backfill/runner-spawn.mjs
 var runner_spawn_exports = {};
 __export(runner_spawn_exports, {
+  resolveDistBinPath: () => resolveDistBinPath,
+  spawnAutoScan: () => spawnAutoScan,
   spawnBackfillRunner: () => spawnBackfillRunner
 });
 import { spawn } from "node:child_process";
 import { join as join16, dirname as dirname5 } from "node:path";
 import { fileURLToPath as fileURLToPath2 } from "node:url";
+function resolveDistBinPath(containerDir, binName) {
+  return join16(containerDir, "..", "..", "shared", "bin", binName);
+}
 async function spawnBackfillRunner(input) {
   const here = dirname5(fileURLToPath2(import.meta.url));
-  const binPath = join16(here, "..", "..", "bin", "backfill-runner.mjs");
+  const binPath = resolveDistBinPath(here, "backfill-runner.mjs");
   const args = ["--data-dir", input.dataDir, "--credential-path", input.credentialPath];
-  const spawner = input.spawner ?? defaultSpawner;
+  return spawnDetachedBin(binPath, args, input.spawner);
+}
+async function spawnAutoScan(input) {
+  const here = dirname5(fileURLToPath2(import.meta.url));
+  const binPath = resolveDistBinPath(here, "auto-scan.mjs");
+  const args = ["--data-dir", input.dataDir, "--credential-path", input.credentialPath];
+  return spawnDetachedBin(binPath, args, input.spawner);
+}
+async function spawnDetachedBin(binPath, args, spawner) {
+  const spawnFn = spawner ?? defaultSpawner;
   try {
-    const { pid } = await spawner(binPath, args);
+    const { pid } = await spawnFn(binPath, args);
     return { kind: "spawned", pid };
   } catch (err) {
     return { kind: "error", reason: err.message };
@@ -1775,26 +1789,62 @@ var init_runner_spawn = __esm({
   }
 });
 
+// dist/shared/backfill/scan-once.mjs
+var scan_once_exports = {};
+__export(scan_once_exports, {
+  claimScanOnce: () => claimScanOnce,
+  hasScanOnceMarker: () => hasScanOnceMarker
+});
+import { readFile as readFile10, writeFile as writeFile7, mkdir as mkdir8 } from "node:fs/promises";
+import { join as join17 } from "node:path";
+async function hasScanOnceMarker(stateDir) {
+  try {
+    await readFile10(join17(stateDir, MARKER_NAME));
+    return true;
+  } catch {
+    return false;
+  }
+}
+async function claimScanOnce(stateDir, pluginVersion2) {
+  await mkdir8(stateDir, { recursive: true, mode: 448 });
+  const marker = { spawned_at: (/* @__PURE__ */ new Date()).toISOString(), plugin_version: pluginVersion2 };
+  try {
+    await writeFile7(join17(stateDir, MARKER_NAME), JSON.stringify(marker), { encoding: "utf8", flag: "wx" });
+    return true;
+  } catch (err) {
+    if (err?.code === "EEXIST")
+      return false;
+    throw err;
+  }
+}
+var MARKER_NAME;
+var init_scan_once = __esm({
+  "dist/shared/backfill/scan-once.mjs"() {
+    "use strict";
+    MARKER_NAME = "scan-once.json";
+  }
+});
+
 // dist/shared/backfill/status.mjs
 var status_exports = {};
 __export(status_exports, {
   readStatus: () => readStatus,
   writeStatus: () => writeStatus
 });
-import { readFile as readFile10, open as open6, rename as rename9, mkdir as mkdir8, unlink as unlink3 } from "node:fs/promises";
-import { join as join17, dirname as dirname6 } from "node:path";
+import { readFile as readFile11, open as open6, rename as rename9, mkdir as mkdir9, unlink as unlink3 } from "node:fs/promises";
+import { join as join18, dirname as dirname6 } from "node:path";
 import { randomBytes as randomBytes4 } from "node:crypto";
 async function readStatus(stateDir) {
   try {
-    const raw = await readFile10(join17(stateDir, "backfill.status"), "utf8");
+    const raw = await readFile11(join18(stateDir, "backfill.status"), "utf8");
     return JSON.parse(raw);
   } catch {
     return null;
   }
 }
 async function writeStatus(stateDir, s) {
-  const path = join17(stateDir, "backfill.status");
-  await mkdir8(dirname6(path), { recursive: true });
+  const path = join18(stateDir, "backfill.status");
+  await mkdir9(dirname6(path), { recursive: true });
   const tmp = `${path}.${process.pid}.${randomBytes4(4).toString("hex")}.tmp`;
   let renamed = false;
   try {
@@ -1828,8 +1878,8 @@ import { readFileSync as readFileSync6 } from "node:fs";
 // dist/shared/run-collect.mjs
 import { readFileSync as readFileSync5 } from "node:fs";
 import { randomUUID as randomUUID2 } from "node:crypto";
-import { mkdir as mkdir9, writeFile as writeFile7, appendFile as appendFile3, stat as stat3, rm as rm3 } from "node:fs/promises";
-import { join as join18 } from "node:path";
+import { mkdir as mkdir10, writeFile as writeFile8, appendFile as appendFile3, stat as stat3, rm as rm3 } from "node:fs/promises";
+import { join as join19 } from "node:path";
 
 // dist/shared/config.mjs
 import { join } from "node:path";
@@ -1891,7 +1941,11 @@ function defaultPolicy() {
       "extra_usage_enabled",
       "extra_usage_disabled_reason",
       "overage_credit_available",
-      "overage_credit_eligible"
+      "overage_credit_eligible",
+      "credits_has",
+      "credits_unlimited",
+      "credits_balance",
+      "auth_plan_claim"
     ]),
     "usage_limit.exceeded": Object.freeze([
       "limit_message",
@@ -1904,7 +1958,24 @@ function defaultPolicy() {
       "rate_limit_tier",
       "billing_type",
       "extra_usage_enabled",
-      "extra_usage_disabled_reason"
+      "extra_usage_disabled_reason",
+      "window",
+      "used_percent",
+      "resets_at",
+      "window_minutes",
+      "reached_type",
+      "limit_source",
+      "credits_has",
+      "credits_unlimited",
+      "credits_balance"
+    ]),
+    "usage_limit.snapshot": Object.freeze([
+      "window",
+      "used_percent",
+      "resets_at",
+      "window_minutes",
+      "plan_type",
+      "model"
     ]),
     "api.request": Object.freeze([
       "cost_usd",
@@ -1920,7 +1991,13 @@ function defaultPolicy() {
       "transcript_message_uuid",
       "subsession_id",
       "agent_type",
-      "stop_reason"
+      "stop_reason",
+      "primary_used_percent",
+      "primary_resets_at",
+      "primary_window_minutes",
+      "secondary_used_percent",
+      "secondary_resets_at",
+      "secondary_window_minutes"
     ])
   };
   return Object.freeze({
@@ -2106,7 +2183,7 @@ async function ensureAmbientTenantCredential(existing, paths, opts = {}) {
   const tenantKey = env.FANCYSAUCE_TENANT_KEY ?? "";
   if (!KEY_RE.test(tenantKey))
     return { result: existing, wrote: false };
-  const identity = env.FANCYSAUCE_IDENTITY_TYPE === "full" ? "full" : "hash";
+  const identity = env.FANCYSAUCE_IDENTITY_TYPE === "hash" ? "hash" : "full";
   const d = decide(existing, { tenantKey, identity, ownProvenance: "env_tenant_key" });
   if (!d.write)
     return { result: existing, wrote: false };
@@ -2187,7 +2264,7 @@ async function loadConfig(opts = {}) {
       endpoint,
       loginStateDir,
       policy: defaultPolicy(),
-      identity_type: ambient.inMemory.identity_type ?? "hash",
+      identity_type: ambient.inMemory.identity_type ?? "full",
       // Degraded fail-open for this single fire: skip the richer identity
       // resolution the file-backed path performs; the durable write will retry
       // and enrich on a later fire.
@@ -2200,7 +2277,7 @@ async function loadConfig(opts = {}) {
       const apiKey = process.env.FANCYSAUCE_API_KEY;
       if (!apiKey)
         return null;
-      const envIdentityType = process.env.FANCYSAUCE_IDENTITY_TYPE === "full" ? "full" : "hash";
+      const envIdentityType = process.env.FANCYSAUCE_IDENTITY_TYPE === "hash" ? "hash" : "full";
       return {
         credential: apiKey,
         endpoint: opts.endpointOverride ?? INGEST_ENDPOINT,
@@ -2424,6 +2501,7 @@ function buildRules(policy) {
     "config.changed": k("config.changed"),
     "usage_config.changed": k("usage_config.changed"),
     "usage_limit.exceeded": k("usage_limit.exceeded"),
+    "usage_limit.snapshot": k("usage_limit.snapshot"),
     "api.request": k("api.request")
   };
 }
@@ -2849,7 +2927,7 @@ var IdentityResolver = class {
     if (record) {
       result.identity_source = record.source;
     }
-    if (record && opts.identity_type === "full") {
+    if (record) {
       const key = (opts.serverKeyLoader ?? (() => loadServerKey({ cacheDir: this.dir, now: opts.now ?? Date.now() })))();
       if (key.publicKeyPem.includes("BEGIN PUBLIC KEY")) {
         try {
@@ -3482,8 +3560,27 @@ var ATTR_TYPE = {
   limit_message: "string",
   limit_kind_guess: "string",
   reset_at_guess: "int",
-  api_error_status: "int"
+  api_error_status: "int",
   // request_id + transcript_message_uuid already typed above (api.request).
+  // usage_limit.snapshot + Codex rate-limit lens
+  window: "string",
+  used_percent: "double",
+  resets_at: "int",
+  window_minutes: "int",
+  reached_type: "string",
+  limit_source: "string",
+  credits_has: "bool",
+  credits_unlimited: "bool",
+  credits_balance: "string",
+  auth_plan_claim: "string",
+  // Codex per-window gauge riding api.request. Prefixed per window because a
+  // payload can report primary and secondary at once.
+  primary_used_percent: "double",
+  primary_resets_at: "int",
+  primary_window_minutes: "int",
+  secondary_used_percent: "double",
+  secondary_resets_at: "int",
+  secondary_window_minutes: "int"
 };
 function encodeOtlp(events, resource, observedTimeUnixNano) {
   const observed = observedTimeUnixNano ?? BigInt(Date.now()) * 1000000n;
@@ -4168,8 +4265,8 @@ var QUEUE_CAP_BYTES = 100 * 1024 * 1024;
 function pluginVersion() {
   try {
     const candidatePaths = [
-      join18(import.meta.dirname, "../../../package.json"),
-      join18(process.cwd(), "package.json")
+      join19(import.meta.dirname, "../../../package.json"),
+      join19(process.cwd(), "package.json")
     ];
     for (const p of candidatePaths) {
       try {
@@ -4200,6 +4297,23 @@ function serializeForQueue(event) {
     attributes: event.attributes
   });
 }
+function filterEvents(events, policy) {
+  const filtered = [];
+  let dropped = 0;
+  for (const ev of events) {
+    const f = filterEvent(ev, policy);
+    if (f === null)
+      dropped++;
+    else
+      filtered.push(f);
+  }
+  return { filtered, dropped };
+}
+async function enqueueEvents(queue, events) {
+  if (events.length === 0)
+    return { written: 0, dropped: 0, sizeAfter: await queue.size() };
+  return queue.append(events.map(serializeForQueue));
+}
 async function runCollect(adapter, opts) {
   const start = Date.now();
   let stderrBuf = "";
@@ -4221,10 +4335,9 @@ async function runCollect(adapter, opts) {
     }
     const hookPayload = opts.hookPayload;
     const root = dataDir();
-    await mkdir9(root, { recursive: true, mode: 448 });
+    await mkdir10(root, { recursive: true, mode: 448 });
     const identity = await new IdentityResolver(root).resolve(hookPayload.cwd ?? process.cwd(), {
       credential: config.credential,
-      identity_type: config.identity_type ?? "hash",
       identity_hint: config.identity_hint ?? null,
       agent: adapter.agent
     });
@@ -4237,45 +4350,42 @@ async function runCollect(adapter, opts) {
     const stamped = enrichedRaw && enrichedRaw.event_type === "session.start" && identity.repo_url_hash ? { ...enrichedRaw, attributes: { ...enrichedRaw.attributes, "fancysauce.repo_url_hash": identity.repo_url_hash } } : enrichedRaw;
     const withId = stamped === null ? null : { ...stamped, event_uuid: randomUUID2() };
     const primary = withId === null ? null : filterEvent(withId, config.policy);
-    const outboundDir = join18(root, "outbound");
-    await mkdir9(outboundDir, { recursive: true, mode: 448 });
+    let primaryPending = primary;
+    const outboundDir = join19(root, "outbound");
+    await mkdir10(outboundDir, { recursive: true, mode: 448 });
     const queue = new Queue(outboundDir, QUEUE_CAP_BYTES);
     let queueDropped = 0;
     let tailFilterDropped = 0;
     const ctx = {
-      stateDir: join18(root, "state"),
-      errorLogPath: join18(root, "collect-error.log"),
+      stateDir: join19(root, "state"),
+      errorLogPath: join19(root, "collect-error.log"),
       transcriptRoot: opts.transcriptRoot
     };
-    let sinkEvents = [];
+    const sinkEvents = [];
     await adapter.tailTranscript(hookPayload, ctx, async (tailEvents) => {
-      const filteredTail = [];
-      for (const ev of tailEvents) {
-        const f = filterEvent(ev, config.policy);
-        if (f === null)
-          tailFilterDropped++;
-        else
-          filteredTail.push(f);
-      }
-      const all = primary ? [primary, ...filteredTail] : filteredTail;
+      const { filtered: filteredTail, dropped: tailDropped } = filterEvents(tailEvents, config.policy);
+      tailFilterDropped += tailDropped;
+      const p = primaryPending;
+      primaryPending = null;
+      const all = p ? [p, ...filteredTail] : filteredTail;
       if (all.length === 0)
         return;
-      const result = await queue.append(all.map(serializeForQueue));
-      queueDropped = result.dropped;
-      sinkEvents = all;
+      const result = await enqueueEvents(queue, all);
+      queueDropped += result.dropped;
+      sinkEvents.push(...all);
     });
     if (sinkEvents.length > 0) {
-      const sessionDir = join18(root, "sessions", hookPayload.session_id);
+      const sessionDir = join19(root, "sessions", hookPayload.session_id);
       const onSinkError = async (name, err) => {
         const msg = err instanceof Error ? err.stack ?? err.message : String(err);
         try {
-          await appendFile3(join18(root, "collect-error.log"), `${(/* @__PURE__ */ new Date()).toISOString()} sink ${name}: ${msg}
+          await appendFile3(join19(root, "collect-error.log"), `${(/* @__PURE__ */ new Date()).toISOString()} sink ${name}: ${msg}
 `);
         } catch {
         }
       };
       try {
-        await mkdir9(sessionDir, { recursive: true, mode: 448 });
+        await mkdir10(sessionDir, { recursive: true, mode: 448 });
         const sinks = [
           eventLogSink(),
           summaryUpdaterSink({ pluginVersion: pluginVersion() }),
@@ -4291,7 +4401,7 @@ async function runCollect(adapter, opts) {
       }
     }
     const primaryFilterDropped = stamped !== null && primary === null ? 1 : 0;
-    const health = new HealthState(join18(root, "state"));
+    const health = new HealthState(join19(root, "state"));
     await health.touch();
     const dropped = queueDropped + tailFilterDropped + primaryFilterDropped;
     if (dropped > 0)
@@ -4300,7 +4410,7 @@ async function runCollect(adapter, opts) {
     if (remaining > 300) {
       await tryFlush({
         dataDir: outboundDir,
-        stateDir: join18(root, "state"),
+        stateDir: join19(root, "state"),
         credential: config.credential,
         endpoint: config.endpoint,
         resource,
@@ -4308,8 +4418,8 @@ async function runCollect(adapter, opts) {
       });
     }
     try {
-      const stateDir = join18(root, "state");
-      const pendingPath = join18(config.loginStateDir, "backfill-pending");
+      const stateDir = join19(root, "state");
+      const pendingPath = join19(config.loginStateDir, "backfill-pending");
       const pendingExists = await stat3(pendingPath).then(() => true).catch(() => false);
       if (pendingExists) {
         const { isBackfillActive: isBackfillActive2 } = await Promise.resolve().then(() => (init_pid_guard(), pid_guard_exports));
@@ -4325,7 +4435,25 @@ async function runCollect(adapter, opts) {
     } catch {
     }
     try {
-      const stateDir = join18(root, "state");
+      if (adapter.agent === "claude-code") {
+        const stateDir = join19(root, "state");
+        const { hasScanOnceMarker: hasScanOnceMarker2, claimScanOnce: claimScanOnce2 } = await Promise.resolve().then(() => (init_scan_once(), scan_once_exports));
+        const alreadyAttempted = await hasScanOnceMarker2(stateDir);
+        if (!alreadyAttempted && await claimScanOnce2(stateDir, pluginVersion())) {
+          const skipMarkerExists = await stat3(join19(stateDir, "backfill-skip")).then(() => true).catch(() => false);
+          if (!skipMarkerExists) {
+            const { spawnAutoScan: spawnAutoScan2 } = await Promise.resolve().then(() => (init_runner_spawn(), runner_spawn_exports));
+            const { credentialPaths: credentialPaths2 } = await Promise.resolve().then(() => (init_credential_paths(), credential_paths_exports));
+            const paths = credentialPaths2();
+            void spawnAutoScan2({ dataDir: root, credentialPath: paths.user, spawner: opts.autoScanSpawner }).catch(() => {
+            });
+          }
+        }
+      }
+    } catch {
+    }
+    try {
+      const stateDir = join19(root, "state");
       const { readStatus: readStatus2, writeStatus: writeStatus2 } = await Promise.resolve().then(() => (init_status(), status_exports));
       const status = await readStatus2(stateDir);
       if (status && status.phase === "completed" && !status.notified) {
@@ -4339,8 +4467,8 @@ async function runCollect(adapter, opts) {
     const msg = err instanceof Error ? `${err.message}
 ${err.stack ?? ""}` : String(err);
     try {
-      const logPath = join18(dataDir(), "collect-error.log");
-      await writeFile7(logPath, `${(/* @__PURE__ */ new Date()).toISOString()} ${msg}
+      const logPath = join19(dataDir(), "collect-error.log");
+      await writeFile8(logPath, `${(/* @__PURE__ */ new Date()).toISOString()} ${msg}
 `, { flag: "a" });
     } catch {
     }
@@ -4351,6 +4479,7 @@ ${err.stack ?? ""}` : String(err);
 
 // dist/agents/claude-code/adapter.mjs
 import { homedir as homedir6 } from "node:os";
+import { join as join24 } from "node:path";
 
 // dist/shared/stable-stringify.mjs
 function stableStringify(value) {
@@ -4469,7 +4598,7 @@ function mapHookToEvent(input, sequence) {
 }
 
 // dist/agents/claude-code/subagent-meta.mjs
-import { open as open7, readFile as readFile11 } from "node:fs/promises";
+import { open as open7, lstat, constants as constants2 } from "node:fs/promises";
 function metaPathFromTranscript(transcriptPath) {
   return transcriptPath.endsWith(".jsonl") ? `${transcriptPath.slice(0, -".jsonl".length)}.meta.json` : `${transcriptPath}.meta.json`;
 }
@@ -4549,14 +4678,24 @@ var SubagentMetaCache = class {
     if (this.cache.has(path))
       return this.cache.get(path) ?? null;
     let meta = null;
+    let fh = null;
     try {
-      const raw = await readFile11(path, "utf8");
+      if (!(await lstat(path)).isFile())
+        throw new Error("not a regular file");
+      const flags = typeof constants2.O_NOFOLLOW === "number" ? constants2.O_RDONLY | constants2.O_NOFOLLOW : "r";
+      fh = await open7(path, flags);
+      if (!(await fh.stat()).isFile())
+        throw new Error("not a regular file");
+      const raw = await fh.readFile({ encoding: "utf8" });
       const parsed = JSON.parse(raw);
       if (typeof parsed.agentType === "string") {
         meta = { agentType: parsed.agentType };
       }
     } catch {
       meta = null;
+    } finally {
+      if (fh)
+        await fh.close();
     }
     this.cache.set(path, meta);
     return meta;
@@ -4565,21 +4704,21 @@ var SubagentMetaCache = class {
 
 // dist/agents/claude-code/transcript-tail.mjs
 var import_proper_lockfile4 = __toESM(require_proper_lockfile(), 1);
-import { mkdir as mkdir10, readFile as readFile13, readdir, writeFile as writeFile9, appendFile as appendFile4, rename as rename11 } from "node:fs/promises";
-import { basename as basename2, dirname as dirname7, isAbsolute, join as join20, sep } from "node:path";
+import { mkdir as mkdir11, readFile as readFile13, readdir, writeFile as writeFile10, appendFile as appendFile4, rename as rename11, lstat as lstat2 } from "node:fs/promises";
+import { basename as basename2, dirname as dirname7, isAbsolute, join as join21, relative, sep } from "node:path";
 import { homedir as homedir5 } from "node:os";
 import { randomUUID as randomUUID4 } from "node:crypto";
 
 // dist/agents/claude-code/subagent-cursor.mjs
-import { readFile as readFile12, rename as rename10, writeFile as writeFile8 } from "node:fs/promises";
-import { join as join19 } from "node:path";
+import { readFile as readFile12, rename as rename10, writeFile as writeFile9 } from "node:fs/promises";
+import { join as join20 } from "node:path";
 var SubagentCursor = class {
   dir;
   path;
   tmpPath;
   constructor(dir) {
     this.dir = dir;
-    this.path = join19(dir, "transcript_cursor.json");
+    this.path = join20(dir, "transcript_cursor.json");
     this.tmpPath = `${this.path}.tmp`;
   }
   async read() {
@@ -4614,20 +4753,21 @@ var SubagentCursor = class {
   }
   async write(offset) {
     const body = { byte_offset: offset };
-    await writeFile8(this.tmpPath, JSON.stringify(body), "utf8");
+    await writeFile9(this.tmpPath, JSON.stringify(body), "utf8");
     await rename10(this.tmpPath, this.path);
   }
 };
 
 // dist/shared/tail-engine.mjs
-import { open as open8 } from "node:fs/promises";
+import { open as open8, constants as constants3 } from "node:fs/promises";
 var DEFAULT_MAX_READ_BYTES = 4 * 1024 * 1024;
 async function readWindow(opts) {
   const { path, startOffset, sequenceBase, maxReadBytes, parseWindow, state } = opts;
   let fh = null;
   try {
     try {
-      fh = await open8(path, "r");
+      const flags = opts.nofollow && typeof constants3.O_NOFOLLOW === "number" ? constants3.O_RDONLY | constants3.O_NOFOLLOW : "r";
+      fh = await open8(path, flags);
     } catch (err) {
       if (err.code === "ENOENT") {
         return { events: [], endOffset: startOffset, truncated: false };
@@ -4663,6 +4803,8 @@ function classifyLimitKind(text) {
   if (/not your usage limit/i.test(text) || /temporarily limiting/i.test(text)) {
     return "server_throttle";
   }
+  if (/monthly spend limit/i.test(text))
+    return "org_spend_cap";
   if (/weekly limit/i.test(text))
     return "weekly";
   if (/hit your session limit/i.test(text) || /session limit/i.test(text))
@@ -4787,6 +4929,7 @@ function detectUsageLimit(rec, sessionId, sequence, nowMs) {
 
 // dist/agents/claude-code/transcript-tail.mjs
 var SESSION_ID_RE2 = /^[A-Za-z0-9_-]{16,128}$/;
+var AGENT_ID_RE = /^[A-Za-z0-9_-]{16,128}$/;
 var TranscriptTail = class {
   stateDir;
   maxReadBytes;
@@ -4796,7 +4939,7 @@ var TranscriptTail = class {
     this.stateDir = stateDir;
     this.maxReadBytes = options.maxReadBytes ?? DEFAULT_MAX_READ_BYTES;
     this.errorLogPath = options.errorLogPath;
-    const root = options.transcriptRoot ?? join20(homedir5(), ".claude", "projects");
+    const root = options.transcriptRoot ?? join21(homedir5(), ".claude", "projects");
     this.transcriptRoot = root.endsWith(sep) ? root : root + sep;
   }
   // `persist` runs after all events are read but BEFORE any cursor is
@@ -4810,8 +4953,8 @@ var TranscriptTail = class {
       return { events: [], skipped: true, newCursor: 0 };
     }
     const cursorDir = this.cursorDir(sessionId);
-    await mkdir10(cursorDir, { recursive: true });
-    const cursorPath = join20(cursorDir, "transcript_cursor.json");
+    await mkdir11(cursorDir, { recursive: true });
+    const cursorPath = join21(cursorDir, "transcript_cursor.json");
     let release;
     try {
       release = await import_proper_lockfile4.default.lock(cursorPath, {
@@ -4819,20 +4962,26 @@ var TranscriptTail = class {
         realpath: false
       });
     } catch {
+      await persist([]);
       return { events: [], skipped: true, newCursor: 0 };
     }
     try {
       const startOffset = await this.readCursor(cursorPath);
       const { events, endOffset, truncated } = await this.readSince(sessionId, transcriptPath, startOffset, sequenceBase, this.maxReadBytes);
-      const sessionDir = join20(dirname7(transcriptPath), basename2(transcriptPath, ".jsonl"));
-      const subagentPaths = await discoverSubagentTranscripts(sessionDir);
+      const sessionDir = join21(dirname7(transcriptPath), basename2(transcriptPath, ".jsonl"));
+      const subagentsRoot = join21(sessionDir, "subagents");
+      const subagentPaths = await discoverSubagentTranscripts(sessionDir, (dir, err) => this.logSubagentError(sessionId, relative(sessionDir, dir) || "subagents", err));
       const metaCache = new SubagentMetaCache();
       let seq = sequenceBase + events.length;
       const subagentCommits = [];
       for (const subagentPath of subagentPaths) {
-        const agentId = basename2(subagentPath, ".jsonl").slice("agent-".length);
+        const derived = deriveSubagentCursorDir(this.cursorDir(sessionId), subagentsRoot, subagentPath);
+        if (!derived.ok) {
+          await this.logSubagentError(sessionId, derived.agentId, new Error(derived.reason));
+          continue;
+        }
+        const { agentId, cursorDir: subCursorDir, errorLabel } = derived;
         const metaPath = metaPathFromTranscript(subagentPath);
-        const subCursorDir = join20(this.cursorDir(sessionId), "subagents", agentId);
         let read;
         try {
           read = await readSubagent({
@@ -4846,7 +4995,7 @@ var TranscriptTail = class {
             maxReadBytes: this.maxReadBytes
           });
         } catch (err) {
-          await this.logSubagentError(sessionId, agentId, err);
+          await this.logSubagentError(sessionId, errorLabel, err);
           continue;
         }
         events.push(...read.events);
@@ -4870,12 +5019,12 @@ var TranscriptTail = class {
       throw new Error(`acquireCursorLock: invalid sessionId`);
     }
     const cursorDir = this.cursorDir(sessionId);
-    await mkdir10(cursorDir, { recursive: true });
-    const cursorPath = join20(cursorDir, "transcript_cursor.json");
+    await mkdir11(cursorDir, { recursive: true });
+    const cursorPath = join21(cursorDir, "transcript_cursor.json");
     try {
       await readFile13(cursorPath);
     } catch {
-      await writeFile9(cursorPath, "{}", "utf8");
+      await writeFile10(cursorPath, "{}", "utf8");
     }
     const release = await import_proper_lockfile4.default.lock(cursorPath, { retries: 0, realpath: false });
     return { release: async () => {
@@ -4883,7 +5032,7 @@ var TranscriptTail = class {
     } };
   }
   cursorDir(sessionId) {
-    return join20(this.stateDir, "sessions", sessionId);
+    return sessionCursorDir(this.stateDir, sessionId);
   }
   isValidTranscriptPath(p) {
     if (typeof p !== "string" || p.length === 0)
@@ -4896,12 +5045,11 @@ var TranscriptTail = class {
       return false;
     return true;
   }
-  async logSubagentError(sessionId, agentId, err) {
+  async logSubagentError(sessionId, agentLabel, err) {
     if (!this.errorLogPath)
       return;
     const msg = err instanceof Error ? `${err.message}` : String(err);
-    const line = `${(/* @__PURE__ */ new Date()).toISOString()} subagent-tail ${sessionId}/${agentId}: ${msg}
-`;
+    const line = `${(/* @__PURE__ */ new Date()).toISOString()} subagent-tail ${sessionId}/${agentLabel}: ${msg}`.replace(/[\p{Cc}\p{Cf}]+/gu, " ").slice(0, 2e3) + "\n";
     try {
       await appendFile4(this.errorLogPath, line);
     } catch {
@@ -4919,7 +5067,7 @@ var TranscriptTail = class {
   async writeCursor(cursorPath, offset) {
     const body = { byte_offset: offset };
     const tmp = `${cursorPath}.tmp`;
-    await writeFile9(tmp, JSON.stringify(body), "utf8");
+    await writeFile10(tmp, JSON.stringify(body), "utf8");
     await rename11(tmp, cursorPath);
   }
   async readSince(sessionId, path, startOffset, sequenceBase, maxReadBytes) {
@@ -4963,7 +5111,7 @@ function ccParseWindow(stamp, detectLimit) {
 }
 async function readSubagent(opts) {
   const { sessionId, agentId, transcriptPath, metaPath, cursorDir, metaCache = new SubagentMetaCache(), sequenceBase = 0, maxReadBytes = DEFAULT_MAX_READ_BYTES } = opts;
-  await mkdir10(cursorDir, { recursive: true });
+  await mkdir11(cursorDir, { recursive: true });
   const cursor = new SubagentCursor(cursorDir);
   const startOffset = await cursor.read();
   const meta = await metaCache.get(metaPath);
@@ -4977,10 +5125,13 @@ async function readSubagent(opts) {
       sequenceBase,
       maxReadBytes,
       state: {},
+      nofollow: true,
       parseWindow: ccParseWindow((record, seq) => {
         const base = toApiRequestEvent(record, sessionId, seq);
         const attributes = {
           ...base.attributes,
+          // Bare agentId is safe even nested: flat and workflow ids share
+          // one session-scoped random namespace, so basenames don't collide.
           subsession_id: agentId
         };
         if (meta)
@@ -4991,12 +5142,20 @@ async function readSubagent(opts) {
   } catch (err) {
     if (err?.code === "ENOENT") {
       return { events: [], commit: async () => {
-      } };
+      }, advanced: false };
     }
     throw err;
   }
   return {
     events,
+    // Whether committing would actually move this agent's cursor forward.
+    // Mirrors tail()'s own "truncated || endOffset > startOffset" check on
+    // the parent cursor. Crucially this is NOT the same as `events.length >
+    // 0` — a window can consume real bytes (advance) while containing zero
+    // assistant records (all user/tool_result lines), and a caller that
+    // loops until `events.length === 0` would stop before ever committing
+    // that window, permanently stranding every record after it.
+    advanced: truncated || endOffset > startOffset,
     commit: async () => {
       if (truncated)
         await cursor.reset();
@@ -5006,18 +5165,78 @@ async function readSubagent(opts) {
     }
   };
 }
-async function discoverSubagentTranscripts(sessionDir) {
-  const subDir = join20(sessionDir, "subagents");
-  let entries;
+var MAX_SUBAGENT_DISCOVERY_DEPTH = 4;
+async function discoverSubagentTranscripts(sessionDir, onError) {
+  const root = join21(sessionDir, "subagents");
   try {
-    entries = await readdir(subDir);
-  } catch {
+    if (!(await lstat2(root)).isDirectory())
+      return [];
+  } catch (err) {
+    const code = err?.code;
+    if (code !== "ENOENT" && code !== "ENOTDIR")
+      await onError?.(root, err);
     return [];
   }
-  return entries.filter((e) => e.startsWith("agent-") && e.endsWith(".jsonl")).map((e) => join20(subDir, e));
+  return walkSubagentDir(root, MAX_SUBAGENT_DISCOVERY_DEPTH, onError);
+}
+async function walkSubagentDir(dir, depthRemaining, onError) {
+  let entries;
+  try {
+    entries = await readdir(dir, { withFileTypes: true });
+  } catch (err) {
+    const code = err?.code;
+    if (code !== "ENOENT" && code !== "ENOTDIR")
+      await onError?.(dir, err);
+    return [];
+  }
+  const found = await Promise.all(entries.map(async (entry) => {
+    const full = join21(dir, entry.name);
+    const kind = await classifyDirent(full, entry);
+    if (kind === "file" && entry.name.startsWith("agent-") && entry.name.endsWith(".jsonl")) {
+      return [full];
+    }
+    if (kind === "dir" && depthRemaining > 0) {
+      return walkSubagentDir(full, depthRemaining - 1, onError);
+    }
+    return [];
+  }));
+  return found.flat();
+}
+async function classifyDirent(fullPath, entry) {
+  if (entry.isFile())
+    return "file";
+  if (entry.isDirectory())
+    return "dir";
+  if (entry.isSymbolicLink() || entry.isBlockDevice() || entry.isCharacterDevice() || entry.isFIFO() || entry.isSocket())
+    return "other";
+  try {
+    const st = await lstat2(fullPath);
+    if (st.isFile())
+      return "file";
+    if (st.isDirectory())
+      return "dir";
+  } catch {
+  }
+  return "other";
 }
 function isValidSessionId2(s) {
   return typeof s === "string" && SESSION_ID_RE2.test(s);
+}
+function sessionCursorDir(stateDir, sessionId) {
+  return join21(stateDir, "sessions", sessionId);
+}
+function deriveSubagentCursorDir(sessCursorDir, subagentsRoot, subagentPath) {
+  const agentId = basename2(subagentPath, ".jsonl").slice("agent-".length);
+  if (!AGENT_ID_RE.test(agentId)) {
+    return { ok: false, agentId, reason: `unsafe agent id in transcript name: ${subagentPath}` };
+  }
+  const nestedDir = relative(subagentsRoot, dirname7(subagentPath));
+  if (nestedDir === ".." || nestedDir.startsWith(".." + sep)) {
+    return { ok: false, agentId, reason: `transcript outside subagents root: ${subagentPath}` };
+  }
+  const cursorDir = nestedDir === "" ? join21(sessCursorDir, "subagents", agentId) : join21(sessCursorDir, "subagents", nestedDir, agentId);
+  const errorLabel = nestedDir === "" ? agentId : join21(nestedDir, agentId);
+  return { ok: true, agentId, cursorDir, errorLabel };
 }
 function isAssistantRecord(r) {
   if (typeof r !== "object" || r === null)
@@ -5075,10 +5294,10 @@ function toApiRequestEvent(r, sessionId, sequence) {
 
 // dist/shared/account-posture.mjs
 import { readFile as readFile14 } from "node:fs/promises";
-import { join as join21 } from "node:path";
+import { join as join22 } from "node:path";
 function resolveClaudeConfigPath(env, homeDir) {
   const base = env.CLAUDE_CONFIG_DIR && env.CLAUDE_CONFIG_DIR.length > 0 ? env.CLAUDE_CONFIG_DIR : homeDir;
-  return join21(base, ".claude.json");
+  return join22(base, ".claude.json");
 }
 function str(v) {
   return typeof v === "string" && v.length > 0 ? v : void 0;
@@ -5152,25 +5371,25 @@ function postureAttributes(p) {
 
 // dist/shared/usage-config.mjs
 import { randomUUID as randomUUID5 } from "node:crypto";
-import { stat as stat4, readFile as readFile15, writeFile as writeFile10, rename as rename12, mkdir as mkdir11 } from "node:fs/promises";
-import { join as join22 } from "node:path";
+import { stat as stat4, readFile as readFile15, writeFile as writeFile11, rename as rename12, mkdir as mkdir12 } from "node:fs/promises";
+import { join as join23 } from "node:path";
 var noopCommit = async () => {
 };
 async function prepareUsageConfigEvent(opts) {
-  const statePath = join22(opts.stateDir, "usage-config.json");
+  const statePath = join23(opts.stateDir, "usage-config.json");
   const prev = await readState(statePath);
   let mtimeMs;
   try {
     mtimeMs = (await stat4(opts.configPath)).mtimeMs;
   } catch {
-    return { event: null, commit: noopCommit };
+    return { event: null, commit: noopCommit, wouldAdvance: false };
   }
   if (prev && mtimeMs === prev.last_mtime_ms) {
-    return { event: null, commit: noopCommit };
+    return { event: null, commit: noopCommit, wouldAdvance: false };
   }
   const posture = await opts.getPosture();
   if (posture === null) {
-    return { event: null, commit: noopCommit };
+    return { event: null, commit: noopCommit, wouldAdvance: false };
   }
   const commitState = async (hash2) => {
     await writeStateAtomic(opts.stateDir, statePath, {
@@ -5180,11 +5399,11 @@ async function prepareUsageConfigEvent(opts) {
     });
   };
   if (!postureHasFields(posture)) {
-    return { event: null, commit: () => commitState("") };
+    return { event: null, commit: () => commitState(""), wouldAdvance: true };
   }
   const hash = postureHash(posture);
   if (prev && hash === prev.last_hash) {
-    return { event: null, commit: () => commitState(hash) };
+    return { event: null, commit: () => commitState(hash), wouldAdvance: true };
   }
   const event = {
     event_uuid: randomUUID5(),
@@ -5195,7 +5414,7 @@ async function prepareUsageConfigEvent(opts) {
     timestamp_ns: BigInt(opts.now()) * 1000000n,
     attributes: postureAttributes(posture)
   };
-  return { event, commit: () => commitState(hash) };
+  return { event, commit: () => commitState(hash), wouldAdvance: true };
 }
 async function readState(path) {
   try {
@@ -5213,9 +5432,9 @@ async function readState(path) {
   }
 }
 async function writeStateAtomic(stateDir, path, body) {
-  await mkdir11(stateDir, { recursive: true, mode: 448 });
+  await mkdir12(stateDir, { recursive: true, mode: 448 });
   const tmp = `${path}.${process.pid}.tmp`;
-  await writeFile10(tmp, JSON.stringify(body), "utf8");
+  await writeFile11(tmp, JSON.stringify(body), "utf8");
   await rename12(tmp, path);
 }
 
@@ -5252,15 +5471,31 @@ var ClaudeCodeAdapter = class {
           enriched.push(ev);
         }
       }
-      const uc = await prepareUsageConfigEvent({
-        stateDir: ctx.stateDir,
-        configPath,
-        sessionId: input.session_id,
-        getPosture,
-        now: () => Date.now()
-      });
-      await sink(uc.event ? [...enriched, uc.event] : enriched);
-      await uc.commit();
+      await sink(enriched);
+      try {
+        const probe = await prepareUsageConfigEvent({
+          stateDir: ctx.stateDir,
+          configPath,
+          sessionId: input.session_id,
+          getPosture,
+          now: () => Date.now()
+        });
+        if (!probe.wouldAdvance)
+          return;
+        await withDirLock(join24(ctx.stateDir, "usage-config"), async () => {
+          const uc = await prepareUsageConfigEvent({
+            stateDir: ctx.stateDir,
+            configPath,
+            sessionId: input.session_id,
+            getPosture: () => readPosture(configPath),
+            now: () => Date.now()
+          });
+          if (uc.event)
+            await sink([uc.event]);
+          await uc.commit();
+        });
+      } catch {
+      }
     });
   }
 };

@@ -343,7 +343,7 @@ async function ensureAmbientTenantCredential(existing, paths, opts = {}) {
   const tenantKey = env.FANCYSAUCE_TENANT_KEY ?? "";
   if (!KEY_RE.test(tenantKey))
     return { result: existing, wrote: false };
-  const identity = env.FANCYSAUCE_IDENTITY_TYPE === "full" ? "full" : "hash";
+  const identity = env.FANCYSAUCE_IDENTITY_TYPE === "hash" ? "hash" : "full";
   const d = decide(existing, { tenantKey, identity, ownProvenance: "env_tenant_key" });
   if (!d.write)
     return { result: existing, wrote: false };

@@ -1,6 +1,6 @@
 {
   "name": "fancysauce-savings",
-  "version": "0.12.2",
+  "version": "0.13.0",
   "description": "Cost and usage observability for Claude Code",
   "author": {
     "name": "FancysauceAI"
@@ -106,6 +106,17 @@
       }
     ],
     "PreCompact": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node ${CLAUDE_PLUGIN_ROOT}/dist/agents/claude-code/collect.mjs"
+          }
+        ]
+      }
+    ],
+    "PostCompact": [
       {
         "matcher": "",
         "hooks": [

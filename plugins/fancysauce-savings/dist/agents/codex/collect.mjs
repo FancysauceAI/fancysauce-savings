@@ -69,7 +69,7 @@ var init_credential_paths = __esm({
 // node_modules/graceful-fs/polyfills.js
 var require_polyfills = __commonJS({
   "node_modules/graceful-fs/polyfills.js"(exports, module) {
-    var constants2 = __require("constants");
+    var constants3 = __require("constants");
     var origCwd = process.cwd;
     var cwd = null;
     var platform = process.env.GRACEFUL_FS_PLATFORM || process.platform;
@@ -93,7 +93,7 @@ var require_polyfills = __commonJS({
     var chdir;
     module.exports = patch;
     function patch(fs) {
-      if (constants2.hasOwnProperty("O_SYMLINK") && process.version.match(/^v0\.6\.[0-2]|^v0\.5\./)) {
+      if (constants3.hasOwnProperty("O_SYMLINK") && process.version.match(/^v0\.6\.[0-2]|^v0\.5\./)) {
         patchLchmod(fs);
       }
       if (!fs.lutimes) {
@@ -133,7 +133,7 @@ var require_polyfills = __commonJS({
       }
       if (platform === "win32") {
         fs.rename = typeof fs.rename !== "function" ? fs.rename : (function(fs$rename) {
-          function rename11(from, to, cb) {
+          function rename12(from, to, cb) {
             var start = Date.now();
             var backoff = 0;
             fs$rename(from, to, function CB(er) {
@@ -153,8 +153,8 @@ var require_polyfills = __commonJS({
               if (cb) cb(er);
             });
           }
-          if (Object.setPrototypeOf) Object.setPrototypeOf(rename11, fs$rename);
-          return rename11;
+          if (Object.setPrototypeOf) Object.setPrototypeOf(rename12, fs$rename);
+          return rename12;
         })(fs.rename);
       }
       fs.read = typeof fs.read !== "function" ? fs.read : (function(fs$read) {
@@ -195,7 +195,7 @@ var require_polyfills = __commonJS({
         fs2.lchmod = function(path, mode, callback) {
           fs2.open(
             path,
-            constants2.O_WRONLY | constants2.O_SYMLINK,
+            constants3.O_WRONLY | constants3.O_SYMLINK,
             mode,
             function(err, fd) {
               if (err) {
@@ -211,7 +211,7 @@ var require_polyfills = __commonJS({
           );
         };
         fs2.lchmodSync = function(path, mode) {
-          var fd = fs2.openSync(path, constants2.O_WRONLY | constants2.O_SYMLINK, mode);
+          var fd = fs2.openSync(path, constants3.O_WRONLY | constants3.O_SYMLINK, mode);
           var threw = true;
           var ret;
           try {
@@ -231,9 +231,9 @@ var require_polyfills = __commonJS({
         };
       }
       function patchLutimes(fs2) {
-        if (constants2.hasOwnProperty("O_SYMLINK") && fs2.futimes) {
+        if (constants3.hasOwnProperty("O_SYMLINK") && fs2.futimes) {
           fs2.lutimes = function(path, at, mt, cb) {
-            fs2.open(path, constants2.O_SYMLINK, function(er, fd) {
+            fs2.open(path, constants3.O_SYMLINK, function(er, fd) {
               if (er) {
                 if (cb) cb(er);
                 return;
@@ -246,7 +246,7 @@ var require_polyfills = __commonJS({
             });
           };
           fs2.lutimesSync = function(path, at, mt) {
-            var fd = fs2.openSync(path, constants2.O_SYMLINK);
+            var fd = fs2.openSync(path, constants3.O_SYMLINK);
             var ret;
             var threw = true;
             try {
@@ -558,8 +558,8 @@ var require_graceful_fs = __commonJS({
       fs2.createReadStream = createReadStream;
       fs2.createWriteStream = createWriteStream;
       var fs$readFile = fs2.readFile;
-      fs2.readFile = readFile12;
-      function readFile12(path, options, cb) {
+      fs2.readFile = readFile15;
+      function readFile15(path, options, cb) {
         if (typeof options === "function")
           cb = options, options = null;
         return go$readFile(path, options, cb);
@@ -575,8 +575,8 @@ var require_graceful_fs = __commonJS({
         }
       }
       var fs$writeFile = fs2.writeFile;
-      fs2.writeFile = writeFile9;
-      function writeFile9(path, data, options, cb) {
+      fs2.writeFile = writeFile11;
+      function writeFile11(path, data, options, cb) {
         if (typeof options === "function")
           cb = options, options = null;
         return go$writeFile(path, data, options, cb);
@@ -1736,18 +1736,32 @@ var init_runner_env = __esm({
 // dist/shared/backfill/runner-spawn.mjs
 var runner_spawn_exports = {};
 __export(runner_spawn_exports, {
+  resolveDistBinPath: () => resolveDistBinPath,
+  spawnAutoScan: () => spawnAutoScan,
   spawnBackfillRunner: () => spawnBackfillRunner
 });
 import { spawn } from "node:child_process";
 import { join as join16, dirname as dirname5 } from "node:path";
 import { fileURLToPath as fileURLToPath2 } from "node:url";
+function resolveDistBinPath(containerDir, binName) {
+  return join16(containerDir, "..", "..", "shared", "bin", binName);
+}
 async function spawnBackfillRunner(input) {
   const here = dirname5(fileURLToPath2(import.meta.url));
-  const binPath = join16(here, "..", "..", "bin", "backfill-runner.mjs");
+  const binPath = resolveDistBinPath(here, "backfill-runner.mjs");
   const args = ["--data-dir", input.dataDir, "--credential-path", input.credentialPath];
-  const spawner = input.spawner ?? defaultSpawner;
+  return spawnDetachedBin(binPath, args, input.spawner);
+}
+async function spawnAutoScan(input) {
+  const here = dirname5(fileURLToPath2(import.meta.url));
+  const binPath = resolveDistBinPath(here, "auto-scan.mjs");
+  const args = ["--data-dir", input.dataDir, "--credential-path", input.credentialPath];
+  return spawnDetachedBin(binPath, args, input.spawner);
+}
+async function spawnDetachedBin(binPath, args, spawner) {
+  const spawnFn = spawner ?? defaultSpawner;
   try {
-    const { pid } = await spawner(binPath, args);
+    const { pid } = await spawnFn(binPath, args);
     return { kind: "spawned", pid };
   } catch (err) {
     return { kind: "error", reason: err.message };
@@ -1775,26 +1789,62 @@ var init_runner_spawn = __esm({
   }
 });
 
+// dist/shared/backfill/scan-once.mjs
+var scan_once_exports = {};
+__export(scan_once_exports, {
+  claimScanOnce: () => claimScanOnce,
+  hasScanOnceMarker: () => hasScanOnceMarker
+});
+import { readFile as readFile10, writeFile as writeFile7, mkdir as mkdir8 } from "node:fs/promises";
+import { join as join17 } from "node:path";
+async function hasScanOnceMarker(stateDir) {
+  try {
+    await readFile10(join17(stateDir, MARKER_NAME));
+    return true;
+  } catch {
+    return false;
+  }
+}
+async function claimScanOnce(stateDir, pluginVersion2) {
+  await mkdir8(stateDir, { recursive: true, mode: 448 });
+  const marker = { spawned_at: (/* @__PURE__ */ new Date()).toISOString(), plugin_version: pluginVersion2 };
+  try {
+    await writeFile7(join17(stateDir, MARKER_NAME), JSON.stringify(marker), { encoding: "utf8", flag: "wx" });
+    return true;
+  } catch (err) {
+    if (err?.code === "EEXIST")
+      return false;
+    throw err;
+  }
+}
+var MARKER_NAME;
+var init_scan_once = __esm({
+  "dist/shared/backfill/scan-once.mjs"() {
+    "use strict";
+    MARKER_NAME = "scan-once.json";
+  }
+});
+
 // dist/shared/backfill/status.mjs
 var status_exports = {};
 __export(status_exports, {
   readStatus: () => readStatus,
   writeStatus: () => writeStatus
 });
-import { readFile as readFile10, open as open6, rename as rename9, mkdir as mkdir8, unlink as unlink3 } from "node:fs/promises";
-import { join as join17, dirname as dirname6 } from "node:path";
+import { readFile as readFile11, open as open6, rename as rename9, mkdir as mkdir9, unlink as unlink3 } from "node:fs/promises";
+import { join as join18, dirname as dirname6 } from "node:path";
 import { randomBytes as randomBytes4 } from "node:crypto";
 async function readStatus(stateDir) {
   try {
-    const raw = await readFile10(join17(stateDir, "backfill.status"), "utf8");
+    const raw = await readFile11(join18(stateDir, "backfill.status"), "utf8");
     return JSON.parse(raw);
   } catch {
     return null;
   }
 }
 async function writeStatus(stateDir, s) {
-  const path = join17(stateDir, "backfill.status");
-  await mkdir8(dirname6(path), { recursive: true });
+  const path = join18(stateDir, "backfill.status");
+  await mkdir9(dirname6(path), { recursive: true });
   const tmp = `${path}.${process.pid}.${randomBytes4(4).toString("hex")}.tmp`;
   let renamed = false;
   try {
@@ -1828,8 +1878,8 @@ import { readFileSync as readFileSync7 } from "node:fs";
 // dist/shared/run-collect.mjs
 import { readFileSync as readFileSync5 } from "node:fs";
 import { randomUUID as randomUUID2 } from "node:crypto";
-import { mkdir as mkdir9, writeFile as writeFile7, appendFile as appendFile3, stat as stat3, rm as rm3 } from "node:fs/promises";
-import { join as join18 } from "node:path";
+import { mkdir as mkdir10, writeFile as writeFile8, appendFile as appendFile3, stat as stat3, rm as rm3 } from "node:fs/promises";
+import { join as join19 } from "node:path";
 
 // dist/shared/config.mjs
 import { join } from "node:path";
@@ -1891,7 +1941,11 @@ function defaultPolicy() {
       "extra_usage_enabled",
       "extra_usage_disabled_reason",
       "overage_credit_available",
-      "overage_credit_eligible"
+      "overage_credit_eligible",
+      "credits_has",
+      "credits_unlimited",
+      "credits_balance",
+      "auth_plan_claim"
     ]),
     "usage_limit.exceeded": Object.freeze([
       "limit_message",
@@ -1904,7 +1958,24 @@ function defaultPolicy() {
       "rate_limit_tier",
       "billing_type",
       "extra_usage_enabled",
-      "extra_usage_disabled_reason"
+      "extra_usage_disabled_reason",
+      "window",
+      "used_percent",
+      "resets_at",
+      "window_minutes",
+      "reached_type",
+      "limit_source",
+      "credits_has",
+      "credits_unlimited",
+      "credits_balance"
+    ]),
+    "usage_limit.snapshot": Object.freeze([
+      "window",
+      "used_percent",
+      "resets_at",
+      "window_minutes",
+      "plan_type",
+      "model"
     ]),
     "api.request": Object.freeze([
       "cost_usd",
@@ -1920,7 +1991,13 @@ function defaultPolicy() {
       "transcript_message_uuid",
       "subsession_id",
       "agent_type",
-      "stop_reason"
+      "stop_reason",
+      "primary_used_percent",
+      "primary_resets_at",
+      "primary_window_minutes",
+      "secondary_used_percent",
+      "secondary_resets_at",
+      "secondary_window_minutes"
     ])
   };
   return Object.freeze({
@@ -2106,7 +2183,7 @@ async function ensureAmbientTenantCredential(existing, paths, opts = {}) {
   const tenantKey = env.FANCYSAUCE_TENANT_KEY ?? "";
   if (!KEY_RE.test(tenantKey))
     return { result: existing, wrote: false };
-  const identity = env.FANCYSAUCE_IDENTITY_TYPE === "full" ? "full" : "hash";
+  const identity = env.FANCYSAUCE_IDENTITY_TYPE === "hash" ? "hash" : "full";
   const d = decide(existing, { tenantKey, identity, ownProvenance: "env_tenant_key" });
   if (!d.write)
     return { result: existing, wrote: false };
@@ -2187,7 +2264,7 @@ async function loadConfig(opts = {}) {
       endpoint,
       loginStateDir,
       policy: defaultPolicy(),
-      identity_type: ambient.inMemory.identity_type ?? "hash",
+      identity_type: ambient.inMemory.identity_type ?? "full",
       // Degraded fail-open for this single fire: skip the richer identity
       // resolution the file-backed path performs; the durable write will retry
       // and enrich on a later fire.
@@ -2200,7 +2277,7 @@ async function loadConfig(opts = {}) {
       const apiKey = process.env.FANCYSAUCE_API_KEY;
       if (!apiKey)
         return null;
-      const envIdentityType = process.env.FANCYSAUCE_IDENTITY_TYPE === "full" ? "full" : "hash";
+      const envIdentityType = process.env.FANCYSAUCE_IDENTITY_TYPE === "hash" ? "hash" : "full";
       return {
         credential: apiKey,
         endpoint: opts.endpointOverride ?? INGEST_ENDPOINT,
@@ -2424,6 +2501,7 @@ function buildRules(policy) {
     "config.changed": k("config.changed"),
     "usage_config.changed": k("usage_config.changed"),
     "usage_limit.exceeded": k("usage_limit.exceeded"),
+    "usage_limit.snapshot": k("usage_limit.snapshot"),
     "api.request": k("api.request")
   };
 }
@@ -2849,7 +2927,7 @@ var IdentityResolver = class {
     if (record) {
       result.identity_source = record.source;
     }
-    if (record && opts.identity_type === "full") {
+    if (record) {
       const key = (opts.serverKeyLoader ?? (() => loadServerKey({ cacheDir: this.dir, now: opts.now ?? Date.now() })))();
       if (key.publicKeyPem.includes("BEGIN PUBLIC KEY")) {
         try {
@@ -3482,8 +3560,27 @@ var ATTR_TYPE = {
   limit_message: "string",
   limit_kind_guess: "string",
   reset_at_guess: "int",
-  api_error_status: "int"
+  api_error_status: "int",
   // request_id + transcript_message_uuid already typed above (api.request).
+  // usage_limit.snapshot + Codex rate-limit lens
+  window: "string",
+  used_percent: "double",
+  resets_at: "int",
+  window_minutes: "int",
+  reached_type: "string",
+  limit_source: "string",
+  credits_has: "bool",
+  credits_unlimited: "bool",
+  credits_balance: "string",
+  auth_plan_claim: "string",
+  // Codex per-window gauge riding api.request. Prefixed per window because a
+  // payload can report primary and secondary at once.
+  primary_used_percent: "double",
+  primary_resets_at: "int",
+  primary_window_minutes: "int",
+  secondary_used_percent: "double",
+  secondary_resets_at: "int",
+  secondary_window_minutes: "int"
 };
 function encodeOtlp(events, resource, observedTimeUnixNano) {
   const observed = observedTimeUnixNano ?? BigInt(Date.now()) * 1000000n;
@@ -4168,8 +4265,8 @@ var QUEUE_CAP_BYTES = 100 * 1024 * 1024;
 function pluginVersion() {
   try {
     const candidatePaths = [
-      join18(import.meta.dirname, "../../../package.json"),
-      join18(process.cwd(), "package.json")
+      join19(import.meta.dirname, "../../../package.json"),
+      join19(process.cwd(), "package.json")
     ];
     for (const p of candidatePaths) {
       try {
@@ -4200,6 +4297,23 @@ function serializeForQueue(event) {
     attributes: event.attributes
   });
 }
+function filterEvents(events, policy) {
+  const filtered = [];
+  let dropped = 0;
+  for (const ev of events) {
+    const f = filterEvent(ev, policy);
+    if (f === null)
+      dropped++;
+    else
+      filtered.push(f);
+  }
+  return { filtered, dropped };
+}
+async function enqueueEvents(queue, events) {
+  if (events.length === 0)
+    return { written: 0, dropped: 0, sizeAfter: await queue.size() };
+  return queue.append(events.map(serializeForQueue));
+}
 async function runCollect(adapter, opts) {
   const start = Date.now();
   let stderrBuf = "";
@@ -4221,10 +4335,9 @@ async function runCollect(adapter, opts) {
     }
     const hookPayload = opts.hookPayload;
     const root = dataDir();
-    await mkdir9(root, { recursive: true, mode: 448 });
+    await mkdir10(root, { recursive: true, mode: 448 });
     const identity = await new IdentityResolver(root).resolve(hookPayload.cwd ?? process.cwd(), {
       credential: config.credential,
-      identity_type: config.identity_type ?? "hash",
       identity_hint: config.identity_hint ?? null,
       agent: adapter.agent
     });
@@ -4237,45 +4350,42 @@ async function runCollect(adapter, opts) {
     const stamped = enrichedRaw && enrichedRaw.event_type === "session.start" && identity.repo_url_hash ? { ...enrichedRaw, attributes: { ...enrichedRaw.attributes, "fancysauce.repo_url_hash": identity.repo_url_hash } } : enrichedRaw;
     const withId = stamped === null ? null : { ...stamped, event_uuid: randomUUID2() };
     const primary = withId === null ? null : filterEvent(withId, config.policy);
-    const outboundDir = join18(root, "outbound");
-    await mkdir9(outboundDir, { recursive: true, mode: 448 });
+    let primaryPending = primary;
+    const outboundDir = join19(root, "outbound");
+    await mkdir10(outboundDir, { recursive: true, mode: 448 });
     const queue = new Queue(outboundDir, QUEUE_CAP_BYTES);
     let queueDropped = 0;
     let tailFilterDropped = 0;
     const ctx = {
-      stateDir: join18(root, "state"),
-      errorLogPath: join18(root, "collect-error.log"),
+      stateDir: join19(root, "state"),
+      errorLogPath: join19(root, "collect-error.log"),
       transcriptRoot: opts.transcriptRoot
     };
-    let sinkEvents = [];
+    const sinkEvents = [];
     await adapter.tailTranscript(hookPayload, ctx, async (tailEvents) => {
-      const filteredTail = [];
-      for (const ev of tailEvents) {
-        const f = filterEvent(ev, config.policy);
-        if (f === null)
-          tailFilterDropped++;
-        else
-          filteredTail.push(f);
-      }
-      const all = primary ? [primary, ...filteredTail] : filteredTail;
+      const { filtered: filteredTail, dropped: tailDropped } = filterEvents(tailEvents, config.policy);
+      tailFilterDropped += tailDropped;
+      const p = primaryPending;
+      primaryPending = null;
+      const all = p ? [p, ...filteredTail] : filteredTail;
       if (all.length === 0)
         return;
-      const result = await queue.append(all.map(serializeForQueue));
-      queueDropped = result.dropped;
-      sinkEvents = all;
+      const result = await enqueueEvents(queue, all);
+      queueDropped += result.dropped;
+      sinkEvents.push(...all);
     });
     if (sinkEvents.length > 0) {
-      const sessionDir = join18(root, "sessions", hookPayload.session_id);
+      const sessionDir = join19(root, "sessions", hookPayload.session_id);
       const onSinkError = async (name, err) => {
         const msg = err instanceof Error ? err.stack ?? err.message : String(err);
         try {
-          await appendFile3(join18(root, "collect-error.log"), `${(/* @__PURE__ */ new Date()).toISOString()} sink ${name}: ${msg}
+          await appendFile3(join19(root, "collect-error.log"), `${(/* @__PURE__ */ new Date()).toISOString()} sink ${name}: ${msg}
 `);
         } catch {
         }
       };
       try {
-        await mkdir9(sessionDir, { recursive: true, mode: 448 });
+        await mkdir10(sessionDir, { recursive: true, mode: 448 });
         const sinks = [
           eventLogSink(),
           summaryUpdaterSink({ pluginVersion: pluginVersion() }),
@@ -4291,7 +4401,7 @@ async function runCollect(adapter, opts) {
       }
     }
     const primaryFilterDropped = stamped !== null && primary === null ? 1 : 0;
-    const health = new HealthState(join18(root, "state"));
+    const health = new HealthState(join19(root, "state"));
     await health.touch();
     const dropped = queueDropped + tailFilterDropped + primaryFilterDropped;
     if (dropped > 0)
@@ -4300,7 +4410,7 @@ async function runCollect(adapter, opts) {
     if (remaining > 300) {
       await tryFlush({
         dataDir: outboundDir,
-        stateDir: join18(root, "state"),
+        stateDir: join19(root, "state"),
         credential: config.credential,
         endpoint: config.endpoint,
         resource,
@@ -4308,8 +4418,8 @@ async function runCollect(adapter, opts) {
       });
     }
     try {
-      const stateDir = join18(root, "state");
-      const pendingPath = join18(config.loginStateDir, "backfill-pending");
+      const stateDir = join19(root, "state");
+      const pendingPath = join19(config.loginStateDir, "backfill-pending");
       const pendingExists = await stat3(pendingPath).then(() => true).catch(() => false);
       if (pendingExists) {
         const { isBackfillActive: isBackfillActive2 } = await Promise.resolve().then(() => (init_pid_guard(), pid_guard_exports));
@@ -4325,7 +4435,25 @@ async function runCollect(adapter, opts) {
     } catch {
     }
     try {
-      const stateDir = join18(root, "state");
+      if (adapter.agent === "claude-code") {
+        const stateDir = join19(root, "state");
+        const { hasScanOnceMarker: hasScanOnceMarker2, claimScanOnce: claimScanOnce2 } = await Promise.resolve().then(() => (init_scan_once(), scan_once_exports));
+        const alreadyAttempted = await hasScanOnceMarker2(stateDir);
+        if (!alreadyAttempted && await claimScanOnce2(stateDir, pluginVersion())) {
+          const skipMarkerExists = await stat3(join19(stateDir, "backfill-skip")).then(() => true).catch(() => false);
+          if (!skipMarkerExists) {
+            const { spawnAutoScan: spawnAutoScan2 } = await Promise.resolve().then(() => (init_runner_spawn(), runner_spawn_exports));
+            const { credentialPaths: credentialPaths2 } = await Promise.resolve().then(() => (init_credential_paths(), credential_paths_exports));
+            const paths = credentialPaths2();
+            void spawnAutoScan2({ dataDir: root, credentialPath: paths.user, spawner: opts.autoScanSpawner }).catch(() => {
+            });
+          }
+        }
+      }
+    } catch {
+    }
+    try {
+      const stateDir = join19(root, "state");
       const { readStatus: readStatus2, writeStatus: writeStatus2 } = await Promise.resolve().then(() => (init_status(), status_exports));
       const status = await readStatus2(stateDir);
       if (status && status.phase === "completed" && !status.notified) {
@@ -4339,8 +4467,8 @@ async function runCollect(adapter, opts) {
     const msg = err instanceof Error ? `${err.message}
 ${err.stack ?? ""}` : String(err);
     try {
-      const logPath = join18(dataDir(), "collect-error.log");
-      await writeFile7(logPath, `${(/* @__PURE__ */ new Date()).toISOString()} ${msg}
+      const logPath = join19(dataDir(), "collect-error.log");
+      await writeFile8(logPath, `${(/* @__PURE__ */ new Date()).toISOString()} ${msg}
 `, { flag: "a" });
     } catch {
     }
@@ -4439,19 +4567,21 @@ function mapHookToEvent(input, sequence) {
 
 // dist/agents/codex/rollout-tail.mjs
 var import_proper_lockfile4 = __toESM(require_proper_lockfile(), 1);
-import { mkdir as mkdir10, readFile as readFile11, writeFile as writeFile8, rename as rename10, appendFile as appendFile4 } from "node:fs/promises";
-import { join as join19 } from "node:path";
+import { mkdir as mkdir12, readFile as readFile14, writeFile as writeFile10, rename as rename11, appendFile as appendFile4 } from "node:fs/promises";
+import { join as join22 } from "node:path";
+import { homedir as homedir5 } from "node:os";
 import { createHash as createHash4 } from "node:crypto";
 
 // dist/shared/tail-engine.mjs
-import { open as open7 } from "node:fs/promises";
+import { open as open7, constants as constants2 } from "node:fs/promises";
 var DEFAULT_MAX_READ_BYTES = 4 * 1024 * 1024;
 async function readWindow(opts) {
   const { path, startOffset, sequenceBase, maxReadBytes, parseWindow, state } = opts;
   let fh = null;
   try {
     try {
-      fh = await open7(path, "r");
+      const flags = opts.nofollow && typeof constants2.O_NOFOLLOW === "number" ? constants2.O_RDONLY | constants2.O_NOFOLLOW : "r";
+      fh = await open7(path, flags);
     } catch (err) {
       if (err.code === "ENOENT") {
         return { events: [], endOffset: startOffset, truncated: false };
@@ -4487,7 +4617,7 @@ import { fileURLToPath as fileURLToPath3 } from "node:url";
 var TABLE = JSON.parse(readFileSync6(fileURLToPath3(new URL("./pricing.json", import.meta.url)), "utf8"));
 function computeCostUsd(model, t) {
   const r = TABLE[model];
-  if (!r)
+  if (!r || typeof r.input !== "number")
     return void 0;
   const nonCachedInput = Math.max(0, t.input_tokens - t.cached_input_tokens);
   return nonCachedInput / 1e6 * r.input + t.cached_input_tokens / 1e6 * r.cached_input + t.output_tokens / 1e6 * r.output;
@@ -4499,8 +4629,28 @@ function deterministicUuid(sessionId, scope, timestamp, totalTokens) {
   const h = sha256Hex(`codex|${sessionId}|${scopeSeg}${timestamp}|${totalTokens}`);
   return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20, 32)}`;
 }
+var WINDOW_ORDER = ["primary", "secondary"];
+function attachGauge(attrs, rateLimits) {
+  if (!rateLimits || typeof rateLimits !== "object")
+    return;
+  for (const windowName of WINDOW_ORDER) {
+    const w = rateLimits[windowName];
+    if (!w || typeof w !== "object")
+      continue;
+    if (isFiniteNumber(w.used_percent))
+      attrs[`${windowName}_used_percent`] = w.used_percent;
+    if (isFiniteNumber(w.resets_at))
+      attrs[`${windowName}_resets_at`] = w.resets_at;
+    if (isFiniteNumber(w.window_minutes))
+      attrs[`${windowName}_window_minutes`] = w.window_minutes;
+  }
+}
+function isFiniteNumber(v) {
+  return typeof v === "number" && Number.isFinite(v);
+}
 function parseRolloutWindow(lines, sessionId, sequenceBase, state, scope = "") {
   const events = [];
+  let rateLimits;
   let seq = sequenceBase;
   for (const line of lines) {
     if (!line)
@@ -4523,6 +4673,16 @@ function parseRolloutWindow(lines, sessionId, sequenceBase, state, scope = "") {
     const payload = rec.payload;
     if (!payload || payload.type !== "token_count")
       continue;
+    if (payload.rate_limits && typeof payload.rate_limits === "object") {
+      rateLimits = {
+        // NaN when the line carries no parseable timestamp. Consumers gate on
+        // it rather than substituting a wall clock, which would make the
+        // events derived from a replayed window non-identical.
+        timestampMs: Date.parse(rec.timestamp ?? ""),
+        payload: payload.rate_limits,
+        model: state.model
+      };
+    }
     const last = payload.info?.last_token_usage;
     if (!last)
       continue;
@@ -4543,6 +4703,7 @@ function parseRolloutWindow(lines, sessionId, sequenceBase, state, scope = "") {
       if (cost !== void 0)
         attrs.cost_usd = cost;
     }
+    attachGauge(attrs, payload.rate_limits);
     events.push({
       event_uuid: deterministicUuid(sessionId, scope, rec.timestamp ?? "", total),
       event_type: "api.request",
@@ -4554,7 +4715,282 @@ function parseRolloutWindow(lines, sessionId, sequenceBase, state, scope = "") {
     });
     seq++;
   }
-  return events;
+  return { events, rateLimits };
+}
+
+// dist/agents/codex/rate-limit-lens.mjs
+var SNAPSHOT_MIN_DELTA_PCT = 1;
+var SNAPSHOT_MIN_INTERVAL_MS = 3e4;
+var EXCEEDED_MIN_INTERVAL_MS = 3e5;
+var WINDOW_ORDER2 = ["primary", "secondary"];
+function limitKindGuess(windowMinutes) {
+  if (windowMinutes === void 0)
+    return "unknown";
+  if (windowMinutes <= 360)
+    return "session";
+  if (windowMinutes === 10080)
+    return "weekly";
+  return "unknown";
+}
+function codexPosture(rateLimits, authPlanClaim) {
+  const p = {};
+  if (typeof rateLimits?.plan_type === "string")
+    p.plan_type = rateLimits.plan_type;
+  const credits = rateLimits?.credits;
+  if (credits && typeof credits === "object") {
+    if (typeof credits.has_credits === "boolean")
+      p.credits_has = credits.has_credits;
+    if (typeof credits.unlimited === "boolean")
+      p.credits_unlimited = credits.unlimited;
+    const balance = credits.balance;
+    if (typeof balance === "string" || typeof balance === "number" || typeof balance === "boolean") {
+      p.credits_balance = String(balance);
+    }
+  }
+  if (authPlanClaim !== void 0)
+    p.auth_plan_claim = authPlanClaim;
+  return Object.keys(p).length > 0 ? p : null;
+}
+function postureHash(p) {
+  const sorted = Object.keys(p).sort().filter((k) => k !== "credits_balance");
+  const parts = sorted.map((k) => `${k}=${String(p[k])}`);
+  return sha256Hex(parts.join("|"));
+}
+function postureAttributes(p) {
+  const attrs = {};
+  if (p.plan_type !== void 0)
+    attrs.plan_type = p.plan_type;
+  if (p.credits_has !== void 0)
+    attrs.credits_has = p.credits_has;
+  if (p.credits_unlimited !== void 0)
+    attrs.credits_unlimited = p.credits_unlimited;
+  if (p.credits_balance !== void 0)
+    attrs.credits_balance = p.credits_balance;
+  if (p.auth_plan_claim !== void 0)
+    attrs.auth_plan_claim = p.auth_plan_claim;
+  return attrs;
+}
+function deterministicUuid2(parts) {
+  const h = sha256Hex(parts.join("|"));
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20, 32)}`;
+}
+function quantizePercent(usedPercent) {
+  return (Math.round(usedPercent * 10) / 10).toFixed(1);
+}
+function lensEvents(rateLimits, opts) {
+  const { sessionId, timestampMs, model, sequenceBase, state, uuidScope } = opts;
+  const events = [];
+  let nextWindows;
+  let nextExceeded;
+  let nextExceededLast;
+  let seq = sequenceBase;
+  if (!Number.isFinite(timestampMs))
+    return { events, state };
+  const posture = codexPosture(rateLimits, void 0);
+  const timestampNs = BigInt(timestampMs) * 1000000n;
+  for (const windowName of WINDOW_ORDER2) {
+    const w = rateLimits?.[windowName];
+    if (!w || typeof w !== "object")
+      continue;
+    const usedPercent = w.used_percent;
+    if (!isFiniteNumber(usedPercent))
+      continue;
+    const resetsAt = isFiniteNumber(w.resets_at) ? w.resets_at : void 0;
+    const windowMinutes = isFiniteNumber(w.window_minutes) ? w.window_minutes : void 0;
+    const watermark = state.windows?.[windowName];
+    const resetsChanged = watermark?.resets_at !== void 0 && resetsAt !== void 0 && watermark.resets_at !== resetsAt;
+    const shouldEmitSnapshot = !watermark || resetsChanged || Math.abs(usedPercent - watermark.used_percent) >= SNAPSHOT_MIN_DELTA_PCT;
+    const withinFloor = !!watermark && timestampMs - watermark.emitted_at_ms < SNAPSHOT_MIN_INTERVAL_MS;
+    if (shouldEmitSnapshot && !withinFloor) {
+      const attrs = { window: windowName, used_percent: usedPercent };
+      if (resetsAt !== void 0)
+        attrs.resets_at = resetsAt;
+      if (windowMinutes !== void 0)
+        attrs.window_minutes = windowMinutes;
+      if (model !== void 0)
+        attrs.model = model;
+      if (posture?.plan_type !== void 0)
+        attrs.plan_type = posture.plan_type;
+      const snapshotGeneration = resetsAt !== void 0 ? String(resetsAt) : `w${watermark?.emitted_at_ms ?? ""}`;
+      events.push({
+        event_uuid: deterministicUuid2([
+          uuidScope ?? "",
+          sessionId,
+          "snapshot",
+          windowName,
+          snapshotGeneration,
+          quantizePercent(usedPercent)
+        ]),
+        event_type: "usage_limit.snapshot",
+        session_id: sessionId,
+        source: "transcript.tail",
+        sequence: seq++,
+        timestamp_ns: timestampNs,
+        attributes: attrs
+      });
+      nextWindows = nextWindows ?? { ...state.windows ?? {} };
+      nextWindows[windowName] = { used_percent: usedPercent, resets_at: resetsAt, emitted_at_ms: timestampMs };
+    }
+    const sentinelKey = `${windowName}:no-reset`;
+    const lastExceededAt = state.exceeded_last?.[windowName];
+    if (usedPercent < 100) {
+      if ((nextExceeded ?? state.exceeded)?.[sentinelKey] !== void 0) {
+        nextExceeded = nextExceeded ?? { ...state.exceeded ?? {} };
+        delete nextExceeded[sentinelKey];
+      }
+    } else {
+      const exceededKey = resetsAt !== void 0 ? `${windowName}:${resetsAt}` : sentinelKey;
+      const withinFloor2 = lastExceededAt !== void 0 && timestampMs - lastExceededAt < EXCEEDED_MIN_INTERVAL_MS;
+      if (!(nextExceeded ?? state.exceeded)?.[exceededKey] && !withinFloor2) {
+        const attrs = {
+          window: windowName,
+          used_percent: usedPercent,
+          limit_kind_guess: limitKindGuess(windowMinutes),
+          limit_source: "gauge_saturation"
+        };
+        if (resetsAt !== void 0)
+          attrs.resets_at = resetsAt;
+        if (windowMinutes !== void 0)
+          attrs.window_minutes = windowMinutes;
+        if (typeof rateLimits?.rate_limit_reached_type === "string") {
+          attrs.reached_type = rateLimits.rate_limit_reached_type;
+        }
+        if (posture)
+          Object.assign(attrs, postureAttributes(posture));
+        const exceededGeneration = resetsAt !== void 0 ? String(resetsAt) : `x${lastExceededAt ?? ""}`;
+        events.push({
+          event_uuid: deterministicUuid2([
+            uuidScope ?? "",
+            sessionId,
+            "exceeded",
+            windowName,
+            exceededGeneration,
+            quantizePercent(usedPercent)
+          ]),
+          event_type: "usage_limit.exceeded",
+          session_id: sessionId,
+          source: "transcript.tail",
+          sequence: seq++,
+          timestamp_ns: timestampNs,
+          attributes: attrs
+        });
+        nextExceeded = nextExceeded ?? { ...state.exceeded ?? {} };
+        nextExceeded[exceededKey] = timestampMs;
+        nextExceededLast = nextExceededLast ?? { ...state.exceeded_last ?? {} };
+        nextExceededLast[windowName] = timestampMs;
+        const keys = Object.keys(nextExceeded);
+        if (keys.length > 20) {
+          const oldest = keys.sort((a, b) => nextExceeded[a] - nextExceeded[b]).slice(0, keys.length - 20);
+          for (const k of oldest)
+            delete nextExceeded[k];
+        }
+      }
+    }
+  }
+  if (!nextWindows && !nextExceeded && !nextExceededLast)
+    return { events, state };
+  return {
+    events,
+    state: {
+      windows: nextWindows ?? state.windows,
+      exceeded: nextExceeded ?? state.exceeded,
+      exceeded_last: nextExceededLast ?? state.exceeded_last
+    }
+  };
+}
+
+// dist/agents/codex/rate-limit-state.mjs
+import { readFile as readFile12, writeFile as writeFile9, rename as rename10, mkdir as mkdir11 } from "node:fs/promises";
+import { join as join20 } from "node:path";
+var LIMIT_FILE = "usage-limit-codex.json";
+var POSTURE_FILE = "usage-config-codex.json";
+async function readLimitState(stateDir) {
+  return readJsonObject(join20(stateDir, LIMIT_FILE));
+}
+async function writeLimitState(stateDir, state) {
+  await writeStateAtomic(stateDir, join20(stateDir, LIMIT_FILE), state);
+}
+async function readPostureState(stateDir) {
+  return readJsonObject(join20(stateDir, POSTURE_FILE));
+}
+async function writePostureState(stateDir, state) {
+  await writeStateAtomic(stateDir, join20(stateDir, POSTURE_FILE), state);
+}
+async function readJsonObject(path) {
+  try {
+    const parsed = JSON.parse(await readFile12(path, "utf8"));
+    if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed))
+      return {};
+    return parsed;
+  } catch {
+    return {};
+  }
+}
+async function writeStateAtomic(stateDir, path, body) {
+  await mkdir11(stateDir, { recursive: true, mode: 448 });
+  const tmp = `${path}.${process.pid}.tmp`;
+  await writeFile9(tmp, JSON.stringify(body), "utf8");
+  await rename10(tmp, path);
+}
+
+// dist/agents/codex/auth-claim.mjs
+import { readFile as readFile13 } from "node:fs/promises";
+import { join as join21 } from "node:path";
+function resolveCodexAuthPath(env, homeDir) {
+  const base = env.CODEX_HOME && env.CODEX_HOME.length > 0 ? env.CODEX_HOME : join21(homeDir, ".codex");
+  return join21(base, "auth.json");
+}
+function decodeJwtPayload2(idToken) {
+  const parts = idToken.split(".");
+  if (parts.length !== 3)
+    return void 0;
+  let json;
+  try {
+    json = Buffer.from(parts[1], "base64url").toString("utf8");
+  } catch {
+    return void 0;
+  }
+  let payload;
+  try {
+    payload = JSON.parse(json);
+  } catch {
+    return void 0;
+  }
+  if (typeof payload !== "object" || payload === null)
+    return void 0;
+  return payload;
+}
+async function readPlanClaim(path) {
+  let raw;
+  try {
+    raw = await readFile13(path, "utf8");
+  } catch {
+    return void 0;
+  }
+  let doc;
+  try {
+    doc = JSON.parse(raw);
+  } catch {
+    return void 0;
+  }
+  if (typeof doc === "object" && doc !== null) {
+    const d = doc;
+    const tokens = typeof d.tokens === "object" && d.tokens !== null ? d.tokens : void 0;
+    const idToken = tokens?.id_token ?? d.id_token;
+    if (typeof idToken === "string") {
+      const payload = decodeJwtPayload2(idToken);
+      if (payload) {
+        const auth = payload["https://api.openai.com/auth"];
+        if (typeof auth === "object" && auth !== null) {
+          const planType = auth.chatgpt_plan_type;
+          if (typeof planType === "string" && planType.length > 0) {
+            return planType;
+          }
+        }
+      }
+    }
+  }
+  return void 0;
 }
 
 // dist/agents/codex/rollout-tail.mjs
@@ -4565,20 +5001,21 @@ async function tailCodexRollout(input, ctx, sink) {
     await sink([]);
     return;
   }
-  const cursorDir = join19(ctx.stateDir, "sessions", sessionId, "codex");
-  await mkdir10(cursorDir, { recursive: true });
+  const cursorDir = join22(ctx.stateDir, "sessions", sessionId, "codex");
+  await mkdir12(cursorDir, { recursive: true });
   const sources = [
-    { path: input.transcript_path, cursorPath: join19(cursorDir, "rollout_cursor.json") }
+    { path: input.transcript_path, cursorPath: join22(cursorDir, "rollout_cursor.json") }
   ];
   if (input.agent_transcript_path && input.agent_id) {
     sources.push({
       path: input.agent_transcript_path,
-      cursorPath: join19(cursorDir, `subagent-${cursorKey(input.agent_id)}.json`),
+      cursorPath: join22(cursorDir, `subagent-${cursorKey(input.agent_id)}.json`),
       stamp: { subsession_id: input.agent_id, agent_type: input.agent_type }
     });
   }
+  const lens = stageRateLimitLens(ctx, sessionId);
   const events = [];
-  const commits = [];
+  const reads = [];
   let seq = 0;
   for (const source of sources) {
     let read;
@@ -4592,20 +5029,114 @@ async function tailCodexRollout(input, ctx, sink) {
       continue;
     events.push(...read.events);
     seq += read.events.length;
-    commits.push(read.commit);
+    if (read.rateLimits) {
+      try {
+        const lensed = await lens.eventsFor(read.rateLimits, seq);
+        events.push(...lensed);
+        seq += lensed.length;
+      } catch (err) {
+        await logError(ctx.errorLogPath, source.path, err);
+      }
+    }
+    reads.push(read);
   }
-  await sink(events);
-  for (const commit of commits) {
-    await commit();
+  try {
+    await sink(events);
+  } catch (err) {
+    for (const read of reads)
+      await read.abort();
+    throw err;
   }
+  for (let i = 0; i < reads.length; i++) {
+    try {
+      await reads[i].commit();
+    } catch (err) {
+      for (const pending of reads.slice(i + 1))
+        await pending.abort();
+      throw err;
+    }
+  }
+  await lens.commit();
+}
+function stageRateLimitLens(ctx, sessionId) {
+  const authPath = resolveCodexAuthPath(process.env, homedir5());
+  let loaded = false;
+  let planClaim;
+  let limitState = {};
+  let limitStateDirty = false;
+  let persistedPostureHash;
+  let stagedPostureHash;
+  return {
+    eventsFor: async (rl, sequenceBase) => {
+      if (!loaded) {
+        loaded = true;
+        limitState = await readLimitState(ctx.stateDir);
+        persistedPostureHash = (await readPostureState(ctx.stateDir)).last_hash;
+        planClaim = await readPlanClaim(authPath);
+      }
+      const out = [];
+      const lensed = lensEvents(rl.payload, {
+        sessionId,
+        timestampMs: rl.timestampMs,
+        model: rl.model,
+        sequenceBase,
+        state: limitState
+      });
+      out.push(...lensed.events);
+      const posture = codexPosture(rl.payload, planClaim);
+      let nextPostureHash;
+      if (posture) {
+        const hash = postureHash(posture);
+        if (hash !== (stagedPostureHash ?? persistedPostureHash)) {
+          const tsMs = Number.isFinite(rl.timestampMs) ? rl.timestampMs : Date.now();
+          out.push({
+            event_uuid: postureEventUuid(sessionId, hash, rl.timestampMs),
+            event_type: "usage_config.changed",
+            session_id: sessionId,
+            source: "transcript.tail",
+            sequence: sequenceBase + out.length,
+            timestamp_ns: BigInt(tsMs) * 1000000n,
+            attributes: postureAttributes(posture)
+          });
+          nextPostureHash = hash;
+        }
+      }
+      if (lensed.state !== limitState) {
+        limitState = lensed.state;
+        limitStateDirty = true;
+      }
+      if (nextPostureHash !== void 0)
+        stagedPostureHash = nextPostureHash;
+      return out;
+    },
+    commit: async () => {
+      try {
+        if (limitStateDirty)
+          await writeLimitState(ctx.stateDir, limitState);
+        if (stagedPostureHash !== void 0) {
+          await writePostureState(ctx.stateDir, {
+            last_hash: stagedPostureHash,
+            last_emitted_at: (/* @__PURE__ */ new Date()).toISOString()
+          });
+        }
+      } catch (err) {
+        await logError(ctx.errorLogPath, ctx.stateDir, err);
+      }
+    }
+  };
+}
+function postureEventUuid(sessionId, hash, timestampMs) {
+  const stamp = Number.isFinite(timestampMs) ? String(timestampMs) : "";
+  const h = sha256Hex(["codex", sessionId, "usage_config", hash, stamp].join("|"));
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20, 32)}`;
 }
 async function readSource(source, sessionId, sequenceBase, errorLogPath) {
   let release;
   try {
     try {
-      await readFile11(source.cursorPath);
+      await readFile14(source.cursorPath);
     } catch {
-      await writeFile8(source.cursorPath, "{}", "utf8");
+      await writeFile10(source.cursorPath, "{}", "utf8");
     }
     release = await import_proper_lockfile4.default.lock(source.cursorPath, { retries: 0, realpath: false });
   } catch {
@@ -4618,6 +5149,7 @@ async function readSource(source, sessionId, sequenceBase, errorLogPath) {
     let events;
     let endOffset;
     let truncated;
+    let rateLimits;
     try {
       ({ events, endOffset, truncated } = await readWindow({
         path: source.path,
@@ -4625,12 +5157,18 @@ async function readSource(source, sessionId, sequenceBase, errorLogPath) {
         sequenceBase,
         maxReadBytes: DEFAULT_MAX_READ_BYTES,
         state,
-        parseWindow: (lines, seqBase, st) => parseRolloutWindow(lines, sessionId, seqBase, st, uuidScope)
+        parseWindow: (lines, seqBase, st) => {
+          const parsed = parseRolloutWindow(lines, sessionId, seqBase, st, uuidScope);
+          if (parsed.rateLimits)
+            rateLimits = parsed.rateLimits;
+          return parsed.events;
+        }
       }));
     } catch (err) {
       if (err?.code === "ENOENT") {
         await release();
         return { events: [], commit: async () => {
+        }, abort: async () => {
         } };
       }
       await release();
@@ -4639,6 +5177,7 @@ async function readSource(source, sessionId, sequenceBase, errorLogPath) {
     const stamped = source.stamp ? events.map((e) => applyStamp(e, source.stamp)) : events;
     return {
       events: stamped,
+      rateLimits,
       commit: async () => {
         try {
           if (truncated || endOffset > startOffset) {
@@ -4649,10 +5188,19 @@ async function readSource(source, sessionId, sequenceBase, errorLogPath) {
         } finally {
           await release();
         }
+      },
+      abort: async () => {
+        try {
+          await release();
+        } catch {
+        }
       }
     };
   } catch (err) {
-    await release();
+    try {
+      await release();
+    } catch {
+    }
     throw err;
   }
 }
@@ -4668,7 +5216,7 @@ function applyStamp(event, stamp) {
 async function readCursor(cursorPath, errorLogPath) {
   let buf;
   try {
-    buf = await readFile11(cursorPath, "utf8");
+    buf = await readFile14(cursorPath, "utf8");
   } catch (err) {
     if (err?.code !== "ENOENT") {
       await logError(errorLogPath, cursorPath, err);
@@ -4688,8 +5236,8 @@ async function readCursor(cursorPath, errorLogPath) {
 }
 async function writeCursor(cursorPath, body) {
   const tmp = `${cursorPath}.tmp`;
-  await writeFile8(tmp, JSON.stringify(body), "utf8");
-  await rename10(tmp, cursorPath);
+  await writeFile10(tmp, JSON.stringify(body), "utf8");
+  await rename11(tmp, cursorPath);
 }
 function isValidSessionId2(s) {
   return typeof s === "string" && SESSION_ID_RE2.test(s);

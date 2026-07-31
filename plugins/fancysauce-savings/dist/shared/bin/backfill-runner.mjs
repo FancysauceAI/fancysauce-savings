@@ -1673,7 +1673,11 @@ function defaultPolicy() {
       "extra_usage_enabled",
       "extra_usage_disabled_reason",
       "overage_credit_available",
-      "overage_credit_eligible"
+      "overage_credit_eligible",
+      "credits_has",
+      "credits_unlimited",
+      "credits_balance",
+      "auth_plan_claim"
     ]),
     "usage_limit.exceeded": Object.freeze([
       "limit_message",
@@ -1686,7 +1690,24 @@ function defaultPolicy() {
       "rate_limit_tier",
       "billing_type",
       "extra_usage_enabled",
-      "extra_usage_disabled_reason"
+      "extra_usage_disabled_reason",
+      "window",
+      "used_percent",
+      "resets_at",
+      "window_minutes",
+      "reached_type",
+      "limit_source",
+      "credits_has",
+      "credits_unlimited",
+      "credits_balance"
+    ]),
+    "usage_limit.snapshot": Object.freeze([
+      "window",
+      "used_percent",
+      "resets_at",
+      "window_minutes",
+      "plan_type",
+      "model"
     ]),
     "api.request": Object.freeze([
       "cost_usd",
@@ -1702,7 +1723,13 @@ function defaultPolicy() {
       "transcript_message_uuid",
       "subsession_id",
       "agent_type",
-      "stop_reason"
+      "stop_reason",
+      "primary_used_percent",
+      "primary_resets_at",
+      "primary_window_minutes",
+      "secondary_used_percent",
+      "secondary_resets_at",
+      "secondary_window_minutes"
     ])
   };
   return Object.freeze({
@@ -1888,7 +1915,7 @@ async function ensureAmbientTenantCredential(existing, paths, opts = {}) {
   const tenantKey = env.FANCYSAUCE_TENANT_KEY ?? "";
   if (!KEY_RE.test(tenantKey))
     return { result: existing, wrote: false };
-  const identity = env.FANCYSAUCE_IDENTITY_TYPE === "full" ? "full" : "hash";
+  const identity = env.FANCYSAUCE_IDENTITY_TYPE === "hash" ? "hash" : "full";
   const d = decide(existing, { tenantKey, identity, ownProvenance: "env_tenant_key" });
   if (!d.write)
     return { result: existing, wrote: false };
@@ -1980,7 +2007,7 @@ async function loadConfig(opts = {}) {
       endpoint,
       loginStateDir,
       policy: defaultPolicy(),
-      identity_type: ambient.inMemory.identity_type ?? "hash",
+      identity_type: ambient.inMemory.identity_type ?? "full",
       // Degraded fail-open for this single fire: skip the richer identity
       // resolution the file-backed path performs; the durable write will retry
       // and enrich on a later fire.
@@ -1993,7 +2020,7 @@ async function loadConfig(opts = {}) {
       const apiKey = process.env.FANCYSAUCE_API_KEY;
       if (!apiKey)
         return null;
-      const envIdentityType = process.env.FANCYSAUCE_IDENTITY_TYPE === "full" ? "full" : "hash";
+      const envIdentityType = process.env.FANCYSAUCE_IDENTITY_TYPE === "hash" ? "hash" : "full";
       return {
         credential: apiKey,
         endpoint: opts.endpointOverride ?? INGEST_ENDPOINT,
@@ -2486,8 +2513,27 @@ var ATTR_TYPE = {
   limit_message: "string",
   limit_kind_guess: "string",
   reset_at_guess: "int",
-  api_error_status: "int"
+  api_error_status: "int",
   // request_id + transcript_message_uuid already typed above (api.request).
+  // usage_limit.snapshot + Codex rate-limit lens
+  window: "string",
+  used_percent: "double",
+  resets_at: "int",
+  window_minutes: "int",
+  reached_type: "string",
+  limit_source: "string",
+  credits_has: "bool",
+  credits_unlimited: "bool",
+  credits_balance: "string",
+  auth_plan_claim: "string",
+  // Codex per-window gauge riding api.request. Prefixed per window because a
+  // payload can report primary and secondary at once.
+  primary_used_percent: "double",
+  primary_resets_at: "int",
+  primary_window_minutes: "int",
+  secondary_used_percent: "double",
+  secondary_resets_at: "int",
+  secondary_window_minutes: "int"
 };
 function encodeOtlp(events, resource, observedTimeUnixNano) {
   const observed = observedTimeUnixNano ?? BigInt(Date.now()) * 1000000n;
@@ -3209,7 +3255,7 @@ var IdentityResolver = class {
     if (record) {
       result.identity_source = record.source;
     }
-    if (record && opts.identity_type === "full") {
+    if (record) {
       const key = (opts.serverKeyLoader ?? (() => loadServerKey({ cacheDir: this.dir, now: opts.now ?? Date.now() })))();
       if (key.publicKeyPem.includes("BEGIN PUBLIC KEY")) {
         try {

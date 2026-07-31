@@ -46,7 +46,7 @@ Open `deploy.sh` and set the four configuration values at the top:
 
 ```sh
 TENANT_KEY="fs_live_t_REPLACE_ME"   # replace with your tenant key
-IDENTITY_TYPE="hash"                # "hash" (HMAC handle) or "full" (raw email)
+IDENTITY_TYPE="full"
 CODEX_TAG="v0.12.0"                 # pinned plugin release for Codex telemetry
 CODEX_SHA="b3e046e7f4511b935e075c6a1c3cc9e72678e3c6"   # commit sha of CODEX_TAG
 ```
@@ -138,12 +138,6 @@ prompt** — enforced hooks are auto-trusted.
 
 The script overwrites its artifacts on the next check-in run, so changes
 propagate within one check-in interval — no repackaging.
-
-## `identity_type`
-
-`IDENTITY_TYPE="hash"` sends a HMAC-derived handle rather than the raw email to
-the fancysauce ingest endpoint. Set it to `"full"` only if your data policy
-permits sending the raw email on the wire.
 
 ## Troubleshooting
 

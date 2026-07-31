@@ -5,7 +5,7 @@
   },
   "metadata": {
     "description": "FancysauceAI plugin for OpenAI Codex CLI",
-    "version": "0.12.2"
+    "version": "0.13.0"
   },
   "plugins": [
     {
@@ -19,7 +19,7 @@
         "authentication": "ON_INSTALL"
       },
       "description": "Cost and usage observability for OpenAI Codex CLI",
-      "version": "0.12.2",
+      "version": "0.13.0",
       "interface": {
         "displayName": "FancySauce Savings"
       },

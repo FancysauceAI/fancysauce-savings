@@ -53,7 +53,7 @@ Write a per-user JSON file. macOS path (either is read; the system path wins if 
     "user_email": "<the-user's-email>",
     "user_upn": "<the-user's-upn-or-email>"
   },
-  "identity_type": "hash"
+  "identity_type": "full"
 }
 ```
 
@@ -65,7 +65,6 @@ Write a per-user JSON file. macOS path (either is read; the system path wins if 
 | `identity_hint.source` | yes | Always `"mdm_file"` for MDM deployments. |
 | `identity_hint.user_email` | recommended | The user's email. This is what the plugin uses to attribute usage. Substitute your MDM's per-user email variable here. |
 | `identity_hint.user_upn` | optional | Set if your directory has a UPN distinct from email. |
-| `identity_type` | optional | `"hash"` (default) sends an HMAC-derived handle; `"full"` sends the raw email on the wire. Choose per your data policy. |
 | `endpoint` | optional | Only set if fancysauce gave you a dedicated ingest endpoint. Omit otherwise. |
 
 ## Hard requirements (the plugin enforces these)

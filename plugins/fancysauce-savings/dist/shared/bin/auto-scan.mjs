@@ -58,29 +58,12 @@ var init_credential_paths = __esm({
   }
 });
 
-// dist/shared/backfill/status.mjs
-import { readFile, open, rename, mkdir, unlink } from "node:fs/promises";
-import { join as join2, dirname as dirname2 } from "node:path";
-async function readStatus(stateDir) {
-  try {
-    const raw = await readFile(join2(stateDir, "backfill.status"), "utf8");
-    return JSON.parse(raw);
-  } catch {
-    return null;
-  }
-}
-var init_status = __esm({
-  "dist/shared/backfill/status.mjs"() {
-    "use strict";
-  }
-});
-
 // dist/shared/backfill/pid-guard.mjs
-import { readFile as readFile3, rm, mkdir as mkdir3, open as open3 } from "node:fs/promises";
-import { join as join4 } from "node:path";
+import { readFile as readFile2, rm, mkdir as mkdir2, open as open2 } from "node:fs/promises";
+import { join as join2 } from "node:path";
 async function isBackfillActive(stateDir) {
   try {
-    const raw = await readFile3(join4(stateDir, "backfill.pid"), "utf8");
+    const raw = await readFile2(join2(stateDir, "backfill.pid"), "utf8");
     const pid = Number(raw.trim());
     if (!Number.isFinite(pid) || pid <= 0)
       return null;
@@ -133,13 +116,13 @@ var init_runner_env = __esm({
 
 // dist/shared/backfill/runner-spawn.mjs
 import { spawn } from "node:child_process";
-import { join as join5, dirname as dirname4 } from "node:path";
-import { fileURLToPath as fileURLToPath2 } from "node:url";
+import { join as join3, dirname as dirname2 } from "node:path";
+import { fileURLToPath } from "node:url";
 function resolveDistBinPath(containerDir, binName) {
-  return join5(containerDir, "..", "..", "shared", "bin", binName);
+  return join3(containerDir, "..", "..", "shared", "bin", binName);
 }
 async function spawnBackfillRunner(input) {
-  const here = dirname4(fileURLToPath2(import.meta.url));
+  const here = dirname2(fileURLToPath(import.meta.url));
   const binPath = resolveDistBinPath(here, "backfill-runner.mjs");
   const args = ["--data-dir", input.dataDir, "--credential-path", input.credentialPath];
   return spawnDetachedBin(binPath, args, input.spawner);
@@ -242,7 +225,7 @@ var require_polyfills = __commonJS({
       }
       if (platform === "win32") {
         fs.rename = typeof fs.rename !== "function" ? fs.rename : (function(fs$rename) {
-          function rename6(from, to, cb) {
+          function rename5(from, to, cb) {
             var start = Date.now();
             var backoff = 0;
             fs$rename(from, to, function CB(er) {
@@ -262,8 +245,8 @@ var require_polyfills = __commonJS({
               if (cb) cb(er);
             });
           }
-          if (Object.setPrototypeOf) Object.setPrototypeOf(rename6, fs$rename);
-          return rename6;
+          if (Object.setPrototypeOf) Object.setPrototypeOf(rename5, fs$rename);
+          return rename5;
         })(fs.rename);
       }
       fs.read = typeof fs.read !== "function" ? fs.read : (function(fs$read) {
@@ -667,8 +650,8 @@ var require_graceful_fs = __commonJS({
       fs2.createReadStream = createReadStream;
       fs2.createWriteStream = createWriteStream;
       var fs$readFile = fs2.readFile;
-      fs2.readFile = readFile7;
-      function readFile7(path, options, cb) {
+      fs2.readFile = readFile6;
+      function readFile6(path, options, cb) {
         if (typeof options === "function")
           cb = options, options = null;
         return go$readFile(path, options, cb);
@@ -684,8 +667,8 @@ var require_graceful_fs = __commonJS({
         }
       }
       var fs$writeFile = fs2.writeFile;
-      fs2.writeFile = writeFile5;
-      function writeFile5(path, data, options, cb) {
+      fs2.writeFile = writeFile4;
+      function writeFile4(path, data, options, cb) {
         if (typeof options === "function")
           cb = options, options = null;
         return go$writeFile(path, data, options, cb);
@@ -702,8 +685,8 @@ var require_graceful_fs = __commonJS({
       }
       var fs$appendFile = fs2.appendFile;
       if (fs$appendFile)
-        fs2.appendFile = appendFile3;
-      function appendFile3(path, data, options, cb) {
+        fs2.appendFile = appendFile4;
+      function appendFile4(path, data, options, cb) {
         if (typeof options === "function")
           cb = options, options = null;
         return go$appendFile(path, data, options, cb);
@@ -844,7 +827,7 @@ var require_graceful_fs = __commonJS({
       }
       function ReadStream$open() {
         var that = this;
-        open7(that.path, that.flags, that.mode, function(err, fd) {
+        open6(that.path, that.flags, that.mode, function(err, fd) {
           if (err) {
             if (that.autoClose)
               that.destroy();
@@ -864,7 +847,7 @@ var require_graceful_fs = __commonJS({
       }
       function WriteStream$open() {
         var that = this;
-        open7(that.path, that.flags, that.mode, function(err, fd) {
+        open6(that.path, that.flags, that.mode, function(err, fd) {
           if (err) {
             that.destroy();
             that.emit("error", err);
@@ -881,8 +864,8 @@ var require_graceful_fs = __commonJS({
         return new fs2.WriteStream(path, options);
       }
       var fs$open = fs2.open;
-      fs2.open = open7;
-      function open7(path, flags, mode, cb) {
+      fs2.open = open6;
+      function open6(path, flags, mode, cb) {
         if (typeof mode === "function")
           cb = mode, mode = null;
         return go$open(path, flags, mode, cb);
@@ -1752,174 +1735,17 @@ var require_proper_lockfile = __commonJS({
   }
 });
 
-// dist/shared/bin/upload-history.mjs
-init_credential_paths();
-import { writeFile as writeFile4, mkdir as mkdir8 } from "node:fs/promises";
-import { join as join12 } from "node:path";
-
-// dist/shared/data-dir.mjs
-import { readFileSync } from "node:fs";
-import { basename, join, dirname } from "node:path";
-import { fileURLToPath } from "node:url";
-import { homedir as homedir2 } from "node:os";
-function resolveDataDir(opts = {}) {
-  if (opts.override)
-    return opts.override;
-  if (process.env.CLAUDE_PLUGIN_DATA)
-    return process.env.CLAUDE_PLUGIN_DATA;
-  const home = opts.homeDir ?? homedir2();
-  const root = trimTrailingSlash(opts.pluginRoot ?? defaultPluginRoot());
-  const fromRegistry = deriveFromRegistry(root, home);
-  if (fromRegistry !== null)
-    return fromRegistry;
-  const fromMarketplaces = deriveFromMarketplaces(root, home);
-  if (fromMarketplaces !== null)
-    return fromMarketplaces;
-  const fromCodexCache = deriveFromCodexCache(root, home);
-  if (fromCodexCache !== null)
-    return fromCodexCache;
-  const fromCodexMarketplaces = deriveFromCodexMarketplaces(root, home);
-  if (fromCodexMarketplaces !== null)
-    return fromCodexMarketplaces;
-  return join(home, ".claude-plugin-data");
-}
-function defaultPluginRoot() {
-  const here = dirname(fileURLToPath(import.meta.url));
-  return join(here, "..", "..", "..");
-}
-function trimTrailingSlash(p) {
-  return p.endsWith("/") ? p.slice(0, -1) : p;
-}
-function deriveFromRegistry(root, home) {
-  try {
-    const regPath = join(home, ".claude", "plugins", "installed_plugins.json");
-    const reg = JSON.parse(readFileSync(regPath, "utf8"));
-    const plugins = reg?.plugins;
-    if (typeof plugins !== "object" || plugins === null)
-      return null;
-    for (const [key, entries] of Object.entries(plugins)) {
-      if (!Array.isArray(entries))
-        continue;
-      for (const entry of entries) {
-        const installPath = entry.installPath;
-        if (typeof installPath !== "string")
-          continue;
-        if (trimTrailingSlash(installPath) !== root)
-          continue;
-        const at = key.lastIndexOf("@");
-        if (at <= 0 || at >= key.length - 1)
-          continue;
-        const plugin = key.slice(0, at);
-        const alias = key.slice(at + 1);
-        return join(home, ".claude", "plugins", "data", `${plugin}-${alias}`);
-      }
-    }
-  } catch {
-  }
-  return null;
-}
-function deriveFromMarketplaces(root, home) {
-  try {
-    const kmPath = join(home, ".claude", "plugins", "known_marketplaces.json");
-    const km = JSON.parse(readFileSync(kmPath, "utf8"));
-    let alias = null;
-    for (const [k, v] of Object.entries(km)) {
-      const installLocation = v.installLocation;
-      if (typeof installLocation === "string" && trimTrailingSlash(installLocation) === root) {
-        alias = k;
-        break;
-      }
-    }
-    if (alias === null)
-      return null;
-    const manifest = JSON.parse(readFileSync(join(root, ".claude-plugin", "marketplace.json"), "utf8"));
-    const plugin = manifest.plugins?.[0]?.name;
-    if (typeof plugin !== "string" || plugin.length === 0)
-      return null;
-    return join(home, ".claude", "plugins", "data", `${plugin}-${alias}`);
-  } catch {
-    return null;
-  }
-}
-function deriveFromCodexCache(root, home) {
-  const prefix = trimTrailingSlash(join(home, ".codex", "plugins", "cache"));
-  if (!root.startsWith(prefix + "/"))
-    return null;
-  const parts = root.slice(prefix.length + 1).split("/");
-  const alias = parts[0];
-  const plugin = parts[1];
-  if (!alias || !plugin)
-    return null;
-  return join(home, ".codex", "plugins", "data", `${plugin}-${alias}`);
-}
-function deriveFromCodexMarketplaces(root, home) {
-  try {
-    const plugin = readCodexPluginName(root) ?? basename(root);
-    if (plugin.length === 0)
-      return null;
-    const configPath = join(home, ".codex", "config.toml");
-    const marketplaces = parseCodexMarketplaces(readFileSync(configPath, "utf8"));
-    for (const marketplace of marketplaces) {
-      const expectedRoot = trimTrailingSlash(join(marketplace.source, "plugins", plugin));
-      if (expectedRoot === root) {
-        return join(home, ".codex", "plugins", "data", `${plugin}-${marketplace.alias}`);
-      }
-    }
-  } catch {
-    return null;
-  }
-  return null;
-}
-function readCodexPluginName(root) {
-  try {
-    const manifest = JSON.parse(readFileSync(join(root, ".codex-plugin", "plugin.json"), "utf8"));
-    return typeof manifest.name === "string" && manifest.name.length > 0 ? manifest.name : null;
-  } catch {
-    return null;
-  }
-}
-function parseCodexMarketplaces(config) {
-  const marketplaces = [];
-  let currentAlias = null;
-  for (const line of config.split(/\r?\n/)) {
-    const header = line.match(/^\s*\[marketplaces\.([^\]]+)\]\s*$/);
-    if (header) {
-      currentAlias = parseTomlKey(header[1]);
-      continue;
-    }
-    if (/^\s*\[/.test(line)) {
-      currentAlias = null;
-      continue;
-    }
-    if (currentAlias === null)
-      continue;
-    const source = line.match(/^\s*source\s*=\s*"([^"]*)"\s*$/);
-    if (source) {
-      marketplaces.push({ alias: currentAlias, source: source[1] });
-    }
-  }
-  return marketplaces;
-}
-function parseTomlKey(key) {
-  const trimmed = key.trim();
-  if (!trimmed.startsWith('"') || !trimmed.endsWith('"'))
-    return trimmed;
-  try {
-    return JSON.parse(trimmed);
-  } catch {
-    return trimmed.slice(1, -1);
-  }
-}
-
-// dist/shared/bin/upload-history.mjs
-init_status();
+// dist/shared/bin/auto-scan.mjs
+import { appendFileSync } from "node:fs";
+import { appendFile as appendFile3 } from "node:fs/promises";
+import { join as join10 } from "node:path";
 
 // dist/shared/backfill/scan-then-drain.mjs
-import { join as join11 } from "node:path";
+import { join as join9 } from "node:path";
 
 // dist/shared/config.mjs
-import { join as join3 } from "node:path";
-import { homedir as homedir3 } from "node:os";
+import { join } from "node:path";
+import { homedir as homedir2 } from "node:os";
 
 // dist/shared/policy.mjs
 function defaultPolicy() {
@@ -2043,12 +1869,12 @@ function defaultPolicy() {
 }
 
 // dist/shared/credential-file.mjs
-import { mkdir as mkdir2, rename as rename2, open as open2, chmod, unlink as unlink2, readFile as readFile2, stat } from "node:fs/promises";
-import { dirname as dirname3 } from "node:path";
+import { mkdir, rename, open, chmod, unlink, readFile, stat } from "node:fs/promises";
+import { dirname } from "node:path";
 import { randomBytes } from "node:crypto";
 async function writeCredential(path, cred) {
-  const parent = dirname3(path);
-  await mkdir2(parent, { recursive: true, mode: 448 });
+  const parent = dirname(path);
+  await mkdir(parent, { recursive: true, mode: 448 });
   if (process.platform !== "win32") {
     await chmod(parent, 448).catch(() => {
     });
@@ -2056,19 +1882,19 @@ async function writeCredential(path, cred) {
   const tmp = `${path}.${process.pid}.${randomBytes(4).toString("hex")}.tmp`;
   let renamed = false;
   try {
-    const fh = await open2(tmp, "wx", 384);
+    const fh = await open(tmp, "wx", 384);
     try {
       await fh.writeFile(JSON.stringify(cred));
       await fh.sync();
     } finally {
       await fh.close();
     }
-    await rename2(tmp, path);
+    await rename(tmp, path);
     renamed = true;
   } finally {
     if (!renamed) {
       try {
-        await unlink2(tmp);
+        await unlink(tmp);
       } catch {
       }
     }
@@ -2090,7 +1916,7 @@ async function readCredential(paths) {
 async function tryReadOne(path) {
   let raw;
   try {
-    raw = await readFile2(path, "utf8");
+    raw = await readFile(path, "utf8");
   } catch (err) {
     if (err.code === "ENOENT")
       return { kind: "absent" };
@@ -2243,7 +2069,7 @@ async function ensureAmbientTenantCredential(existing, paths, opts = {}) {
 // dist/shared/config.mjs
 init_credential_paths();
 var INGEST_ENDPOINT = "https://ingest.preview.fancysauce.ai";
-var DEFAULT_LOGIN_STATE_DIR = join3(homedir3(), ".config", "fancysauce");
+var DEFAULT_LOGIN_STATE_DIR = join(homedir2(), ".config", "fancysauce");
 var KNOWN_FANCYSAUCE_VARS = /* @__PURE__ */ new Set([
   "FANCYSAUCE_CREDENTIAL_PATHS",
   "FANCYSAUCE_API_KEY",
@@ -2353,31 +2179,31 @@ init_pid_guard();
 init_runner_spawn();
 
 // dist/shared/backfill/scan.mjs
-import { appendFile as appendFile2, mkdir as mkdir7, readdir as readdir2 } from "node:fs/promises";
-import { homedir as homedir5 } from "node:os";
-import { join as join10, relative as relative2 } from "node:path";
+import { appendFile as appendFile2, mkdir as mkdir6, readdir as readdir2 } from "node:fs/promises";
+import { homedir as homedir4 } from "node:os";
+import { join as join8, relative as relative2 } from "node:path";
 
 // dist/agents/claude-code/transcript-tail.mjs
 var import_proper_lockfile2 = __toESM(require_proper_lockfile(), 1);
-import { mkdir as mkdir5, readFile as readFile5, readdir, writeFile as writeFile2, appendFile, rename as rename4, lstat as lstat2 } from "node:fs/promises";
-import { basename as basename2, dirname as dirname5, isAbsolute, join as join7, relative, sep } from "node:path";
-import { homedir as homedir4 } from "node:os";
+import { mkdir as mkdir4, readFile as readFile4, readdir, writeFile as writeFile2, appendFile, rename as rename3, lstat as lstat2 } from "node:fs/promises";
+import { basename, dirname as dirname3, isAbsolute, join as join5, relative, sep } from "node:path";
+import { homedir as homedir3 } from "node:os";
 import { randomUUID as randomUUID2 } from "node:crypto";
 
 // dist/agents/claude-code/subagent-cursor.mjs
-import { readFile as readFile4, rename as rename3, writeFile } from "node:fs/promises";
-import { join as join6 } from "node:path";
+import { readFile as readFile3, rename as rename2, writeFile } from "node:fs/promises";
+import { join as join4 } from "node:path";
 
 // dist/shared/locking.mjs
 var import_proper_lockfile = __toESM(require_proper_lockfile(), 1);
-import { mkdir as mkdir4 } from "node:fs/promises";
+import { mkdir as mkdir3 } from "node:fs/promises";
 var LOCK_OPTIONS = {
   realpath: false,
   retries: { retries: 100, minTimeout: 5, maxTimeout: 100, factor: 1.5 },
   stale: 1e4
 };
 async function withDirLock(dir, fn) {
-  await mkdir4(dir, { recursive: true });
+  await mkdir3(dir, { recursive: true });
   const release = await import_proper_lockfile.default.lock(dir, LOCK_OPTIONS);
   try {
     return await fn();
@@ -2393,12 +2219,12 @@ var SubagentCursor = class {
   tmpPath;
   constructor(dir) {
     this.dir = dir;
-    this.path = join6(dir, "transcript_cursor.json");
+    this.path = join4(dir, "transcript_cursor.json");
     this.tmpPath = `${this.path}.tmp`;
   }
   async read() {
     try {
-      const buf = await readFile4(this.path, "utf8");
+      const buf = await readFile3(this.path, "utf8");
       const parsed = JSON.parse(buf);
       return parsed.byte_offset ?? 0;
     } catch (err) {
@@ -2429,12 +2255,12 @@ var SubagentCursor = class {
   async write(offset) {
     const body = { byte_offset: offset };
     await writeFile(this.tmpPath, JSON.stringify(body), "utf8");
-    await rename3(this.tmpPath, this.path);
+    await rename2(this.tmpPath, this.path);
   }
 };
 
 // dist/agents/claude-code/subagent-meta.mjs
-import { open as open4, lstat, constants } from "node:fs/promises";
+import { open as open3, lstat, constants } from "node:fs/promises";
 function metaPathFromTranscript(transcriptPath) {
   return transcriptPath.endsWith(".jsonl") ? `${transcriptPath.slice(0, -".jsonl".length)}.meta.json` : `${transcriptPath}.meta.json`;
 }
@@ -2450,7 +2276,7 @@ var SubagentMetaCache = class {
       if (!(await lstat(path)).isFile())
         throw new Error("not a regular file");
       const flags = typeof constants.O_NOFOLLOW === "number" ? constants.O_RDONLY | constants.O_NOFOLLOW : "r";
-      fh = await open4(path, flags);
+      fh = await open3(path, flags);
       if (!(await fh.stat()).isFile())
         throw new Error("not a regular file");
       const raw = await fh.readFile({ encoding: "utf8" });
@@ -2470,7 +2296,7 @@ var SubagentMetaCache = class {
 };
 
 // dist/shared/tail-engine.mjs
-import { open as open5, constants as constants2 } from "node:fs/promises";
+import { open as open4, constants as constants2 } from "node:fs/promises";
 var DEFAULT_MAX_READ_BYTES = 4 * 1024 * 1024;
 async function readWindow(opts) {
   const { path, startOffset, sequenceBase, maxReadBytes, parseWindow, state } = opts;
@@ -2478,7 +2304,7 @@ async function readWindow(opts) {
   try {
     try {
       const flags = opts.nofollow && typeof constants2.O_NOFOLLOW === "number" ? constants2.O_RDONLY | constants2.O_NOFOLLOW : "r";
-      fh = await open5(path, flags);
+      fh = await open4(path, flags);
     } catch (err) {
       if (err.code === "ENOENT") {
         return { events: [], endOffset: startOffset, truncated: false };
@@ -2650,7 +2476,7 @@ var TranscriptTail = class {
     this.stateDir = stateDir;
     this.maxReadBytes = options.maxReadBytes ?? DEFAULT_MAX_READ_BYTES;
     this.errorLogPath = options.errorLogPath;
-    const root = options.transcriptRoot ?? join7(homedir4(), ".claude", "projects");
+    const root = options.transcriptRoot ?? join5(homedir3(), ".claude", "projects");
     this.transcriptRoot = root.endsWith(sep) ? root : root + sep;
   }
   // `persist` runs after all events are read but BEFORE any cursor is
@@ -2664,8 +2490,8 @@ var TranscriptTail = class {
       return { events: [], skipped: true, newCursor: 0 };
     }
     const cursorDir = this.cursorDir(sessionId);
-    await mkdir5(cursorDir, { recursive: true });
-    const cursorPath = join7(cursorDir, "transcript_cursor.json");
+    await mkdir4(cursorDir, { recursive: true });
+    const cursorPath = join5(cursorDir, "transcript_cursor.json");
     let release;
     try {
       release = await import_proper_lockfile2.default.lock(cursorPath, {
@@ -2679,8 +2505,8 @@ var TranscriptTail = class {
     try {
       const startOffset = await this.readCursor(cursorPath);
       const { events, endOffset, truncated } = await this.readSince(sessionId, transcriptPath, startOffset, sequenceBase, this.maxReadBytes);
-      const sessionDir = join7(dirname5(transcriptPath), basename2(transcriptPath, ".jsonl"));
-      const subagentsRoot = join7(sessionDir, "subagents");
+      const sessionDir = join5(dirname3(transcriptPath), basename(transcriptPath, ".jsonl"));
+      const subagentsRoot = join5(sessionDir, "subagents");
       const subagentPaths = await discoverSubagentTranscripts(sessionDir, (dir, err) => this.logSubagentError(sessionId, relative(sessionDir, dir) || "subagents", err));
       const metaCache = new SubagentMetaCache();
       let seq = sequenceBase + events.length;
@@ -2730,10 +2556,10 @@ var TranscriptTail = class {
       throw new Error(`acquireCursorLock: invalid sessionId`);
     }
     const cursorDir = this.cursorDir(sessionId);
-    await mkdir5(cursorDir, { recursive: true });
-    const cursorPath = join7(cursorDir, "transcript_cursor.json");
+    await mkdir4(cursorDir, { recursive: true });
+    const cursorPath = join5(cursorDir, "transcript_cursor.json");
     try {
-      await readFile5(cursorPath);
+      await readFile4(cursorPath);
     } catch {
       await writeFile2(cursorPath, "{}", "utf8");
     }
@@ -2768,7 +2594,7 @@ var TranscriptTail = class {
   }
   async readCursor(cursorPath) {
     try {
-      const buf = await readFile5(cursorPath, "utf8");
+      const buf = await readFile4(cursorPath, "utf8");
       const parsed = JSON.parse(buf);
       return parsed.byte_offset ?? 0;
     } catch {
@@ -2779,7 +2605,7 @@ var TranscriptTail = class {
     const body = { byte_offset: offset };
     const tmp = `${cursorPath}.tmp`;
     await writeFile2(tmp, JSON.stringify(body), "utf8");
-    await rename4(tmp, cursorPath);
+    await rename3(tmp, cursorPath);
   }
   async readSince(sessionId, path, startOffset, sequenceBase, maxReadBytes) {
     return readWindow({
@@ -2822,7 +2648,7 @@ function ccParseWindow(stamp, detectLimit) {
 }
 async function readSubagent(opts) {
   const { sessionId, agentId, transcriptPath, metaPath, cursorDir, metaCache = new SubagentMetaCache(), sequenceBase = 0, maxReadBytes = DEFAULT_MAX_READ_BYTES } = opts;
-  await mkdir5(cursorDir, { recursive: true });
+  await mkdir4(cursorDir, { recursive: true });
   const cursor = new SubagentCursor(cursorDir);
   const startOffset = await cursor.read();
   const meta = await metaCache.get(metaPath);
@@ -2878,7 +2704,7 @@ async function readSubagent(opts) {
 }
 var MAX_SUBAGENT_DISCOVERY_DEPTH = 4;
 async function discoverSubagentTranscripts(sessionDir, onError) {
-  const root = join7(sessionDir, "subagents");
+  const root = join5(sessionDir, "subagents");
   try {
     if (!(await lstat2(root)).isDirectory())
       return [];
@@ -2901,7 +2727,7 @@ async function walkSubagentDir(dir, depthRemaining, onError) {
     return [];
   }
   const found = await Promise.all(entries.map(async (entry) => {
-    const full = join7(dir, entry.name);
+    const full = join5(dir, entry.name);
     const kind = await classifyDirent(full, entry);
     if (kind === "file" && entry.name.startsWith("agent-") && entry.name.endsWith(".jsonl")) {
       return [full];
@@ -2934,19 +2760,19 @@ function isValidSessionId(s) {
   return typeof s === "string" && SESSION_ID_RE.test(s);
 }
 function sessionCursorDir(stateDir, sessionId) {
-  return join7(stateDir, "sessions", sessionId);
+  return join5(stateDir, "sessions", sessionId);
 }
 function deriveSubagentCursorDir(sessCursorDir, subagentsRoot, subagentPath) {
-  const agentId = basename2(subagentPath, ".jsonl").slice("agent-".length);
+  const agentId = basename(subagentPath, ".jsonl").slice("agent-".length);
   if (!AGENT_ID_RE.test(agentId)) {
     return { ok: false, agentId, reason: `unsafe agent id in transcript name: ${subagentPath}` };
   }
-  const nestedDir = relative(subagentsRoot, dirname5(subagentPath));
+  const nestedDir = relative(subagentsRoot, dirname3(subagentPath));
   if (nestedDir === ".." || nestedDir.startsWith(".." + sep)) {
     return { ok: false, agentId, reason: `transcript outside subagents root: ${subagentPath}` };
   }
-  const cursorDir = nestedDir === "" ? join7(sessCursorDir, "subagents", agentId) : join7(sessCursorDir, "subagents", nestedDir, agentId);
-  const errorLabel = nestedDir === "" ? agentId : join7(nestedDir, agentId);
+  const cursorDir = nestedDir === "" ? join5(sessCursorDir, "subagents", agentId) : join5(sessCursorDir, "subagents", nestedDir, agentId);
+  const errorLabel = nestedDir === "" ? agentId : join5(nestedDir, agentId);
   return { ok: true, agentId, cursorDir, errorLabel };
 }
 function isAssistantRecord(r) {
@@ -3004,15 +2830,15 @@ function toApiRequestEvent(r, sessionId, sequence) {
 }
 
 // dist/shared/queue.mjs
-import { open as open6, stat as stat2 } from "node:fs/promises";
-import { join as join8 } from "node:path";
+import { open as open5, stat as stat2 } from "node:fs/promises";
+import { join as join6 } from "node:path";
 var Queue = class {
   dir;
   path;
   capBytes;
   constructor(dir, capBytes) {
     this.dir = dir;
-    this.path = join8(dir, "queue.ndjson");
+    this.path = join6(dir, "queue.ndjson");
     this.capBytes = capBytes;
   }
   async size() {
@@ -3030,7 +2856,7 @@ var Queue = class {
       return { written: 0, dropped: 0, sizeAfter: await this.size() };
     }
     return withDirLock(this.dir, async () => {
-      const fh = await open6(this.path, "a", 384);
+      const fh = await open5(this.path, "a", 384);
       let written = 0;
       let dropped = 0;
       let currentSize = (await fh.stat()).size;
@@ -3205,8 +3031,8 @@ var DEFAULT_TTL_MS2 = 12 * 60 * 60 * 1e3;
 
 // dist/shared/health.mjs
 var import_proper_lockfile3 = __toESM(require_proper_lockfile(), 1);
-import { mkdir as mkdir6, readFile as readFile6, rename as rename5, writeFile as writeFile3 } from "node:fs/promises";
-import { join as join9 } from "node:path";
+import { mkdir as mkdir5, readFile as readFile5, rename as rename4, writeFile as writeFile3 } from "node:fs/promises";
+import { join as join7 } from "node:path";
 var DEFAULT = { dropped_event_count: 0 };
 var LOCK_RETRIES = {
   retries: 100,
@@ -3220,12 +3046,12 @@ var HealthState = class {
   tmp;
   constructor(dir) {
     this.dir = dir;
-    this.path = join9(dir, "health.json");
+    this.path = join7(dir, "health.json");
     this.tmp = `${this.path}.tmp`;
   }
   async read() {
     try {
-      return { ...DEFAULT, ...JSON.parse(await readFile6(this.path, "utf8")) };
+      return { ...DEFAULT, ...JSON.parse(await readFile5(this.path, "utf8")) };
     } catch {
       return { ...DEFAULT };
     }
@@ -3247,9 +3073,9 @@ var HealthState = class {
     });
   }
   async update(mutate) {
-    await mkdir6(this.dir, { recursive: true });
+    await mkdir5(this.dir, { recursive: true });
     try {
-      await readFile6(this.path);
+      await readFile5(this.path);
     } catch {
       await writeFile3(this.path, "{}", "utf8");
     }
@@ -3261,7 +3087,7 @@ var HealthState = class {
       const h = await this.read();
       mutate(h);
       await writeFile3(this.tmp, JSON.stringify(h), "utf8");
-      await rename5(this.tmp, this.path);
+      await rename4(this.tmp, this.path);
     } finally {
       await release();
     }
@@ -3317,10 +3143,10 @@ async function enqueueEvents(queue, events) {
 // dist/shared/backfill/scan.mjs
 var MAX_ITERATIONS_PER_TRANSCRIPT = 1e4;
 async function runBackfillScan(opts) {
-  const transcriptRoot = opts.transcriptRoot ?? join10(homedir5(), ".claude", "projects");
-  const stateDir = join10(opts.dataDir, "state");
-  const outboundDir = join10(opts.dataDir, "outbound");
-  await mkdir7(outboundDir, { recursive: true, mode: 448 });
+  const transcriptRoot = opts.transcriptRoot ?? join8(homedir4(), ".claude", "projects");
+  const stateDir = join8(opts.dataDir, "state");
+  const outboundDir = join8(opts.dataDir, "outbound");
+  await mkdir6(outboundDir, { recursive: true, mode: 448 });
   const queue = new Queue(outboundDir, opts.queueCapBytes ?? QUEUE_CAP_BYTES);
   const maxReadBytes = opts.maxReadBytes ?? DEFAULT_MAX_READ_BYTES;
   const policy = defaultPolicy();
@@ -3348,7 +3174,7 @@ async function runBackfillScan(opts) {
     }
     summary.sessionsScanned++;
     try {
-      const subagentsRoot = join10(sessionDir, "subagents");
+      const subagentsRoot = join8(sessionDir, "subagents");
       const subagentPaths = await discoverSubagentTranscripts(sessionDir, (dir, err) => logScanError(opts.errorLogPath, sessionId, relative2(sessionDir, dir) || "subagents", err));
       const metaCache = new SubagentMetaCache();
       const sessCursorDir = sessionCursorDir(stateDir, sessionId);
@@ -3463,7 +3289,7 @@ async function discoverSessionDirs(transcriptRoot, errorLogPath) {
   }
   const found = [];
   for (const proj of projectEntries) {
-    const projDir = join10(transcriptRoot, proj.name);
+    const projDir = join8(transcriptRoot, proj.name);
     if (await classifyDirent(projDir, proj) !== "dir")
       continue;
     let sessionEntries;
@@ -3476,7 +3302,7 @@ async function discoverSessionDirs(transcriptRoot, errorLogPath) {
     for (const entry of sessionEntries) {
       if (!isValidSessionId(entry.name))
         continue;
-      const sessionDir = join10(projDir, entry.name);
+      const sessionDir = join8(projDir, entry.name);
       if (await classifyDirent(sessionDir, entry) !== "dir")
         continue;
       found.push({ sessionId: entry.name, sessionDir });
@@ -3529,11 +3355,11 @@ async function scanThenDrain(args) {
     // rather than silently contained into nothing. Without this, scan.mts's
     // per-transcript containment had nowhere to write in production — only
     // tests (which pass errorLogPath directly) ever exercised it.
-    errorLogPath: join11(args.dataDir, "collect-error.log")
+    errorLogPath: join9(args.dataDir, "collect-error.log")
   });
   args.out(`Scan complete: ${summary.sessionsScanned} sessions scanned, ${summary.transcriptsTailed} transcripts tailed, ${summary.transcriptsFailed} failed (see collect-error.log), ${summary.eventsEnqueued} events enqueued, ${summary.skippedLocked} skipped (locked), ${summary.skippedFull + summary.skippedFiltered} dropped (queue full / filtered).
 `);
-  const queue = new Queue(join11(args.dataDir, "outbound"), QUEUE_CAP_BYTES);
+  const queue = new Queue(join9(args.dataDir, "outbound"), QUEUE_CAP_BYTES);
   if (await queue.size() === 0) {
     args.out("Queue is empty; nothing to upload.\n");
     return 0;
@@ -3541,69 +3367,62 @@ async function scanThenDrain(args) {
   return spawnRunner(args);
 }
 
-// dist/shared/bin/upload-history.mjs
-async function main(opts) {
-  const argv = opts.argv;
-  const dataDir = resolveDataDir({ override: opts.dataDir });
-  const credPath = opts.credentialUserPath ?? credentialPaths().user;
-  const out = opts.stdout ?? ((s) => {
-    process.stdout.write(s);
+// dist/shared/bin/auto-scan.mjs
+var AUTO_SCAN_JITTER_MAX_MS = 12e4;
+async function runAutoScan(opts) {
+  const sleep = opts.sleep ?? defaultSleep;
+  const jitterMs = opts.jitterMs ?? Math.floor(Math.random() * AUTO_SCAN_JITTER_MAX_MS);
+  await sleep(jitterMs);
+  const stateDir = join10(opts.dataDir, "state");
+  const auditLogPath = join10(opts.dataDir, "auto-scan.log");
+  const audit = (s) => {
+    const line = `${(/* @__PURE__ */ new Date()).toISOString()} ${s.replace(/[\p{Cc}\p{Cf}]+/gu, " ").trim()}`.slice(0, 2e3) + "\n";
+    try {
+      appendFileSync(auditLogPath, line, { mode: 384 });
+    } catch {
+    }
+  };
+  const out = opts.stdout ?? audit;
+  const err = opts.stderr ?? audit;
+  return scanThenDrain({
+    dataDir: opts.dataDir,
+    credPath: opts.credentialUserPath,
+    stateDir,
+    out,
+    err,
+    spawner: opts.spawner,
+    transcriptRoot: opts.transcriptRoot
   });
-  const err = opts.stderr ?? ((s) => {
-    process.stderr.write(s);
+}
+function defaultSleep(ms) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
   });
-  const stateDir = join12(dataDir, "state");
-  if (argv.includes("--status")) {
-    return renderStatus(stateDir, out);
-  }
-  if (argv.includes("--skip")) {
-    return writeSkipMarker(stateDir, out);
-  }
-  if (argv.includes("--scan")) {
-    return scanThenDrain({ dataDir, credPath, stateDir, out, err, spawner: opts.spawner, transcriptRoot: opts.transcriptRoot });
-  }
-  return spawnRunner({ dataDir, credPath, stateDir, out, err, spawner: opts.spawner });
-}
-async function renderStatus(stateDir, out) {
-  const s = await readStatus(stateDir);
-  if (!s) {
-    out("No backfill has been run.\n");
-    return 0;
-  }
-  switch (s.phase) {
-    case "running":
-      out(`Uploading: ${s.events_uploaded} events done.
-`);
-      return 0;
-    case "completed":
-      out(`Backfill complete. ${s.events_uploaded} events uploaded.
-`);
-      return 0;
-    case "failed":
-      out(`Backfill failed: ${s.last_error ?? "unknown"}.
-Re-run /fancysauce:upload-history to retry.
-`);
-      return 0;
-    case "interrupted":
-      out(`Backfill was interrupted.
-Re-run /fancysauce:upload-history to resume from cursor.
-`);
-      return 0;
-    case "skipped":
-      out("Backfill was skipped (already running or queue empty).\n");
-      return 0;
-  }
-}
-async function writeSkipMarker(stateDir, out) {
-  await mkdir8(stateDir, { recursive: true });
-  await writeFile4(join12(stateDir, "backfill-skip"), JSON.stringify({ created_at: (/* @__PURE__ */ new Date()).toISOString() }), "utf8");
-  out("Backfill nudges suppressed. Run /fancysauce:upload-history (without --skip) to start one any time.\n");
-  return 0;
 }
 var isMain = import.meta.url === `file://${process.argv[1]}`;
 if (isMain) {
-  void main({ argv: process.argv.slice(2) }).then((code) => process.exit(code));
+  const args = process.argv.slice(2);
+  const getArg = (name) => {
+    const i = args.indexOf(name);
+    return i >= 0 ? args[i + 1] : void 0;
+  };
+  const dataDir = getArg("--data-dir");
+  const credPath = getArg("--credential-path");
+  if (!dataDir || !credPath) {
+    process.stderr.write("auto-scan requires --data-dir and --credential-path\n");
+    process.exit(2);
+  }
+  void runAutoScan({ dataDir, credentialUserPath: credPath }).then((code) => process.exit(code)).catch(async (err) => {
+    const msg = err instanceof Error ? err.stack ?? err.message : String(err);
+    try {
+      await appendFile3(join10(dataDir, "collect-error.log"), `${(/* @__PURE__ */ new Date()).toISOString()} auto-scan: ${msg}
+`);
+    } catch {
+    }
+    process.exit(1);
+  });
 }
 export {
-  main
+  AUTO_SCAN_JITTER_MAX_MS,
+  runAutoScan
 };

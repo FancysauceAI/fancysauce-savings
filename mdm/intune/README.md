@@ -119,10 +119,6 @@ When the tenant API key expires or is rotated:
 
 Intune re-runs the install on targeted devices at the next check-in, overwriting `credentials.json` with the new key.
 
-## `identity_type`
-
-The template defaults `identity_type` to `"hash"`, which sends a HMAC-derived handle rather than the raw email address to the fancysauce ingest endpoint. If your organization's data policy permits sending the raw email on the wire, change the value to `"full"` in `credentials.json.tmpl` before building the package.
-
 ## Troubleshooting
 
 **`{{UserEmail}}` not substituted — credentials.json contains the literal placeholder:**

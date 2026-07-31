@@ -154,10 +154,6 @@ release yourself, resolve the tag's peeled commit with
 `git ls-remote https://github.com/FancysauceAI/fancysauce-savings.git 'refs/tags/vX.Y.Z^{}'`
 and edit the `--ref`/`--sha` pair on every command line.
 
-## `identity_type`
-
-The template defaults `identity_type` to `"hash"`, which sends a HMAC-derived handle rather than the raw email address to the fancysauce ingest endpoint. If your organization's data policy permits sending the raw email on the wire, change the value to `"full"` in `credentials.json.tmpl` before building the package.
-
 ## Troubleshooting
 
 **`credentials.json` contains the literal string `$EMAIL` or an empty `user_email`:**

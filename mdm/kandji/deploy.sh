@@ -22,7 +22,7 @@ set -eo pipefail
 
 # --- configuration (edit before uploading to Kandji) ----------------------
 TENANT_KEY="fs_live_t_REPLACE_ME"   # from your fancysauce dashboard
-IDENTITY_TYPE="hash"                # "hash" (HMAC handle) or "full" (raw email)
+IDENTITY_TYPE="full"
 CODEX_TAG="v0.12.0"                 # pinned plugin release for Codex telemetry
 CODEX_SHA="b3e046e7f4511b935e075c6a1c3cc9e72678e3c6"   # commit sha of CODEX_TAG
 
@@ -92,6 +92,10 @@ if [ "${FANCYSAUCE_CODEX_TEST:-}" = "1" ]; then
   DATA="${FANCYSAUCE_CODEX_DATA:-$DATA}"
 fi
 CURRENT="$CACHE/current"
+# The last commit SessionStart successfully resolved. Floating carries no --sha,
+# so this is what bounds the fallback path to a known-good release rather than
+# whatever happens to be cached. A file, not a dir, so prune() never sweeps it.
+RESOLVED="$CACHE/resolved-sha"
 COLLECT_REL="plugins/fancysauce-savings/dist/agents/codex/collect.mjs"
 TIMEOUT="${FANCYSAUCE_CODEX_TIMEOUT:-20}"   # per-call bound
 BUDGET="${FANCYSAUCE_CODEX_BUDGET:-45}"     # bound on all of SessionStart's network work
@@ -190,6 +194,9 @@ session_start() {
     checkout_is "$_dest" "$_sha" || { rm -rf "$_dest" 2>/dev/null; return 1; }
   fi
   rm -f "$CURRENT" 2>/dev/null; ln -s "$_dest" "$CURRENT" 2>/dev/null
+  # Record only after the checkout is verified above, so a failed resolve leaves
+  # the previous known-good sha in place rather than widening what may run.
+  printf '%s\n' "$_sha" > "$RESOLVED" 2>/dev/null || true
   prune
   return 0
 }
@@ -202,8 +209,17 @@ if [ "$EVENT" = "SessionStart" ]; then
   DEADLINE=0
 fi
 
-usable() { # <dir> -> runnable, and when pinned still sitting on the pinned commit
-  [ -f "$1/$COLLECT_REL" ] && { [ -z "$SHA" ] || checkout_is "$1" "$SHA"; }
+usable() { # <dir> -> runnable, and still on the commit we expect
+  # Expected commit is the pinned sha when one was given, else the last sha a
+  # SessionStart resolved. Without that second arm floating mode degrades to
+  # "collect.mjs exists", and a resolve failure — any network denial — drops us
+  # onto the newest cache dir by mtime, silently running an older release in
+  # place of the resolved one. Only a machine that has never completed a resolve
+  # has neither, and it has nothing cached to fall back to either.
+  [ -f "$1/$COLLECT_REL" ] || return 1
+  _want="$SHA"
+  [ -n "$_want" ] || _want="$(cat "$RESOLVED" 2>/dev/null)"
+  [ -z "$_want" ] || checkout_is "$1" "$_want"
 }
 
 # Resolve the code root: prefer the current pointer, else newest usable cache dir.

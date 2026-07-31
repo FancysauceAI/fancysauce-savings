@@ -2,6 +2,47 @@
 
 All public releases of `fancysauce-savings`. Most recent first.
 
+## v0.13.0 — 2026-07-31
+
+### Features
+
+- Codex subscription usage is now visible. Codex writes a rate-limit gauge
+  into its session files on every turn — how much of your 5-hour and weekly
+  windows you have consumed, when they reset, your plan, and whether credits
+  are available — and the plugin previously discarded it. It is now captured
+  three ways: the gauge rides each `api.request`, so consumption and the
+  window position it was consumed at land together; a `usage_limit.snapshot`
+  carries readings from turns that report no tokens; and a
+  `usage_limit.exceeded` fires when a window saturates. Plan and credit
+  posture is reported separately as it changes. Together these make
+  subscription overage measurable for Codex seats, where the vendor exposes
+  no per-seat spend reporting of its own.
+- Claude Code compaction is now recorded on the `PostCompact` hook, so
+  `compaction.after` is emitted reliably instead of being inferred.
+- Historical subagent transcripts are backfilled by the scan, so work that
+  ran before the plugin was installed is no longer missing from session
+  history.
+
+### Fixes
+
+- Codex `gpt-5.6` models are priced, so those turns carry a cost estimate
+  instead of none. Turns on the current model lineup were previously
+  reported with tokens but no cost.
+- Claude Code now recognises the "you've hit your org's monthly spend limit"
+  message as an org spend cap rather than an unknown limit, so a capped
+  organisation is distinguishable from an exhausted individual seat.
+- A Codex cursor lock is released when a telemetry flush fails, instead of
+  being held until it goes stale. A failed flush could previously cause the
+  next run to silently skip that session's new activity.
+- The Codex floating install ref no longer advances past the last resolved
+  commit, so a floating pin resolves deterministically.
+
+### Notes
+
+- This release bakes the production identity key, which activates the
+  encrypted identity envelope. Seat identity is encrypted to that key and is
+  readable only by the fancysauce backend.
+
 ## v0.12.2 — 2026-07-29
 
 ### Fixes
