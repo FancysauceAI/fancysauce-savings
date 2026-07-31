@@ -2,6 +2,21 @@
 
 All public releases of `fancysauce-savings`. Most recent first.
 
+## v0.13.1 — 2026-07-31
+
+No plugin code changed in this release: the published Claude Code and Codex
+artifacts are byte-identical to v0.13.0. This release corrects the MDM
+deployment templates.
+
+### Fixes
+
+- The MDM deployment templates now pin v0.13.0 rather than v0.12.0. On an
+  MDM-managed machine the enforced managed hook is authoritative and a
+  plugin-marketplace install does not upgrade it, so fleets deployed from
+  the v0.13.0 templates would have kept running the previous release and
+  received none of the Codex subscription-usage capture. Re-deploy the
+  templates to pick it up.
+
 ## v0.13.0 — 2026-07-31
 
 ### Features

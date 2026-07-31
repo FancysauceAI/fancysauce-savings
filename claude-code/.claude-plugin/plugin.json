@@ -1,6 +1,6 @@
 {
   "name": "fancysauce-savings",
-  "version": "0.13.0",
+  "version": "0.13.1",
   "description": "Cost and usage observability for Claude Code",
   "author": {
     "name": "FancysauceAI"

@@ -28,7 +28,7 @@ hooks = true
 # Choose ONE mode by editing the `command` lines below.
 #   PINNED  (recommended): --ref <tag> --sha <commit-sha>   (deterministic, audited)
 #   FLOATING (opt-in):     --ref latest                     (auto-updates each session)
-# The example below is PINNED to v0.12.0. Replace the tag+sha to upgrade, or
+# The example below is PINNED to v0.13.0. Replace the tag+sha to upgrade, or
 # swap every command to `... <Event> --ref latest` for floating.
 # Floating example (per event):  /etc/codex/hooks/wrapper SessionStart --ref latest
 # ---------------------------------------------------------------------------
@@ -37,58 +37,58 @@ hooks = true
 matcher = ""
 [[hooks.SessionStart.hooks]]
 type = "command"
-command = "/etc/codex/hooks/fancysauce.sh SessionStart --ref v0.12.0 --sha b3e046e7f4511b935e075c6a1c3cc9e72678e3c6"
+command = "/etc/codex/hooks/fancysauce.sh SessionStart --ref v0.13.0 --sha 5becf72699fb086092ae1588155cf3213627ba80"
 
 [[hooks.UserPromptSubmit]]
 matcher = ""
 [[hooks.UserPromptSubmit.hooks]]
 type = "command"
-command = "/etc/codex/hooks/fancysauce.sh UserPromptSubmit --ref v0.12.0 --sha b3e046e7f4511b935e075c6a1c3cc9e72678e3c6"
+command = "/etc/codex/hooks/fancysauce.sh UserPromptSubmit --ref v0.13.0 --sha 5becf72699fb086092ae1588155cf3213627ba80"
 
 [[hooks.PreToolUse]]
 matcher = ""
 [[hooks.PreToolUse.hooks]]
 type = "command"
-command = "/etc/codex/hooks/fancysauce.sh PreToolUse --ref v0.12.0 --sha b3e046e7f4511b935e075c6a1c3cc9e72678e3c6"
+command = "/etc/codex/hooks/fancysauce.sh PreToolUse --ref v0.13.0 --sha 5becf72699fb086092ae1588155cf3213627ba80"
 
 [[hooks.PermissionRequest]]
 matcher = ""
 [[hooks.PermissionRequest.hooks]]
 type = "command"
-command = "/etc/codex/hooks/fancysauce.sh PermissionRequest --ref v0.12.0 --sha b3e046e7f4511b935e075c6a1c3cc9e72678e3c6"
+command = "/etc/codex/hooks/fancysauce.sh PermissionRequest --ref v0.13.0 --sha 5becf72699fb086092ae1588155cf3213627ba80"
 
 [[hooks.PostToolUse]]
 matcher = ""
 [[hooks.PostToolUse.hooks]]
 type = "command"
-command = "/etc/codex/hooks/fancysauce.sh PostToolUse --ref v0.12.0 --sha b3e046e7f4511b935e075c6a1c3cc9e72678e3c6"
+command = "/etc/codex/hooks/fancysauce.sh PostToolUse --ref v0.13.0 --sha 5becf72699fb086092ae1588155cf3213627ba80"
 
 [[hooks.PreCompact]]
 matcher = ""
 [[hooks.PreCompact.hooks]]
 type = "command"
-command = "/etc/codex/hooks/fancysauce.sh PreCompact --ref v0.12.0 --sha b3e046e7f4511b935e075c6a1c3cc9e72678e3c6"
+command = "/etc/codex/hooks/fancysauce.sh PreCompact --ref v0.13.0 --sha 5becf72699fb086092ae1588155cf3213627ba80"
 
 [[hooks.PostCompact]]
 matcher = ""
 [[hooks.PostCompact.hooks]]
 type = "command"
-command = "/etc/codex/hooks/fancysauce.sh PostCompact --ref v0.12.0 --sha b3e046e7f4511b935e075c6a1c3cc9e72678e3c6"
+command = "/etc/codex/hooks/fancysauce.sh PostCompact --ref v0.13.0 --sha 5becf72699fb086092ae1588155cf3213627ba80"
 
 [[hooks.SubagentStart]]
 matcher = ""
 [[hooks.SubagentStart.hooks]]
 type = "command"
-command = "/etc/codex/hooks/fancysauce.sh SubagentStart --ref v0.12.0 --sha b3e046e7f4511b935e075c6a1c3cc9e72678e3c6"
+command = "/etc/codex/hooks/fancysauce.sh SubagentStart --ref v0.13.0 --sha 5becf72699fb086092ae1588155cf3213627ba80"
 
 [[hooks.SubagentStop]]
 matcher = ""
 [[hooks.SubagentStop.hooks]]
 type = "command"
-command = "/etc/codex/hooks/fancysauce.sh SubagentStop --ref v0.12.0 --sha b3e046e7f4511b935e075c6a1c3cc9e72678e3c6"
+command = "/etc/codex/hooks/fancysauce.sh SubagentStop --ref v0.13.0 --sha 5becf72699fb086092ae1588155cf3213627ba80"
 
 [[hooks.Stop]]
 matcher = ""
 [[hooks.Stop.hooks]]
 type = "command"
-command = "/etc/codex/hooks/fancysauce.sh Stop --ref v0.12.0 --sha b3e046e7f4511b935e075c6a1c3cc9e72678e3c6"
+command = "/etc/codex/hooks/fancysauce.sh Stop --ref v0.13.0 --sha 5becf72699fb086092ae1588155cf3213627ba80"
