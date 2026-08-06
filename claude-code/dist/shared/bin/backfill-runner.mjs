@@ -1677,7 +1677,15 @@ function defaultPolicy() {
       "credits_has",
       "credits_unlimited",
       "credits_balance",
-      "auth_plan_claim"
+      "auth_plan_claim",
+      "last_reached_type",
+      "spend_control_limit",
+      "spend_control_resets_at",
+      "spend_control_remaining_percent",
+      "fast_available",
+      "fast_default",
+      "config_service_tier",
+      "cli_version"
     ]),
     "usage_limit.exceeded": Object.freeze([
       "limit_message",
@@ -1697,9 +1705,17 @@ function defaultPolicy() {
       "window_minutes",
       "reached_type",
       "limit_source",
+      "last_reached_type",
       "credits_has",
       "credits_unlimited",
-      "credits_balance"
+      "credits_balance",
+      "spend_control_limit",
+      "spend_control_remaining_percent",
+      "spend_control_resets_at",
+      "fast_available",
+      "fast_default",
+      "config_service_tier",
+      "cli_version"
     ]),
     "usage_limit.snapshot": Object.freeze([
       "window",
@@ -1729,7 +1745,17 @@ function defaultPolicy() {
       "primary_window_minutes",
       "secondary_used_percent",
       "secondary_resets_at",
-      "secondary_window_minutes"
+      "secondary_window_minutes",
+      "speed",
+      "reached_type",
+      "plan_type",
+      "credits_has",
+      "credits_unlimited",
+      "spend_control_limit",
+      "spend_control_remaining_percent",
+      "spend_control_resets_at",
+      "service_tier_requested",
+      "service_tier_observed"
     ])
   };
   return Object.freeze({
@@ -2489,6 +2515,7 @@ var ATTR_TYPE = {
   request_id: "string",
   transcript_message_uuid: "string",
   stop_reason: "string",
+  speed: "string",
   // notification
   notification_type: "string",
   // task.completed
@@ -2526,6 +2553,11 @@ var ATTR_TYPE = {
   credits_unlimited: "bool",
   credits_balance: "string",
   auth_plan_claim: "string",
+  last_reached_type: "string",
+  spend_control_limit: "string",
+  spend_control_resets_at: "int",
+  // Gauge, like used_percent — see rate-limit-lens.mts's postureHash comment.
+  spend_control_remaining_percent: "double",
   // Codex per-window gauge riding api.request. Prefixed per window because a
   // payload can report primary and secondary at once.
   primary_used_percent: "double",
@@ -2533,7 +2565,19 @@ var ATTR_TYPE = {
   primary_window_minutes: "int",
   secondary_used_percent: "double",
   secondary_resets_at: "int",
-  secondary_window_minutes: "int"
+  secondary_window_minutes: "int",
+  // Codex requested-tier resolution (rollout-parser.mts's attachLimitState
+  // sibling) + speed posture facts (rate-limit-lens.mts's CodexPosture).
+  service_tier_requested: "string",
+  // Verbatim vendor record of the observed thread-settings tier — distinct
+  // provenance from service_tier_requested above; see rollout-parser.mts.
+  // Named service_tier_observed (not service_tier) to avoid colliding with
+  // #539's existing backend service_tier cost-dimension vocabulary.
+  service_tier_observed: "string",
+  fast_available: "bool",
+  fast_default: "bool",
+  config_service_tier: "string",
+  cli_version: "string"
 };
 function encodeOtlp(events, resource, observedTimeUnixNano) {
   const observed = observedTimeUnixNano ?? BigInt(Date.now()) * 1000000n;
@@ -3044,9 +3088,9 @@ function seal(plaintext, key) {
 import { readFileSync } from "node:fs";
 import { join as join8 } from "node:path";
 var BAKED_SERVER_KEY = {
-  keyid: "env-production-1",
+  keyid: "__BAKED_SERVER_KEYID__",
   alg: "RSA-OAEP-256+A256GCM",
-  publicKeyPem: "-----BEGIN PUBLIC KEY-----\nMIIBojANBgkqhkiG9w0BAQEFAAOCAY8AMIIBigKCAYEA4Dh42p0kvReuiL194qp3\n8j0BSjOmwW9WU9NUUSlBSA1Kn0WPdfMKywsD+DPrlt/KyOKdNLoUXsXrriM212Si\nMgabz4e4pK8ItqgqCg1wPFArY8SEoy8MioMj8iZVz/UPeR3/7Rng8LT50HiaB/kc\nwkBjjLnSU2xYQkKROKMGuTlKDZ4BCpP/uVCFTrZ5BUFEn3r2WyAl3Z6NBjO9hTPB\njKx1AH+CitIZeWVmn39EUwrzUW+LiXbEe1Y+0SXkpTgdqvVMzMjytlEp5Ojisvs1\n/GqoHRoN/NcESILK2s4Rabe3PTquCmZItYbw2sBpFe/6xhHPn/LA2TVjEjx5d+GJ\ndxQnhUWlNPInWul8TCePBAhz6MGThrcVWj6b+V3K4CrjetFIlvF7R2dk/SlWLCUZ\nozfDPZnQfvSZInVSrSRiCqA3OXArmptmFzeZii1RDQsJnNA+Vc2lTvuf2ScepvgG\nWJPZewNj7dknrCLAyj79ZZrQH31cIjgPt3XpT7SHnkaLAgMBAAE=\n-----END PUBLIC KEY-----\n"
+  publicKeyPem: "__BAKED_SERVER_PUBKEY__"
 };
 var CACHE_FILE = "server-key.json";
 var DEFAULT_TTL_MS = 24 * 60 * 60 * 1e3;

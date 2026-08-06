@@ -1807,7 +1807,15 @@ function defaultPolicy() {
       "credits_has",
       "credits_unlimited",
       "credits_balance",
-      "auth_plan_claim"
+      "auth_plan_claim",
+      "last_reached_type",
+      "spend_control_limit",
+      "spend_control_resets_at",
+      "spend_control_remaining_percent",
+      "fast_available",
+      "fast_default",
+      "config_service_tier",
+      "cli_version"
     ]),
     "usage_limit.exceeded": Object.freeze([
       "limit_message",
@@ -1827,9 +1835,17 @@ function defaultPolicy() {
       "window_minutes",
       "reached_type",
       "limit_source",
+      "last_reached_type",
       "credits_has",
       "credits_unlimited",
-      "credits_balance"
+      "credits_balance",
+      "spend_control_limit",
+      "spend_control_remaining_percent",
+      "spend_control_resets_at",
+      "fast_available",
+      "fast_default",
+      "config_service_tier",
+      "cli_version"
     ]),
     "usage_limit.snapshot": Object.freeze([
       "window",
@@ -1859,7 +1875,17 @@ function defaultPolicy() {
       "primary_window_minutes",
       "secondary_used_percent",
       "secondary_resets_at",
-      "secondary_window_minutes"
+      "secondary_window_minutes",
+      "speed",
+      "reached_type",
+      "plan_type",
+      "credits_has",
+      "credits_unlimited",
+      "spend_control_limit",
+      "spend_control_remaining_percent",
+      "spend_control_resets_at",
+      "service_tier_requested",
+      "service_tier_observed"
     ])
   };
   return Object.freeze({
@@ -2817,6 +2843,9 @@ function toApiRequestEvent(r, sessionId, sequence) {
   };
   if (typeof r.message.stop_reason === "string" && r.message.stop_reason) {
     attrs.stop_reason = r.message.stop_reason;
+  }
+  if (typeof usage.speed === "string" && usage.speed) {
+    attrs.speed = usage.speed;
   }
   return {
     event_uuid: randomUUID2(),

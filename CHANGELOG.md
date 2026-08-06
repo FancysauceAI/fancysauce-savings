@@ -2,6 +2,18 @@
 
 All public releases of `fancysauce-savings`. Most recent first.
 
+## v0.14.0 — 2026-08-06
+
+### Features
+- Codex: workspace limit/overage taxonomy capture — windowless `usage_limit.exceeded` reason one-shots (`limit_source: "reached_type"`, e.g. workspace credit depletion), latched depletion posture (`last_reached_type`), and flattened `spend_control_*` fields
+- Codex: per-request limit-state trail on `api.request` — `plan_type`, `credits_has`/`credits_unlimited`, `reached_type`, `spend_control_*` (verbatim vendor values)
+- Codex: requested and observed service tier — `service_tier_requested` (config/catalog resolution) and `service_tier_observed` (thread settings) on `api.request`; speed posture facts (`fast_available`, `fast_default`, `config_service_tier`)
+- Codex: `cli_version` as a hashed posture fact (fleet version census)
+- Claude Code: served `speed` on `api.request` (fast-mode attribution)
+
+### Performance
+- Codex: speed-posture catalog read cached on file stamps (removes a ~317KB JSON parse per hook fire)
+
 ## v0.13.1 — 2026-07-31
 
 No plugin code changed in this release: the published Claude Code and Codex

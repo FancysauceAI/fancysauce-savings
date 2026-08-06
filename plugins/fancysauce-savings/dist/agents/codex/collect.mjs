@@ -133,7 +133,7 @@ var require_polyfills = __commonJS({
       }
       if (platform === "win32") {
         fs.rename = typeof fs.rename !== "function" ? fs.rename : (function(fs$rename) {
-          function rename12(from, to, cb) {
+          function rename13(from, to, cb) {
             var start = Date.now();
             var backoff = 0;
             fs$rename(from, to, function CB(er) {
@@ -153,8 +153,8 @@ var require_polyfills = __commonJS({
               if (cb) cb(er);
             });
           }
-          if (Object.setPrototypeOf) Object.setPrototypeOf(rename12, fs$rename);
-          return rename12;
+          if (Object.setPrototypeOf) Object.setPrototypeOf(rename13, fs$rename);
+          return rename13;
         })(fs.rename);
       }
       fs.read = typeof fs.read !== "function" ? fs.read : (function(fs$read) {
@@ -558,8 +558,8 @@ var require_graceful_fs = __commonJS({
       fs2.createReadStream = createReadStream;
       fs2.createWriteStream = createWriteStream;
       var fs$readFile = fs2.readFile;
-      fs2.readFile = readFile15;
-      function readFile15(path, options, cb) {
+      fs2.readFile = readFile16;
+      function readFile16(path, options, cb) {
         if (typeof options === "function")
           cb = options, options = null;
         return go$readFile(path, options, cb);
@@ -575,8 +575,8 @@ var require_graceful_fs = __commonJS({
         }
       }
       var fs$writeFile = fs2.writeFile;
-      fs2.writeFile = writeFile11;
-      function writeFile11(path, data, options, cb) {
+      fs2.writeFile = writeFile12;
+      function writeFile12(path, data, options, cb) {
         if (typeof options === "function")
           cb = options, options = null;
         return go$writeFile(path, data, options, cb);
@@ -1271,11 +1271,11 @@ var require_mtime_precision = __commonJS({
     function probe(file, fs, callback) {
       const cachedPrecision = fs[cacheSymbol];
       if (cachedPrecision) {
-        return fs.stat(file, (err, stat4) => {
+        return fs.stat(file, (err, stat5) => {
           if (err) {
             return callback(err);
           }
-          callback(null, stat4.mtime, cachedPrecision);
+          callback(null, stat5.mtime, cachedPrecision);
         });
       }
       const mtime = new Date(Math.ceil(Date.now() / 1e3) * 1e3 + 5);
@@ -1283,13 +1283,13 @@ var require_mtime_precision = __commonJS({
         if (err) {
           return callback(err);
         }
-        fs.stat(file, (err2, stat4) => {
+        fs.stat(file, (err2, stat5) => {
           if (err2) {
             return callback(err2);
           }
-          const precision = stat4.mtime.getTime() % 1e3 === 0 ? "s" : "ms";
+          const precision = stat5.mtime.getTime() % 1e3 === 0 ? "s" : "ms";
           Object.defineProperty(fs, cacheSymbol, { value: precision });
-          callback(null, stat4.mtime, precision);
+          callback(null, stat5.mtime, precision);
         });
       });
     }
@@ -1343,14 +1343,14 @@ var require_lockfile = __commonJS({
         if (options.stale <= 0) {
           return callback(Object.assign(new Error("Lock file is already being held"), { code: "ELOCKED", file }));
         }
-        options.fs.stat(lockfilePath, (err2, stat4) => {
+        options.fs.stat(lockfilePath, (err2, stat5) => {
           if (err2) {
             if (err2.code === "ENOENT") {
               return acquireLock(file, { ...options, stale: 0 }, callback);
             }
             return callback(err2);
           }
-          if (!isLockStale(stat4, options)) {
+          if (!isLockStale(stat5, options)) {
             return callback(Object.assign(new Error("Lock file is already being held"), { code: "ELOCKED", file }));
           }
           removeLock(file, options, (err3) => {
@@ -1362,8 +1362,8 @@ var require_lockfile = __commonJS({
         });
       });
     }
-    function isLockStale(stat4, options) {
-      return stat4.mtime.getTime() < Date.now() - options.stale;
+    function isLockStale(stat5, options) {
+      return stat5.mtime.getTime() < Date.now() - options.stale;
     }
     function removeLock(file, options, callback) {
       options.fs.rmdir(getLockFile(file, options), (err) => {
@@ -1381,7 +1381,7 @@ var require_lockfile = __commonJS({
       lock2.updateDelay = lock2.updateDelay || options.update;
       lock2.updateTimeout = setTimeout(() => {
         lock2.updateTimeout = null;
-        options.fs.stat(lock2.lockfilePath, (err, stat4) => {
+        options.fs.stat(lock2.lockfilePath, (err, stat5) => {
           const isOverThreshold = lock2.lastUpdate + options.stale < Date.now();
           if (err) {
             if (err.code === "ENOENT" || isOverThreshold) {
@@ -1390,7 +1390,7 @@ var require_lockfile = __commonJS({
             lock2.updateDelay = 1e3;
             return updateLock(file, options);
           }
-          const isMtimeOurs = lock2.mtime.getTime() === stat4.mtime.getTime();
+          const isMtimeOurs = lock2.mtime.getTime() === stat5.mtime.getTime();
           if (!isMtimeOurs) {
             return setLockAsCompromised(
               file,
@@ -1515,11 +1515,11 @@ var require_lockfile = __commonJS({
         if (err) {
           return callback(err);
         }
-        options.fs.stat(getLockFile(file2, options), (err2, stat4) => {
+        options.fs.stat(getLockFile(file2, options), (err2, stat5) => {
           if (err2) {
             return err2.code === "ENOENT" ? callback(null, false) : callback(err2);
           }
-          return callback(null, !isLockStale(stat4, options));
+          return callback(null, !isLockStale(stat5, options));
         });
       });
     }
@@ -1945,7 +1945,15 @@ function defaultPolicy() {
       "credits_has",
       "credits_unlimited",
       "credits_balance",
-      "auth_plan_claim"
+      "auth_plan_claim",
+      "last_reached_type",
+      "spend_control_limit",
+      "spend_control_resets_at",
+      "spend_control_remaining_percent",
+      "fast_available",
+      "fast_default",
+      "config_service_tier",
+      "cli_version"
     ]),
     "usage_limit.exceeded": Object.freeze([
       "limit_message",
@@ -1965,9 +1973,17 @@ function defaultPolicy() {
       "window_minutes",
       "reached_type",
       "limit_source",
+      "last_reached_type",
       "credits_has",
       "credits_unlimited",
-      "credits_balance"
+      "credits_balance",
+      "spend_control_limit",
+      "spend_control_remaining_percent",
+      "spend_control_resets_at",
+      "fast_available",
+      "fast_default",
+      "config_service_tier",
+      "cli_version"
     ]),
     "usage_limit.snapshot": Object.freeze([
       "window",
@@ -1997,7 +2013,17 @@ function defaultPolicy() {
       "primary_window_minutes",
       "secondary_used_percent",
       "secondary_resets_at",
-      "secondary_window_minutes"
+      "secondary_window_minutes",
+      "speed",
+      "reached_type",
+      "plan_type",
+      "credits_has",
+      "credits_unlimited",
+      "spend_control_limit",
+      "spend_control_remaining_percent",
+      "spend_control_resets_at",
+      "service_tier_requested",
+      "service_tier_observed"
     ])
   };
   return Object.freeze({
@@ -2716,9 +2742,9 @@ function seal(plaintext, key) {
 import { readFileSync as readFileSync2 } from "node:fs";
 import { join as join3 } from "node:path";
 var BAKED_SERVER_KEY = {
-  keyid: "env-production-1",
+  keyid: "__BAKED_SERVER_KEYID__",
   alg: "RSA-OAEP-256+A256GCM",
-  publicKeyPem: "-----BEGIN PUBLIC KEY-----\nMIIBojANBgkqhkiG9w0BAQEFAAOCAY8AMIIBigKCAYEA4Dh42p0kvReuiL194qp3\n8j0BSjOmwW9WU9NUUSlBSA1Kn0WPdfMKywsD+DPrlt/KyOKdNLoUXsXrriM212Si\nMgabz4e4pK8ItqgqCg1wPFArY8SEoy8MioMj8iZVz/UPeR3/7Rng8LT50HiaB/kc\nwkBjjLnSU2xYQkKROKMGuTlKDZ4BCpP/uVCFTrZ5BUFEn3r2WyAl3Z6NBjO9hTPB\njKx1AH+CitIZeWVmn39EUwrzUW+LiXbEe1Y+0SXkpTgdqvVMzMjytlEp5Ojisvs1\n/GqoHRoN/NcESILK2s4Rabe3PTquCmZItYbw2sBpFe/6xhHPn/LA2TVjEjx5d+GJ\ndxQnhUWlNPInWul8TCePBAhz6MGThrcVWj6b+V3K4CrjetFIlvF7R2dk/SlWLCUZ\nozfDPZnQfvSZInVSrSRiCqA3OXArmptmFzeZii1RDQsJnNA+Vc2lTvuf2ScepvgG\nWJPZewNj7dknrCLAyj79ZZrQH31cIjgPt3XpT7SHnkaLAgMBAAE=\n-----END PUBLIC KEY-----\n"
+  publicKeyPem: "__BAKED_SERVER_PUBKEY__"
 };
 var CACHE_FILE = "server-key.json";
 var DEFAULT_TTL_MS = 24 * 60 * 60 * 1e3;
@@ -3536,6 +3562,7 @@ var ATTR_TYPE = {
   request_id: "string",
   transcript_message_uuid: "string",
   stop_reason: "string",
+  speed: "string",
   // notification
   notification_type: "string",
   // task.completed
@@ -3573,6 +3600,11 @@ var ATTR_TYPE = {
   credits_unlimited: "bool",
   credits_balance: "string",
   auth_plan_claim: "string",
+  last_reached_type: "string",
+  spend_control_limit: "string",
+  spend_control_resets_at: "int",
+  // Gauge, like used_percent — see rate-limit-lens.mts's postureHash comment.
+  spend_control_remaining_percent: "double",
   // Codex per-window gauge riding api.request. Prefixed per window because a
   // payload can report primary and secondary at once.
   primary_used_percent: "double",
@@ -3580,7 +3612,19 @@ var ATTR_TYPE = {
   primary_window_minutes: "int",
   secondary_used_percent: "double",
   secondary_resets_at: "int",
-  secondary_window_minutes: "int"
+  secondary_window_minutes: "int",
+  // Codex requested-tier resolution (rollout-parser.mts's attachLimitState
+  // sibling) + speed posture facts (rate-limit-lens.mts's CodexPosture).
+  service_tier_requested: "string",
+  // Verbatim vendor record of the observed thread-settings tier — distinct
+  // provenance from service_tier_requested above; see rollout-parser.mts.
+  // Named service_tier_observed (not service_tier) to avoid colliding with
+  // #539's existing backend service_tier cost-dimension vocabulary.
+  service_tier_observed: "string",
+  fast_available: "bool",
+  fast_default: "bool",
+  config_service_tier: "string",
+  cli_version: "string"
 };
 function encodeOtlp(events, resource, observedTimeUnixNano) {
   const observed = observedTimeUnixNano ?? BigInt(Date.now()) * 1000000n;
@@ -3785,12 +3829,12 @@ async function readBatch(queuePath, startOffset, maxEvents, maxBytes) {
     } catch {
       return { events: [], endOffset: startOffset };
     }
-    const stat4 = await fh.stat();
-    if (stat4.size < startOffset)
-      return { events: [], endOffset: startOffset, cursorPastEof: true, queueSize: stat4.size };
-    if (stat4.size <= startOffset)
+    const stat5 = await fh.stat();
+    if (stat5.size < startOffset)
+      return { events: [], endOffset: startOffset, cursorPastEof: true, queueSize: stat5.size };
+    if (stat5.size <= startOffset)
       return { events: [], endOffset: startOffset };
-    const toRead = Math.min(stat4.size - startOffset, maxBytes);
+    const toRead = Math.min(stat5.size - startOffset, maxBytes);
     const buf = Buffer.alloc(toRead);
     await fh.read(buf, 0, toRead, startOffset);
     const lastNl = buf.lastIndexOf("\n".charCodeAt(0));
@@ -3838,15 +3882,15 @@ async function maybeCompact(dataDir2, cursor, queuePath) {
       } catch {
         return;
       }
-      const stat4 = await fh.stat();
-      if (flushedOffset >= stat4.size) {
+      const stat5 = await fh.stat();
+      if (flushedOffset >= stat5.size) {
         await fh.close();
         fh = null;
         await cursor.resetUnlocked();
         await writeFile4(queuePath, "");
         return;
       }
-      const tailLen = stat4.size - flushedOffset;
+      const tailLen = stat5.size - flushedOffset;
       const buf = Buffer.alloc(tailLen);
       await fh.read(buf, 0, tailLen, flushedOffset);
       await fh.close();
@@ -4567,8 +4611,8 @@ function mapHookToEvent(input, sequence) {
 
 // dist/agents/codex/rollout-tail.mjs
 var import_proper_lockfile4 = __toESM(require_proper_lockfile(), 1);
-import { mkdir as mkdir12, readFile as readFile14, writeFile as writeFile10, rename as rename11, appendFile as appendFile4 } from "node:fs/promises";
-import { join as join22 } from "node:path";
+import { mkdir as mkdir13, readFile as readFile15, writeFile as writeFile11, rename as rename12, appendFile as appendFile4 } from "node:fs/promises";
+import { join as join23 } from "node:path";
 import { homedir as homedir5 } from "node:os";
 import { createHash as createHash4 } from "node:crypto";
 
@@ -4588,13 +4632,13 @@ async function readWindow(opts) {
       }
       throw err;
     }
-    const stat4 = await fh.stat();
-    const truncated = stat4.size < startOffset;
+    const stat5 = await fh.stat();
+    const truncated = stat5.size < startOffset;
     const effectiveStart = truncated ? 0 : startOffset;
-    if (stat4.size <= effectiveStart) {
+    if (stat5.size <= effectiveStart) {
       return { events: [], endOffset: effectiveStart, truncated };
     }
-    const toRead = Math.min(stat4.size - effectiveStart, maxReadBytes);
+    const toRead = Math.min(stat5.size - effectiveStart, maxReadBytes);
     const buf = Buffer.alloc(toRead);
     await fh.read(buf, 0, toRead, effectiveStart);
     const lastNewline = buf.lastIndexOf("\n".charCodeAt(0));
@@ -4623,6 +4667,140 @@ function computeCostUsd(model, t) {
   return nonCachedInput / 1e6 * r.input + t.cached_input_tokens / 1e6 * r.cached_input + t.output_tokens / 1e6 * r.output;
 }
 
+// dist/agents/codex/speed-posture.mjs
+import { readFile as readFile12, writeFile as writeFile9, rename as rename10, mkdir as mkdir11, stat as stat4 } from "node:fs/promises";
+import { join as join20 } from "node:path";
+var CATALOG_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1e3;
+var TIER_SHAPE = /^[a-z0-9_-]{1,32}$/;
+function aliasToWire(alias) {
+  return alias === "fast" ? "priority" : alias;
+}
+function guardedTier(value) {
+  return typeof value === "string" && TIER_SHAPE.test(value) ? value : void 0;
+}
+async function readSpeedPostureWithMeta(codexHome, nowMs) {
+  let parsed;
+  try {
+    parsed = JSON.parse(await readFile12(join20(codexHome, "models_cache.json"), "utf8"));
+  } catch {
+    return { posture: null };
+  }
+  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed))
+    return { posture: null };
+  const catalog = parsed;
+  const fetched = Date.parse(catalog.fetched_at ?? "");
+  const fetchedAtMs = Number.isFinite(fetched) ? fetched : void 0;
+  if (fetchedAtMs === void 0 || nowMs - fetchedAtMs > CATALOG_MAX_AGE_MS)
+    return { posture: null, fetchedAtMs };
+  const tiersByModel = {};
+  for (const m of Array.isArray(catalog.models) ? catalog.models : []) {
+    if (!m || typeof m !== "object")
+      continue;
+    const slug = m.slug;
+    if (typeof slug !== "string")
+      continue;
+    const serviceTiers = m.service_tiers;
+    const fromServiceTiers = (Array.isArray(serviceTiers) ? serviceTiers : []).map((t) => t && typeof t === "object" ? t.id : void 0).filter((id) => typeof id === "string");
+    const additionalSpeedTiers = m.additional_speed_tiers;
+    const fromAdditional = (Array.isArray(additionalSpeedTiers) ? additionalSpeedTiers : []).filter((id) => typeof id === "string").map(aliasToWire);
+    const advertised = [.../* @__PURE__ */ new Set([...fromServiceTiers, ...fromAdditional])];
+    const defaultTier = guardedTier(m.default_service_tier);
+    tiersByModel[slug] = { advertised, ...defaultTier !== void 0 ? { defaultTier } : {} };
+  }
+  const sp = { tiersByModel };
+  const entries = Object.values(tiersByModel);
+  if (entries.some((e) => e.advertised.includes("priority")))
+    sp.fast_available = true;
+  if (entries.some((e) => e.defaultTier === "priority"))
+    sp.fast_default = true;
+  try {
+    const toml = await readFile12(join20(codexHome, "config.toml"), "utf8");
+    for (const line of toml.split("\n")) {
+      const t = line.trim();
+      if (t.startsWith("["))
+        break;
+      const m = /^service_tier\s*=\s*(?:"([^"]*)"|'([^']*)')/.exec(t);
+      if (m) {
+        const kept = guardedTier(m[1] ?? m[2]);
+        if (kept !== void 0)
+          sp.config_service_tier = kept;
+        break;
+      }
+    }
+  } catch {
+  }
+  return { posture: sp, fetchedAtMs };
+}
+var SPEED_POSTURE_CACHE_FILE = "speed-posture-cache.json";
+async function statOrUndefined(path) {
+  try {
+    const s = await stat4(path);
+    return { mtimeMs: s.mtimeMs, size: s.size };
+  } catch {
+    return void 0;
+  }
+}
+function sameStamp(a, b) {
+  if (a === void 0 || b === void 0)
+    return a === b;
+  return a.mtimeMs === b.mtimeMs && a.size === b.size;
+}
+function isValidCachedPosture(value) {
+  if (value === null)
+    return true;
+  if (typeof value !== "object" || Array.isArray(value))
+    return false;
+  const tiersByModel = value.tiersByModel;
+  return typeof tiersByModel === "object" && tiersByModel !== null && !Array.isArray(tiersByModel);
+}
+function dropInvalidConfigServiceTier(posture) {
+  if (posture === null || guardedTier(posture.config_service_tier) !== void 0)
+    return posture;
+  const { config_service_tier: _dropped, ...rest } = posture;
+  return rest;
+}
+async function readSpeedPostureCached(codexHome, stateDir, nowMs) {
+  const modelsCache = await statOrUndefined(join20(codexHome, "models_cache.json"));
+  const config = await statOrUndefined(join20(codexHome, "config.toml"));
+  const cachePath = join20(stateDir, SPEED_POSTURE_CACHE_FILE);
+  let cached;
+  try {
+    const parsed = JSON.parse(await readFile12(cachePath, "utf8"));
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      cached = parsed;
+    }
+  } catch {
+  }
+  if (cached && sameStamp(cached.modelsCache, modelsCache) && sameStamp(cached.config, config) && isValidCachedPosture(cached.posture)) {
+    const fetchedAtMs2 = cached.catalogFetchedAtMs;
+    const pastDeadline = fetchedAtMs2 !== void 0 && nowMs - fetchedAtMs2 > CATALOG_MAX_AGE_MS;
+    if (!pastDeadline)
+      return dropInvalidConfigServiceTier(cached.posture);
+  }
+  const { posture, fetchedAtMs } = await readSpeedPostureWithMeta(codexHome, nowMs);
+  try {
+    await mkdir11(stateDir, { recursive: true, mode: 448 });
+    const tmp = `${cachePath}.${process.pid}.tmp`;
+    const body = { modelsCache, config, posture, catalogFetchedAtMs: fetchedAtMs };
+    await writeFile9(tmp, JSON.stringify(body), "utf8");
+    await rename10(tmp, cachePath);
+  } catch {
+  }
+  return posture;
+}
+function resolveRequestedTier(sp, model) {
+  if (!sp || model === void 0)
+    return void 0;
+  const entry = sp.tiersByModel[model];
+  if (!entry)
+    return void 0;
+  const cfg = guardedTier(sp.config_service_tier);
+  if (cfg === void 0)
+    return guardedTier(entry.defaultTier);
+  const cfgWire = aliasToWire(cfg);
+  return Array.isArray(entry.advertised) && entry.advertised.includes(cfgWire) ? cfgWire : void 0;
+}
+
 // dist/agents/codex/rollout-parser.mjs
 function deterministicUuid(sessionId, scope, timestamp, totalTokens) {
   const scopeSeg = scope ? `${scope}|` : "";
@@ -4630,7 +4808,7 @@ function deterministicUuid(sessionId, scope, timestamp, totalTokens) {
   return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20, 32)}`;
 }
 var WINDOW_ORDER = ["primary", "secondary"];
-function attachGauge(attrs, rateLimits) {
+function attachLimitState(attrs, rateLimits) {
   if (!rateLimits || typeof rateLimits !== "object")
     return;
   for (const windowName of WINDOW_ORDER) {
@@ -4644,11 +4822,31 @@ function attachGauge(attrs, rateLimits) {
     if (isFiniteNumber(w.window_minutes))
       attrs[`${windowName}_window_minutes`] = w.window_minutes;
   }
+  if (typeof rateLimits.rate_limit_reached_type === "string")
+    attrs.reached_type = rateLimits.rate_limit_reached_type;
+  if (typeof rateLimits.plan_type === "string")
+    attrs.plan_type = rateLimits.plan_type;
+  const credits = rateLimits.credits;
+  if (credits && typeof credits === "object") {
+    if (typeof credits.has_credits === "boolean")
+      attrs.credits_has = credits.has_credits;
+    if (typeof credits.unlimited === "boolean")
+      attrs.credits_unlimited = credits.unlimited;
+  }
+  const sc = rateLimits.spend_control_reached;
+  if (sc && typeof sc === "object") {
+    if (typeof sc.limit === "string")
+      attrs.spend_control_limit = sc.limit;
+    if (isFiniteNumber(sc.remaining_percent))
+      attrs.spend_control_remaining_percent = sc.remaining_percent;
+    if (isFiniteNumber(sc.resets_at))
+      attrs.spend_control_resets_at = sc.resets_at;
+  }
 }
 function isFiniteNumber(v) {
   return typeof v === "number" && Number.isFinite(v);
 }
-function parseRolloutWindow(lines, sessionId, sequenceBase, state, scope = "") {
+function parseRolloutWindow(lines, sessionId, sequenceBase, state, scope = "", tierResolve) {
   const events = [];
   let rateLimits;
   let seq = sequenceBase;
@@ -4668,10 +4866,25 @@ function parseRolloutWindow(lines, sessionId, sequenceBase, state, scope = "") {
         state.model = p.model;
       continue;
     }
+    if (rec.type === "session_meta") {
+      const v = rec.payload?.cli_version;
+      if (typeof v === "string")
+        state.cliVersion = v;
+      continue;
+    }
     if (rec.type !== "event_msg")
       continue;
     const payload = rec.payload;
-    if (!payload || payload.type !== "token_count")
+    if (!payload)
+      continue;
+    if (payload.type === "thread_settings_applied") {
+      const nested = payload.thread_settings && typeof payload.thread_settings === "object" ? payload.thread_settings.service_tier : void 0;
+      const st = nested ?? payload.service_tier;
+      if (typeof st === "string" && TIER_SHAPE.test(st))
+        state.observedServiceTier = st;
+      continue;
+    }
+    if (payload.type !== "token_count")
       continue;
     if (payload.rate_limits && typeof payload.rate_limits === "object") {
       rateLimits = {
@@ -4680,7 +4893,8 @@ function parseRolloutWindow(lines, sessionId, sequenceBase, state, scope = "") {
         // events derived from a replayed window non-identical.
         timestampMs: Date.parse(rec.timestamp ?? ""),
         payload: payload.rate_limits,
-        model: state.model
+        model: state.model,
+        cliVersion: state.cliVersion
       };
     }
     const last = payload.info?.last_token_usage;
@@ -4703,7 +4917,12 @@ function parseRolloutWindow(lines, sessionId, sequenceBase, state, scope = "") {
       if (cost !== void 0)
         attrs.cost_usd = cost;
     }
-    attachGauge(attrs, payload.rate_limits);
+    const tier = tierResolve?.(state.model);
+    if (typeof tier === "string")
+      attrs.service_tier_requested = tier;
+    if (typeof state.observedServiceTier === "string")
+      attrs.service_tier_observed = state.observedServiceTier;
+    attachLimitState(attrs, payload.rate_limits);
     events.push({
       event_uuid: deterministicUuid(sessionId, scope, rec.timestamp ?? "", total),
       event_type: "api.request",
@@ -4723,6 +4942,24 @@ var SNAPSHOT_MIN_DELTA_PCT = 1;
 var SNAPSHOT_MIN_INTERVAL_MS = 3e4;
 var EXCEEDED_MIN_INTERVAL_MS = 3e5;
 var WINDOW_ORDER2 = ["primary", "secondary"];
+function hasRecoveryEvidence(rateLimits, activeReason) {
+  const windowBelow100 = WINDOW_ORDER2.some((w) => {
+    const win = rateLimits?.[w];
+    return !!win && typeof win === "object" && isFiniteNumber(win.used_percent) && win.used_percent < 100;
+  });
+  if (typeof activeReason === "string" && activeReason.includes("credits")) {
+    return rateLimits?.credits?.has_credits === true;
+  }
+  return windowBelow100;
+}
+function evictOldestExceeded(map) {
+  const keys = Object.keys(map);
+  if (keys.length > 20) {
+    const oldest = keys.sort((a, b) => map[a] - map[b]).slice(0, keys.length - 20);
+    for (const k of oldest)
+      delete map[k];
+  }
+}
 function limitKindGuess(windowMinutes) {
   if (windowMinutes === void 0)
     return "unknown";
@@ -4732,7 +4969,7 @@ function limitKindGuess(windowMinutes) {
     return "weekly";
   return "unknown";
 }
-function codexPosture(rateLimits, authPlanClaim) {
+function codexPosture(rateLimits, authPlanClaim, extra) {
   const p = {};
   if (typeof rateLimits?.plan_type === "string")
     p.plan_type = rateLimits.plan_type;
@@ -4749,10 +4986,38 @@ function codexPosture(rateLimits, authPlanClaim) {
   }
   if (authPlanClaim !== void 0)
     p.auth_plan_claim = authPlanClaim;
+  const reason = rateLimits?.rate_limit_reached_type;
+  if (typeof reason === "string") {
+    p.last_reached_type = reason;
+  } else {
+    const latched = typeof extra?.last_reached_type === "string" ? extra.last_reached_type : void 0;
+    if (latched !== void 0 && !hasRecoveryEvidence(rateLimits, latched))
+      p.last_reached_type = latched;
+  }
+  const sc = rateLimits?.spend_control_reached;
+  if (sc && typeof sc === "object") {
+    if (typeof sc.limit === "string")
+      p.spend_control_limit = sc.limit;
+    if (isFiniteNumber(sc.resets_at))
+      p.spend_control_resets_at = sc.resets_at;
+    if (isFiniteNumber(sc.remaining_percent))
+      p.spend_control_remaining_percent = sc.remaining_percent;
+  }
+  const speed = extra?.speed;
+  if (speed) {
+    if (typeof speed.fast_available === "boolean")
+      p.fast_available = speed.fast_available;
+    if (typeof speed.fast_default === "boolean")
+      p.fast_default = speed.fast_default;
+    if (typeof speed.config_service_tier === "string")
+      p.config_service_tier = speed.config_service_tier;
+  }
+  if (typeof extra?.cliVersion === "string")
+    p.cli_version = extra.cliVersion;
   return Object.keys(p).length > 0 ? p : null;
 }
 function postureHash(p) {
-  const sorted = Object.keys(p).sort().filter((k) => k !== "credits_balance");
+  const sorted = Object.keys(p).sort().filter((k) => k !== "credits_balance" && k !== "spend_control_remaining_percent");
   const parts = sorted.map((k) => `${k}=${String(p[k])}`);
   return sha256Hex(parts.join("|"));
 }
@@ -4768,6 +5033,23 @@ function postureAttributes(p) {
     attrs.credits_balance = p.credits_balance;
   if (p.auth_plan_claim !== void 0)
     attrs.auth_plan_claim = p.auth_plan_claim;
+  if (p.last_reached_type !== void 0)
+    attrs.last_reached_type = p.last_reached_type;
+  if (p.spend_control_limit !== void 0)
+    attrs.spend_control_limit = p.spend_control_limit;
+  if (p.spend_control_resets_at !== void 0)
+    attrs.spend_control_resets_at = p.spend_control_resets_at;
+  if (p.spend_control_remaining_percent !== void 0) {
+    attrs.spend_control_remaining_percent = p.spend_control_remaining_percent;
+  }
+  if (p.fast_available !== void 0)
+    attrs.fast_available = p.fast_available;
+  if (p.fast_default !== void 0)
+    attrs.fast_default = p.fast_default;
+  if (p.config_service_tier !== void 0)
+    attrs.config_service_tier = p.config_service_tier;
+  if (p.cli_version !== void 0)
+    attrs.cli_version = p.cli_version;
   return attrs;
 }
 function deterministicUuid2(parts) {
@@ -4778,7 +5060,7 @@ function quantizePercent(usedPercent) {
   return (Math.round(usedPercent * 10) / 10).toFixed(1);
 }
 function lensEvents(rateLimits, opts) {
-  const { sessionId, timestampMs, model, sequenceBase, state, uuidScope } = opts;
+  const { sessionId, timestampMs, model, sequenceBase, state, uuidScope, speed, cliVersion } = opts;
   const events = [];
   let nextWindows;
   let nextExceeded;
@@ -4786,7 +5068,7 @@ function lensEvents(rateLimits, opts) {
   let seq = sequenceBase;
   if (!Number.isFinite(timestampMs))
     return { events, state };
-  const posture = codexPosture(rateLimits, void 0);
+  const posture = codexPosture(rateLimits, void 0, { speed, cliVersion });
   const timestampNs = BigInt(timestampMs) * 1000000n;
   for (const windowName of WINDOW_ORDER2) {
     const w = rateLimits?.[windowName];
@@ -4878,13 +5160,58 @@ function lensEvents(rateLimits, opts) {
         nextExceeded[exceededKey] = timestampMs;
         nextExceededLast = nextExceededLast ?? { ...state.exceeded_last ?? {} };
         nextExceededLast[windowName] = timestampMs;
-        const keys = Object.keys(nextExceeded);
-        if (keys.length > 20) {
-          const oldest = keys.sort((a, b) => nextExceeded[a] - nextExceeded[b]).slice(0, keys.length - 20);
-          for (const k of oldest)
-            delete nextExceeded[k];
+        evictOldestExceeded(nextExceeded);
+      }
+    }
+  }
+  const reason = rateLimits?.rate_limit_reached_type;
+  if (typeof reason === "string") {
+    const reasonKey = `reason:${reason}`;
+    const lastReasonAt = state.exceeded_last?.["reason"];
+    const withinReasonFloor = lastReasonAt !== void 0 && timestampMs - lastReasonAt < EXCEEDED_MIN_INTERVAL_MS;
+    if (!(nextExceeded ?? state.exceeded)?.[reasonKey] && !withinReasonFloor) {
+      const attrs = { limit_source: "reached_type", reached_type: reason };
+      if (posture)
+        Object.assign(attrs, postureAttributes(posture));
+      const sc = rateLimits?.spend_control_reached;
+      if (sc && typeof sc === "object") {
+        if (typeof sc.limit === "string")
+          attrs.spend_control_limit = sc.limit;
+        if (isFiniteNumber(sc.remaining_percent))
+          attrs.spend_control_remaining_percent = sc.remaining_percent;
+        if (isFiniteNumber(sc.resets_at))
+          attrs.spend_control_resets_at = sc.resets_at;
+      }
+      events.push({
+        event_uuid: deterministicUuid2([uuidScope ?? "", sessionId, "exceeded", "reason", reason, String(lastReasonAt ?? "")]),
+        event_type: "usage_limit.exceeded",
+        session_id: sessionId,
+        source: "transcript.tail",
+        sequence: seq,
+        timestamp_ns: timestampNs,
+        attributes: attrs
+      });
+      nextExceeded = nextExceeded ?? { ...state.exceeded ?? {} };
+      nextExceeded[reasonKey] = timestampMs;
+      nextExceededLast = nextExceededLast ?? { ...state.exceeded_last ?? {} };
+      nextExceededLast["reason"] = timestampMs;
+      evictOldestExceeded(nextExceeded);
+    }
+  } else {
+    const current = nextExceeded ?? state.exceeded;
+    if (current) {
+      let mutated;
+      for (const k of Object.keys(current)) {
+        if (!k.startsWith("reason:"))
+          continue;
+        const keyReason = k.slice("reason:".length);
+        if (hasRecoveryEvidence(rateLimits, keyReason)) {
+          mutated = mutated ?? { ...current };
+          delete mutated[k];
         }
       }
+      if (mutated)
+        nextExceeded = mutated;
     }
   }
   if (!nextWindows && !nextExceeded && !nextExceededLast)
@@ -4900,25 +5227,25 @@ function lensEvents(rateLimits, opts) {
 }
 
 // dist/agents/codex/rate-limit-state.mjs
-import { readFile as readFile12, writeFile as writeFile9, rename as rename10, mkdir as mkdir11 } from "node:fs/promises";
-import { join as join20 } from "node:path";
+import { readFile as readFile13, writeFile as writeFile10, rename as rename11, mkdir as mkdir12 } from "node:fs/promises";
+import { join as join21 } from "node:path";
 var LIMIT_FILE = "usage-limit-codex.json";
 var POSTURE_FILE = "usage-config-codex.json";
 async function readLimitState(stateDir) {
-  return readJsonObject(join20(stateDir, LIMIT_FILE));
+  return readJsonObject(join21(stateDir, LIMIT_FILE));
 }
 async function writeLimitState(stateDir, state) {
-  await writeStateAtomic(stateDir, join20(stateDir, LIMIT_FILE), state);
+  await writeStateAtomic(stateDir, join21(stateDir, LIMIT_FILE), state);
 }
 async function readPostureState(stateDir) {
-  return readJsonObject(join20(stateDir, POSTURE_FILE));
+  return readJsonObject(join21(stateDir, POSTURE_FILE));
 }
 async function writePostureState(stateDir, state) {
-  await writeStateAtomic(stateDir, join20(stateDir, POSTURE_FILE), state);
+  await writeStateAtomic(stateDir, join21(stateDir, POSTURE_FILE), state);
 }
 async function readJsonObject(path) {
   try {
-    const parsed = JSON.parse(await readFile12(path, "utf8"));
+    const parsed = JSON.parse(await readFile13(path, "utf8"));
     if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed))
       return {};
     return parsed;
@@ -4927,18 +5254,20 @@ async function readJsonObject(path) {
   }
 }
 async function writeStateAtomic(stateDir, path, body) {
-  await mkdir11(stateDir, { recursive: true, mode: 448 });
+  await mkdir12(stateDir, { recursive: true, mode: 448 });
   const tmp = `${path}.${process.pid}.tmp`;
-  await writeFile9(tmp, JSON.stringify(body), "utf8");
-  await rename10(tmp, path);
+  await writeFile10(tmp, JSON.stringify(body), "utf8");
+  await rename11(tmp, path);
 }
 
 // dist/agents/codex/auth-claim.mjs
-import { readFile as readFile13 } from "node:fs/promises";
-import { join as join21 } from "node:path";
+import { readFile as readFile14 } from "node:fs/promises";
+import { join as join22 } from "node:path";
+function resolveCodexHome(env, homeDir) {
+  return env.CODEX_HOME && env.CODEX_HOME.length > 0 ? env.CODEX_HOME : join22(homeDir, ".codex");
+}
 function resolveCodexAuthPath(env, homeDir) {
-  const base = env.CODEX_HOME && env.CODEX_HOME.length > 0 ? env.CODEX_HOME : join21(homeDir, ".codex");
-  return join21(base, "auth.json");
+  return join22(resolveCodexHome(env, homeDir), "auth.json");
 }
 function decodeJwtPayload2(idToken) {
   const parts = idToken.split(".");
@@ -4963,7 +5292,7 @@ function decodeJwtPayload2(idToken) {
 async function readPlanClaim(path) {
   let raw;
   try {
-    raw = await readFile13(path, "utf8");
+    raw = await readFile14(path, "utf8");
   } catch {
     return void 0;
   }
@@ -5001,26 +5330,28 @@ async function tailCodexRollout(input, ctx, sink) {
     await sink([]);
     return;
   }
-  const cursorDir = join22(ctx.stateDir, "sessions", sessionId, "codex");
-  await mkdir12(cursorDir, { recursive: true });
+  const cursorDir = join23(ctx.stateDir, "sessions", sessionId, "codex");
+  await mkdir13(cursorDir, { recursive: true });
   const sources = [
-    { path: input.transcript_path, cursorPath: join22(cursorDir, "rollout_cursor.json") }
+    { path: input.transcript_path, cursorPath: join23(cursorDir, "rollout_cursor.json") }
   ];
   if (input.agent_transcript_path && input.agent_id) {
     sources.push({
       path: input.agent_transcript_path,
-      cursorPath: join22(cursorDir, `subagent-${cursorKey(input.agent_id)}.json`),
+      cursorPath: join23(cursorDir, `subagent-${cursorKey(input.agent_id)}.json`),
       stamp: { subsession_id: input.agent_id, agent_type: input.agent_type }
     });
   }
-  const lens = stageRateLimitLens(ctx, sessionId);
+  const speed = await readSpeedPostureCached(resolveCodexHome(process.env, homedir5()), ctx.stateDir, Date.now()).catch(() => null);
+  const tierResolve = (model) => resolveRequestedTier(speed, model);
+  const lens = stageRateLimitLens(ctx, sessionId, speed);
   const events = [];
   const reads = [];
   let seq = 0;
   for (const source of sources) {
     let read;
     try {
-      read = await readSource(source, sessionId, seq, ctx.errorLogPath);
+      read = await readSource(source, sessionId, seq, ctx.errorLogPath, tierResolve);
     } catch (err) {
       await logError(ctx.errorLogPath, source.path, err);
       continue;
@@ -5058,7 +5389,7 @@ async function tailCodexRollout(input, ctx, sink) {
   }
   await lens.commit();
 }
-function stageRateLimitLens(ctx, sessionId) {
+function stageRateLimitLens(ctx, sessionId, speed) {
   const authPath = resolveCodexAuthPath(process.env, homedir5());
   let loaded = false;
   let planClaim;
@@ -5066,12 +5397,17 @@ function stageRateLimitLens(ctx, sessionId) {
   let limitStateDirty = false;
   let persistedPostureHash;
   let stagedPostureHash;
+  let persistedLatch;
+  let stagedLatch;
+  let latchStaged = false;
   return {
     eventsFor: async (rl, sequenceBase) => {
       if (!loaded) {
         loaded = true;
         limitState = await readLimitState(ctx.stateDir);
-        persistedPostureHash = (await readPostureState(ctx.stateDir)).last_hash;
+        const postureState = await readPostureState(ctx.stateDir);
+        persistedPostureHash = postureState.last_hash;
+        persistedLatch = postureState.last_reached_type;
         planClaim = await readPlanClaim(authPath);
       }
       const out = [];
@@ -5080,10 +5416,16 @@ function stageRateLimitLens(ctx, sessionId) {
         timestampMs: rl.timestampMs,
         model: rl.model,
         sequenceBase,
-        state: limitState
+        state: limitState,
+        speed,
+        cliVersion: rl.cliVersion
       });
       out.push(...lensed.events);
-      const posture = codexPosture(rl.payload, planClaim);
+      const posture = codexPosture(rl.payload, planClaim, {
+        last_reached_type: latchStaged ? stagedLatch : persistedLatch,
+        speed,
+        cliVersion: rl.cliVersion
+      });
       let nextPostureHash;
       if (posture) {
         const hash = postureHash(posture);
@@ -5101,6 +5443,10 @@ function stageRateLimitLens(ctx, sessionId) {
           nextPostureHash = hash;
         }
       }
+      if (nextPostureHash !== void 0) {
+        stagedLatch = posture?.last_reached_type;
+        latchStaged = true;
+      }
       if (lensed.state !== limitState) {
         limitState = lensed.state;
         limitStateDirty = true;
@@ -5116,7 +5462,8 @@ function stageRateLimitLens(ctx, sessionId) {
         if (stagedPostureHash !== void 0) {
           await writePostureState(ctx.stateDir, {
             last_hash: stagedPostureHash,
-            last_emitted_at: (/* @__PURE__ */ new Date()).toISOString()
+            last_emitted_at: (/* @__PURE__ */ new Date()).toISOString(),
+            ...stagedLatch !== void 0 ? { last_reached_type: stagedLatch } : {}
           });
         }
       } catch (err) {
@@ -5130,13 +5477,13 @@ function postureEventUuid(sessionId, hash, timestampMs) {
   const h = sha256Hex(["codex", sessionId, "usage_config", hash, stamp].join("|"));
   return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20, 32)}`;
 }
-async function readSource(source, sessionId, sequenceBase, errorLogPath) {
+async function readSource(source, sessionId, sequenceBase, errorLogPath, tierResolve) {
   let release;
   try {
     try {
-      await readFile14(source.cursorPath);
+      await readFile15(source.cursorPath);
     } catch {
-      await writeFile10(source.cursorPath, "{}", "utf8");
+      await writeFile11(source.cursorPath, "{}", "utf8");
     }
     release = await import_proper_lockfile4.default.lock(source.cursorPath, { retries: 0, realpath: false });
   } catch {
@@ -5158,7 +5505,7 @@ async function readSource(source, sessionId, sequenceBase, errorLogPath) {
         maxReadBytes: DEFAULT_MAX_READ_BYTES,
         state,
         parseWindow: (lines, seqBase, st) => {
-          const parsed = parseRolloutWindow(lines, sessionId, seqBase, st, uuidScope);
+          const parsed = parseRolloutWindow(lines, sessionId, seqBase, st, uuidScope, tierResolve);
           if (parsed.rateLimits)
             rateLimits = parsed.rateLimits;
           return parsed.events;
@@ -5216,7 +5563,7 @@ function applyStamp(event, stamp) {
 async function readCursor(cursorPath, errorLogPath) {
   let buf;
   try {
-    buf = await readFile14(cursorPath, "utf8");
+    buf = await readFile15(cursorPath, "utf8");
   } catch (err) {
     if (err?.code !== "ENOENT") {
       await logError(errorLogPath, cursorPath, err);
@@ -5236,8 +5583,8 @@ async function readCursor(cursorPath, errorLogPath) {
 }
 async function writeCursor(cursorPath, body) {
   const tmp = `${cursorPath}.tmp`;
-  await writeFile10(tmp, JSON.stringify(body), "utf8");
-  await rename11(tmp, cursorPath);
+  await writeFile11(tmp, JSON.stringify(body), "utf8");
+  await rename12(tmp, cursorPath);
 }
 function isValidSessionId2(s) {
   return typeof s === "string" && SESSION_ID_RE2.test(s);
