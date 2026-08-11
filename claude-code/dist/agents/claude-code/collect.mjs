@@ -527,14 +527,14 @@ var require_graceful_fs = __commonJS({
         return close;
       })(fs.close);
       fs.closeSync = (function(fs$closeSync) {
-        function closeSync(fd) {
+        function closeSync4(fd) {
           fs$closeSync.apply(fs, arguments);
           resetQueue();
         }
-        Object.defineProperty(closeSync, previousSymbol, {
+        Object.defineProperty(closeSync4, previousSymbol, {
           value: fs$closeSync
         });
-        return closeSync;
+        return closeSync4;
       })(fs.closeSync);
       if (/\bgfs4\b/i.test(process.env.NODE_DEBUG || "")) {
         process.on("exit", function() {
@@ -1718,6 +1718,8 @@ var init_runner_env = __esm({
     ALLOWED = /* @__PURE__ */ new Set([
       "PATH",
       "HOME",
+      "APPDATA",
+      "PROGRAMDATA",
       "USER",
       "LOGNAME",
       "SHELL",
@@ -1728,7 +1730,9 @@ var init_runner_env = __esm({
       "TERM",
       "VITEST",
       "CLAUDE_PLUGIN_DATA",
-      "FANCYSAUCE_CREDENTIAL_PATHS"
+      "FANCYSAUCE_CREDENTIAL_PATHS",
+      "FANCYSAUCE_API_KEY",
+      "FANCYSAUCE_TENANT_KEY"
     ]);
   }
 });
@@ -1873,7 +1877,9 @@ var init_status = __esm({
 });
 
 // dist/agents/claude-code/collect.mjs
-import { readFileSync as readFileSync6 } from "node:fs";
+import { readFileSync as readFileSync9 } from "node:fs";
+import { dirname as dirname8, join as join26 } from "node:path";
+import { fileURLToPath as fileURLToPath3 } from "node:url";
 
 // dist/shared/run-collect.mjs
 import { readFileSync as readFileSync5 } from "node:fs";
@@ -2089,12 +2095,9 @@ async function tryReadOne(path) {
   if (process.platform !== "win32") {
     try {
       const st = await stat(path);
-      if ((st.mode & 63) !== 0) {
-        return {
-          kind: "malformed",
-          reason: `file mode ${(st.mode & 511).toString(8)} too permissive; must be 0600`
-        };
-      }
+      const modeReason = permissiveModeReason(st.mode);
+      if (modeReason !== null)
+        return { kind: "malformed", reason: modeReason };
     } catch (err) {
       return { kind: "malformed", reason: `stat failed: ${err.message}` };
     }
@@ -2105,12 +2108,17 @@ async function tryReadOne(path) {
   } catch (err) {
     return { kind: "malformed", reason: `JSON parse failed: ${err.message}` };
   }
-  const v = validate(parsed);
+  const v = validateCredentialFile(parsed);
   if (v.kind === "ok")
     return { kind: "ok", cred: v.cred };
   return { kind: "malformed", reason: v.reason };
 }
-function validate(v) {
+function permissiveModeReason(mode) {
+  if ((mode & 63) === 0)
+    return null;
+  return `file mode ${(mode & 511).toString(8)} too permissive; must be 0600`;
+}
+function validateCredentialFile(v) {
   if (typeof v !== "object" || v === null)
     return { kind: "bad", reason: "not an object" };
   const o = v;
@@ -2124,6 +2132,7 @@ function validate(v) {
   if (hint.kind === "bad")
     return hint;
   const endpoint = typeof o.endpoint === "string" && o.endpoint ? o.endpoint : void 0;
+  const api_endpoint = typeof o.api_endpoint === "string" && o.api_endpoint ? o.api_endpoint : void 0;
   const identity_type = o.identity_type === "full" || o.identity_type === "hash" ? o.identity_type : void 0;
   const provenance = o.provenance === "marketplace_url" || o.provenance === "login" || o.provenance === "env_tenant_key" ? o.provenance : void 0;
   return {
@@ -2134,6 +2143,7 @@ function validate(v) {
       credential: o.credential,
       identity_hint: hint.value,
       ...endpoint !== void 0 ? { endpoint } : {},
+      ...api_endpoint !== void 0 ? { api_endpoint } : {},
       ...identity_type !== void 0 ? { identity_type } : {},
       ...provenance !== void 0 ? { provenance } : {}
     }
@@ -2500,6 +2510,9 @@ function parseTomlKey(key) {
 // dist/shared/run-collect.mjs
 init_credential_paths();
 
+// dist/shared/plugin-commands.mjs
+var LOGIN_COMMAND = "/fancysauce-savings:login";
+
 // dist/shared/hash.mjs
 import { createHash, createHmac } from "node:crypto";
 function sha256Hex(input) {
@@ -2742,9 +2755,9 @@ function seal(plaintext, key) {
 import { readFileSync as readFileSync2 } from "node:fs";
 import { join as join3 } from "node:path";
 var BAKED_SERVER_KEY = {
-  keyid: "__BAKED_SERVER_KEYID__",
+  keyid: "env-production-1",
   alg: "RSA-OAEP-256+A256GCM",
-  publicKeyPem: "__BAKED_SERVER_PUBKEY__"
+  publicKeyPem: "-----BEGIN PUBLIC KEY-----\nMIIBojANBgkqhkiG9w0BAQEFAAOCAY8AMIIBigKCAYEA4Dh42p0kvReuiL194qp3\n8j0BSjOmwW9WU9NUUSlBSA1Kn0WPdfMKywsD+DPrlt/KyOKdNLoUXsXrriM212Si\nMgabz4e4pK8ItqgqCg1wPFArY8SEoy8MioMj8iZVz/UPeR3/7Rng8LT50HiaB/kc\nwkBjjLnSU2xYQkKROKMGuTlKDZ4BCpP/uVCFTrZ5BUFEn3r2WyAl3Z6NBjO9hTPB\njKx1AH+CitIZeWVmn39EUwrzUW+LiXbEe1Y+0SXkpTgdqvVMzMjytlEp5Ojisvs1\n/GqoHRoN/NcESILK2s4Rabe3PTquCmZItYbw2sBpFe/6xhHPn/LA2TVjEjx5d+GJ\ndxQnhUWlNPInWul8TCePBAhz6MGThrcVWj6b+V3K4CrjetFIlvF7R2dk/SlWLCUZ\nozfDPZnQfvSZInVSrSRiCqA3OXArmptmFzeZii1RDQsJnNA+Vc2lTvuf2ScepvgG\nWJPZewNj7dknrCLAyj79ZZrQH31cIjgPt3XpT7SHnkaLAgMBAAE=\n-----END PUBLIC KEY-----\n"
 };
 var CACHE_FILE = "server-key.json";
 var DEFAULT_TTL_MS = 24 * 60 * 60 * 1e3;
@@ -4373,7 +4386,7 @@ async function runCollect(adapter, opts) {
     };
     if (config.credentialError) {
       const msg = config.credentialError.source === "system" ? `fancysauce: managed credential at ${credentialPaths().system} is malformed (${config.credentialError.reason}); contact administrator.
-` : `fancysauce: user credential is malformed (${config.credentialError.reason}). Run /fancysauce:login.
+` : `fancysauce: user credential is malformed (${config.credentialError.reason}). Run ${LOGIN_COMMAND}.
 `;
       writeStderr(msg);
     }
@@ -5547,14 +5560,420 @@ var ClaudeCodeAdapter = class {
   }
 };
 
+// dist/shared/whoami/credential.mjs
+init_credential_paths();
+import { readFileSync as readFileSync6, statSync } from "node:fs";
+import { posix as posix2, win32 as win322 } from "node:path";
+var FINGERPRINT_HEX_CHARS = 12;
+function whoamiCredentialPaths() {
+  const parsed = parseCredentialPathsEnv();
+  return parsed ? { system: parsed.system, user: parsed.user } : credentialPaths();
+}
+function pathFlavor() {
+  return process.platform === "win32" ? win322 : posix2;
+}
+function resolveCredentialSync(opts = {}) {
+  const paths = opts.paths ?? whoamiCredentialPaths();
+  const env = opts.env ?? process.env;
+  const sys = readOneSync(paths.system);
+  if (sys.kind === "ok")
+    return withFingerprint("system", sys.token, sys.apiEndpoint);
+  if (sys.kind === "malformed")
+    return null;
+  const usr = readOneSync(paths.user);
+  if (usr.kind === "ok")
+    return withFingerprint("user", usr.token, usr.apiEndpoint);
+  if (usr.kind === "malformed")
+    return null;
+  const tenantKey = env.FANCYSAUCE_TENANT_KEY ?? "";
+  if (KEY_RE.test(tenantKey))
+    return withFingerprint("env_tenant_key", tenantKey, null);
+  const apiKey = env.FANCYSAUCE_API_KEY;
+  if (apiKey)
+    return withFingerprint("env_api_key", apiKey, null);
+  return null;
+}
+function withFingerprint(tier, token, apiEndpoint) {
+  return { tier, token, apiEndpoint, fingerprint: sha256Hex(token).slice(0, FINGERPRINT_HEX_CHARS) };
+}
+function readOneSync(path) {
+  let raw;
+  try {
+    raw = readFileSync6(path, "utf8");
+  } catch (err) {
+    if (err.code === "ENOENT")
+      return { kind: "absent" };
+    return { kind: "malformed" };
+  }
+  if (process.platform !== "win32") {
+    try {
+      if (permissiveModeReason(statSync(path).mode) !== null)
+        return { kind: "malformed" };
+    } catch {
+      return { kind: "malformed" };
+    }
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return { kind: "malformed" };
+  }
+  const v = validateCredentialFile(parsed);
+  if (v.kind !== "ok")
+    return { kind: "malformed" };
+  return { kind: "ok", token: v.cred.credential, apiEndpoint: v.cred.api_endpoint ?? null };
+}
+
+// dist/shared/whoami/cache.mjs
+import { closeSync, ftruncateSync, mkdirSync, openSync, readFileSync as readFileSync7, readdirSync, renameSync, rmSync, statSync as statSync2, writeSync } from "node:fs";
+var WHOAMI_SCHEMA_VERSION = 1;
+var SUCCESS_TTL_MS = 6 * 60 * 60 * 1e3;
+var ERROR_TTL_MS = 15 * 60 * 1e3;
+var CACHE_PREFIX = "whoami-cache-";
+var CACHE_SUFFIX = ".json";
+var TMP_ORPHAN_MAX_AGE_MS = 60 * 60 * 1e3;
+function whoamiCachePath(fingerprint2, opts = {}) {
+  const p = pathFlavor();
+  return p.join(credentialDir(opts), `${CACHE_PREFIX}${fingerprint2}${CACHE_SUFFIX}`);
+}
+function credentialDir(opts = {}) {
+  if (opts.dir !== void 0)
+    return opts.dir;
+  return pathFlavor().dirname(whoamiCredentialPaths().user);
+}
+function ensureCredentialDir(opts = {}) {
+  mkdirSync(credentialDir(opts), { recursive: true, mode: 448 });
+}
+function readWhoamiCache(fingerprint2, now, opts = {}) {
+  let entry;
+  try {
+    const parsed = JSON.parse(readFileSync7(whoamiCachePath(fingerprint2, opts), "utf8"));
+    const validated = validateEntry(parsed);
+    if (validated === null)
+      return null;
+    entry = validated;
+  } catch {
+    return null;
+  }
+  if (entry.credential_fingerprint !== fingerprint2)
+    return null;
+  const ttl = entry.result !== void 0 ? SUCCESS_TTL_MS : ERROR_TTL_MS;
+  if (now - entry.fetched_at >= ttl)
+    return null;
+  return entry;
+}
+function overwriteExisting(path, contents) {
+  const fd = openSync(path, "r+");
+  try {
+    ftruncateSync(fd, 0);
+    writeSync(fd, contents);
+  } finally {
+    closeSync(fd);
+  }
+}
+function validateEntry(v) {
+  if (typeof v !== "object" || v === null)
+    return null;
+  const o = v;
+  if (o.schema_version !== WHOAMI_SCHEMA_VERSION)
+    return null;
+  if (typeof o.fetched_at !== "number")
+    return null;
+  if (typeof o.credential_fingerprint !== "string")
+    return null;
+  const result = o.result === void 0 ? void 0 : parseWhoamiResult(o.result);
+  const error = parseErrorKind(o.error);
+  if (result === void 0 && error === void 0)
+    return null;
+  return {
+    schema_version: WHOAMI_SCHEMA_VERSION,
+    fetched_at: o.fetched_at,
+    credential_fingerprint: o.credential_fingerprint,
+    ...result !== void 0 ? { result } : {},
+    ...error !== void 0 ? { error } : {}
+  };
+}
+function parseErrorKind(v) {
+  return v === "rejected" || v === "rate_limited" || v === "server" || v === "transport" ? v : void 0;
+}
+function parseWhoamiResult(v) {
+  if (typeof v !== "object" || v === null)
+    return void 0;
+  const o = v;
+  if (typeof o.logged_in !== "boolean")
+    return void 0;
+  if (typeof o.tenant_id !== "string")
+    return void 0;
+  const user = parseUser(o.user);
+  if (user === void 0)
+    return void 0;
+  const key = parseKey(o.key);
+  if (key === void 0)
+    return void 0;
+  return { logged_in: o.logged_in, user, tenant_id: o.tenant_id, key };
+}
+function parseUser(v) {
+  if (v === null)
+    return null;
+  if (typeof v !== "object")
+    return void 0;
+  const o = v;
+  if (typeof o.id !== "string")
+    return void 0;
+  const name = o.name === null || typeof o.name === "string" ? o.name : void 0;
+  if (name === void 0)
+    return void 0;
+  const email = o.email_masked === null || typeof o.email_masked === "string" ? o.email_masked : void 0;
+  if (email === void 0)
+    return void 0;
+  return { id: o.id, name, email_masked: email };
+}
+function parseKey(v) {
+  if (typeof v !== "object" || v === null)
+    return void 0;
+  const o = v;
+  if (typeof o.id !== "string")
+    return void 0;
+  if (typeof o.env !== "string")
+    return void 0;
+  if (o.scope !== null && typeof o.scope !== "string")
+    return void 0;
+  if (typeof o.user_resolution_mode !== "string")
+    return void 0;
+  if (typeof o.vended_via !== "string")
+    return void 0;
+  if (typeof o.source_type !== "string")
+    return void 0;
+  if (typeof o.superseded !== "boolean")
+    return void 0;
+  return {
+    id: o.id,
+    env: o.env,
+    scope: o.scope,
+    user_resolution_mode: o.user_resolution_mode,
+    vended_via: o.vended_via,
+    source_type: o.source_type,
+    superseded: o.superseded
+  };
+}
+
+// dist/shared/whoami/lease.mjs
+import { openSync as openSync2, closeSync as closeSync2, readFileSync as readFileSync8, rmSync as rmSync2, statSync as statSync3, writeSync as writeSync2 } from "node:fs";
+function whoamiLeasePath(fingerprint2, opts = {}) {
+  return pathFlavor().join(credentialDir(opts), `whoami-refresh-${fingerprint2}.lock`);
+}
+var MAX_LEASE_AGE_MS = 6e4;
+function acquireWhoamiLease(fingerprint2, opts = {}) {
+  try {
+    ensureCredentialDir(opts);
+  } catch {
+  }
+  const path = whoamiLeasePath(fingerprint2, opts);
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const fd = openSync2(path, "wx", 384);
+      try {
+        writeSync2(fd, String(process.pid));
+      } finally {
+        closeSync2(fd);
+      }
+      return { kind: "acquired" };
+    } catch (err) {
+      if (err.code !== "EEXIST")
+        return { kind: "held", pid: -1 };
+      const state2 = leaseState(path, Date.now());
+      if (state2.kind === "held")
+        return { kind: "held", pid: state2.pid };
+      try {
+        rmSync2(path, { force: true });
+      } catch {
+      }
+    }
+  }
+  const state = leaseState(path, Date.now());
+  return { kind: "held", pid: state.kind === "held" ? state.pid : -1 };
+}
+function recordLeaseHolder(fingerprint2, pid, opts = {}) {
+  try {
+    overwriteExisting(whoamiLeasePath(fingerprint2, opts), String(pid));
+  } catch {
+  }
+}
+function releaseWhoamiLease(fingerprint2, opts = {}) {
+  try {
+    rmSync2(whoamiLeasePath(fingerprint2, opts), { force: true });
+  } catch {
+  }
+}
+function leaseState(path, now) {
+  let mtimeMs;
+  try {
+    mtimeMs = statSync3(path).mtimeMs;
+  } catch {
+    return { kind: "stale" };
+  }
+  if (now - mtimeMs > MAX_LEASE_AGE_MS)
+    return { kind: "stale" };
+  let pid;
+  try {
+    pid = Number(readFileSync8(path, "utf8").trim());
+  } catch {
+    return { kind: "held", pid: -1 };
+  }
+  if (!Number.isFinite(pid) || pid <= 0)
+    return { kind: "held", pid: -1 };
+  try {
+    process.kill(pid, 0);
+    return { kind: "held", pid };
+  } catch {
+    return { kind: "stale" };
+  }
+}
+
+// dist/shared/whoami/spawn.mjs
+init_runner_env();
+import { spawn as spawn2 } from "node:child_process";
+import { join as join25 } from "node:path";
+var WHOAMI_REFRESH_REL_PATH = join25("dist", "shared", "bin", "whoami-refresh.mjs");
+function whoamiRefreshBinPath(pluginRoot) {
+  return join25(pluginRoot, WHOAMI_REFRESH_REL_PATH);
+}
+async function spawnWhoamiRefresh(input) {
+  const binPath = whoamiRefreshBinPath(input.pluginRoot);
+  const spawnFn = input.spawner ?? defaultSpawner2;
+  try {
+    const { pid } = await spawnFn(binPath, []);
+    return { kind: "spawned", pid };
+  } catch (err) {
+    return { kind: "error", reason: err.message };
+  }
+}
+function defaultSpawner2(binPath, args) {
+  return new Promise((resolve, reject) => {
+    const child = spawn2(process.execPath, [binPath, ...args], {
+      detached: true,
+      stdio: "ignore",
+      env: buildRunnerEnv(process.env)
+    });
+    child.once("error", reject);
+    child.once("spawn", () => {
+      const pid = child.pid ?? 0;
+      child.unref();
+      resolve({ pid });
+    });
+  });
+}
+
+// dist/shared/whoami/notice.mjs
+import { openSync as openSync3, closeSync as closeSync3, readdirSync as readdirSync2, rmSync as rmSync3, statSync as statSync4, writeSync as writeSync3 } from "node:fs";
+var KEEP_FINGERPRINTS = 10;
+var MARKER_PREFIX = "whoami-notice-";
+function whoamiNoticeMarkerPath(fingerprint2, opts = {}) {
+  return pathFlavor().join(credentialDir(opts), `${MARKER_PREFIX}${fingerprint2}`);
+}
+function composeWhoamiNotice(entry) {
+  const result = entry.result;
+  if (result === void 0 || result.logged_in)
+    return null;
+  const key = result.key;
+  const vended = key.vended_via === "admin" ? "an admin-vended" : "a plugin-installed";
+  const scope = key.scope === null ? "key" : `${key.scope}-scoped key`;
+  const holder = result.user?.name != null ? `Your usage is attributed to ${result.user.name}.` : "Your usage is attributed to nobody.";
+  return `fancysauce: you are not logged in. This install uses ${vended} ${scope}. ${holder} Run ${LOGIN_COMMAND} to attribute it to you.
+`;
+}
+function claimWhoamiNotice(fingerprint2, opts = {}) {
+  try {
+    ensureCredentialDir(opts);
+  } catch {
+  }
+  try {
+    const fd = openSync3(whoamiNoticeMarkerPath(fingerprint2, opts), "wx", 384);
+    try {
+      writeSync3(fd, (/* @__PURE__ */ new Date()).toISOString());
+    } finally {
+      closeSync3(fd);
+    }
+  } catch (err) {
+    if (err.code === "EEXIST")
+      return false;
+    return true;
+  }
+  pruneWhoamiNoticeMarkers(opts);
+  return true;
+}
+function pruneWhoamiNoticeMarkers(opts = {}) {
+  const p = pathFlavor();
+  const dir = credentialDir(opts);
+  try {
+    const markers = readdirSync2(dir).filter((n) => n.startsWith(MARKER_PREFIX)).map((n) => {
+      const full = p.join(dir, n);
+      try {
+        return { full, mtime: statSync4(full).mtimeMs };
+      } catch {
+        return null;
+      }
+    }).filter((m) => m !== null).sort((a, b) => b.mtime - a.mtime);
+    for (const stale of markers.slice(KEEP_FINGERPRINTS)) {
+      rmSync3(stale.full, { force: true });
+    }
+  } catch {
+  }
+}
+
 // dist/agents/claude-code/collect.mjs
 var HOOK_BUDGET_MS2 = 1800;
 async function runCollectOnce(opts) {
   return runCollect(new ClaudeCodeAdapter(), opts);
 }
+function pluginRootFrom(containerDir) {
+  return join26(containerDir, "..", "..", "..");
+}
+async function maybeRefreshWhoami(deps = {}) {
+  const resolved = resolveCredentialSync({
+    ...deps.paths !== void 0 ? { paths: deps.paths } : {},
+    ...deps.env !== void 0 ? { env: deps.env } : {}
+  });
+  if (resolved === null)
+    return "no-credential";
+  const cacheOpts = deps.dir !== void 0 ? { dir: deps.dir } : {};
+  const fingerprint2 = resolved.fingerprint;
+  if (readWhoamiCache(fingerprint2, deps.now ?? Date.now(), cacheOpts) !== null)
+    return "fresh";
+  const lease = acquireWhoamiLease(fingerprint2, cacheOpts);
+  if (lease.kind === "held")
+    return "held";
+  const spawned = await spawnWhoamiRefresh({
+    pluginRoot: deps.pluginRoot ?? pluginRootFrom(dirname8(fileURLToPath3(import.meta.url))),
+    ...deps.spawner !== void 0 ? { spawner: deps.spawner } : {}
+  });
+  if (spawned.kind === "error") {
+    releaseWhoamiLease(fingerprint2, cacheOpts);
+    return "spawn-failed";
+  }
+  recordLeaseHolder(fingerprint2, spawned.pid, cacheOpts);
+  return "spawned";
+}
+function whoamiNotice(deps = {}) {
+  const resolved = resolveCredentialSync({
+    ...deps.paths !== void 0 ? { paths: deps.paths } : {},
+    ...deps.env !== void 0 ? { env: deps.env } : {}
+  });
+  if (resolved === null)
+    return null;
+  const cacheOpts = deps.dir !== void 0 ? { dir: deps.dir } : {};
+  const entry = readWhoamiCache(resolved.fingerprint, deps.now ?? Date.now(), cacheOpts);
+  if (entry === null)
+    return null;
+  const text = composeWhoamiNotice(entry);
+  if (text === null)
+    return null;
+  return claimWhoamiNotice(resolved.fingerprint, cacheOpts) ? text : null;
+}
 function readStdin() {
   try {
-    const buf = readFileSync6(0, "utf8");
+    const buf = readFileSync9(0, "utf8");
     return JSON.parse(buf);
   } catch {
     return null;
@@ -5567,6 +5986,15 @@ async function main() {
     const hookPayload = readStdin();
     if (!hookPayload)
       return;
+    try {
+      await maybeRefreshWhoami();
+      if (hookPayload.hook_event_name === "SessionStart") {
+        const notice = whoamiNotice();
+        if (notice)
+          process.stderr.write(notice);
+      }
+    } catch {
+    }
     try {
       const result = await runCollectOnce({ hookPayload });
       if (result.stderr)
@@ -5582,6 +6010,9 @@ if (isMain) {
   void main();
 }
 export {
+  maybeRefreshWhoami,
+  pluginRootFrom,
   runCollectOnce,
-  serializeForQueue
+  serializeForQueue,
+  whoamiNotice
 };

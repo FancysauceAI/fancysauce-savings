@@ -10,4 +10,4 @@ Args the binary supports:
 - `--skip` — write a marker that suppresses future backfill nudges. Does not stop a running backfill.
 - `--scan` — one-shot, idempotent scan of historical subagent transcripts (recovers sessions finished before this plugin's subagent-transcript discovery fix shipped); enqueues any missed events, prints a summary, then spawns the runner exactly like the no-flag path.
 
-If the user has not signed in (no credential file), the binary will print an error pointing at `/fancysauce:login`.
+If the user has not signed in (no credential file), the binary will print an error pointing at `/fancysauce-savings:login`.

@@ -116,6 +116,8 @@ var init_runner_env = __esm({
     ALLOWED = /* @__PURE__ */ new Set([
       "PATH",
       "HOME",
+      "APPDATA",
+      "PROGRAMDATA",
       "USER",
       "LOGNAME",
       "SHELL",
@@ -126,7 +128,9 @@ var init_runner_env = __esm({
       "TERM",
       "VITEST",
       "CLAUDE_PLUGIN_DATA",
-      "FANCYSAUCE_CREDENTIAL_PATHS"
+      "FANCYSAUCE_CREDENTIAL_PATHS",
+      "FANCYSAUCE_API_KEY",
+      "FANCYSAUCE_TENANT_KEY"
     ]);
   }
 });
@@ -1757,6 +1761,10 @@ init_credential_paths();
 import { writeFile as writeFile4, mkdir as mkdir8 } from "node:fs/promises";
 import { join as join12 } from "node:path";
 
+// dist/shared/plugin-commands.mjs
+var LOGIN_COMMAND = "/fancysauce-savings:login";
+var UPLOAD_HISTORY_COMMAND = "/fancysauce-savings:upload-history";
+
 // dist/shared/data-dir.mjs
 import { readFileSync } from "node:fs";
 import { basename, join, dirname } from "node:path";
@@ -2125,12 +2133,9 @@ async function tryReadOne(path) {
   if (process.platform !== "win32") {
     try {
       const st = await stat(path);
-      if ((st.mode & 63) !== 0) {
-        return {
-          kind: "malformed",
-          reason: `file mode ${(st.mode & 511).toString(8)} too permissive; must be 0600`
-        };
-      }
+      const modeReason = permissiveModeReason(st.mode);
+      if (modeReason !== null)
+        return { kind: "malformed", reason: modeReason };
     } catch (err) {
       return { kind: "malformed", reason: `stat failed: ${err.message}` };
     }
@@ -2141,12 +2146,17 @@ async function tryReadOne(path) {
   } catch (err) {
     return { kind: "malformed", reason: `JSON parse failed: ${err.message}` };
   }
-  const v = validate(parsed);
+  const v = validateCredentialFile(parsed);
   if (v.kind === "ok")
     return { kind: "ok", cred: v.cred };
   return { kind: "malformed", reason: v.reason };
 }
-function validate(v) {
+function permissiveModeReason(mode) {
+  if ((mode & 63) === 0)
+    return null;
+  return `file mode ${(mode & 511).toString(8)} too permissive; must be 0600`;
+}
+function validateCredentialFile(v) {
   if (typeof v !== "object" || v === null)
     return { kind: "bad", reason: "not an object" };
   const o = v;
@@ -2160,6 +2170,7 @@ function validate(v) {
   if (hint.kind === "bad")
     return hint;
   const endpoint = typeof o.endpoint === "string" && o.endpoint ? o.endpoint : void 0;
+  const api_endpoint = typeof o.api_endpoint === "string" && o.api_endpoint ? o.api_endpoint : void 0;
   const identity_type = o.identity_type === "full" || o.identity_type === "hash" ? o.identity_type : void 0;
   const provenance = o.provenance === "marketplace_url" || o.provenance === "login" || o.provenance === "env_tenant_key" ? o.provenance : void 0;
   return {
@@ -2170,6 +2181,7 @@ function validate(v) {
       credential: o.credential,
       identity_hint: hint.value,
       ...endpoint !== void 0 ? { endpoint } : {},
+      ...api_endpoint !== void 0 ? { api_endpoint } : {},
       ...identity_type !== void 0 ? { identity_type } : {},
       ...provenance !== void 0 ? { provenance } : {}
     }
@@ -3521,17 +3533,17 @@ async function spawnRunner(args) {
     const systemPath = credentialPaths().system;
     if (cfg?.credentialError) {
       args.err(cfg.credentialError.source === "system" ? `fancysauce: managed credential at ${systemPath} is malformed (${cfg.credentialError.reason}); contact administrator.
-` : `fancysauce: user credential is malformed (${cfg.credentialError.reason}). Run /fancysauce:login to recreate it.
+` : `fancysauce: user credential is malformed (${cfg.credentialError.reason}). Run ${LOGIN_COMMAND} to recreate it.
 `);
     } else {
-      args.err(`fancysauce: no credential file. Run /fancysauce:login first, or have your administrator install a managed credential at ${systemPath}.
+      args.err(`fancysauce: no credential file. Run ${LOGIN_COMMAND} first, or have your administrator install a managed credential at ${systemPath}.
 `);
     }
     return 1;
   }
   const active = await isBackfillActive(args.stateDir);
   if (active !== null) {
-    args.out(`Backfill already running (pid ${active}). Check /fancysauce:upload-history --status.
+    args.out(`Backfill already running (pid ${active}). Check ${UPLOAD_HISTORY_COMMAND} --status.
 `);
     return 0;
   }
@@ -3541,7 +3553,7 @@ async function spawnRunner(args) {
     spawner: args.spawner
   });
   if (result.kind === "spawned") {
-    args.out(`Backfill started in background (pid ${result.pid}). Run /fancysauce:upload-history --status for progress.
+    args.out(`Backfill started in background (pid ${result.pid}). Run ${UPLOAD_HISTORY_COMMAND} --status for progress.
 `);
     return 0;
   }
@@ -3610,12 +3622,12 @@ async function renderStatus(stateDir, out) {
       return 0;
     case "failed":
       out(`Backfill failed: ${s.last_error ?? "unknown"}.
-Re-run /fancysauce:upload-history to retry.
+Re-run ${UPLOAD_HISTORY_COMMAND} to retry.
 `);
       return 0;
     case "interrupted":
       out(`Backfill was interrupted.
-Re-run /fancysauce:upload-history to resume from cursor.
+Re-run ${UPLOAD_HISTORY_COMMAND} to resume from cursor.
 `);
       return 0;
     case "skipped":
@@ -3626,7 +3638,8 @@ Re-run /fancysauce:upload-history to resume from cursor.
 async function writeSkipMarker(stateDir, out) {
   await mkdir8(stateDir, { recursive: true });
   await writeFile4(join12(stateDir, "backfill-skip"), JSON.stringify({ created_at: (/* @__PURE__ */ new Date()).toISOString() }), "utf8");
-  out("Backfill nudges suppressed. Run /fancysauce:upload-history (without --skip) to start one any time.\n");
+  out(`Backfill nudges suppressed. Run ${UPLOAD_HISTORY_COMMAND} (without --skip) to start one any time.
+`);
   return 0;
 }
 var isMain = import.meta.url === `file://${process.argv[1]}`;

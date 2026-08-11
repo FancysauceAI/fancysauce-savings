@@ -1,9 +1,9 @@
 import { createRequire as __cr } from 'node:module'; const require = __cr(import.meta.url);
 
 // dist/statusline/statusline.mjs
-import { readFileSync as readFileSync3, writeFileSync as writeFileSync2, mkdirSync, readdirSync, openSync, readSync, closeSync, statSync } from "node:fs";
-import { join as join3 } from "node:path";
-import { homedir } from "node:os";
+import { readFileSync as readFileSync5, writeFileSync as writeFileSync2, mkdirSync as mkdirSync2, readdirSync as readdirSync2, openSync as openSync2, readSync, closeSync as closeSync2, statSync as statSync3 } from "node:fs";
+import { join as join4 } from "node:path";
+import { homedir as homedir3 } from "node:os";
 
 // dist/statusline/config.mjs
 import { readFileSync } from "node:fs";
@@ -20,15 +20,18 @@ var DEFAULT_THRESHOLDS = {
   io_jump_warn: 5e4
 };
 var DEFAULT_SEGMENTS = {
+  mascot: true,
   model: true,
   context_bar: true,
   cache_expiry: true,
   usage: true,
-  io_tokens: true
+  io_tokens: true,
+  login: true
 };
 var DEFAULT_STATUS_LINE_CONFIG = {
   refresh_interval: 5,
-  max_width: 100,
+  // Fallback only; defaultMaxWidth() prefers COLUMNS when the shell exports it.
+  max_width: 120,
   thresholds: { ...DEFAULT_THRESHOLDS },
   segments: { ...DEFAULT_SEGMENTS }
 };
@@ -37,10 +40,18 @@ var DEFAULT_STATUS_LINE_CONFIG = {
 function defaults() {
   return {
     ...DEFAULT_STATUS_LINE_CONFIG,
+    max_width: defaultMaxWidth(),
     thresholds: { ...DEFAULT_THRESHOLDS },
     segments: { ...DEFAULT_SEGMENTS }
   };
 }
+function defaultMaxWidth(env = process.env) {
+  const columns = Number(env.COLUMNS);
+  if (Number.isFinite(columns) && columns >= MIN_SANE_WIDTH)
+    return Math.floor(columns);
+  return DEFAULT_STATUS_LINE_CONFIG.max_width;
+}
+var MIN_SANE_WIDTH = 40;
 function loadStatusLineConfig(dataDir) {
   try {
     const raw = readFileSync(join(dataDir, "config.json"), "utf-8");
@@ -54,7 +65,7 @@ function loadStatusLineConfig(dataDir) {
     const partial = sl;
     return {
       refresh_interval: typeof partial.refresh_interval === "number" ? partial.refresh_interval : DEFAULT_STATUS_LINE_CONFIG.refresh_interval,
-      max_width: typeof partial.max_width === "number" ? partial.max_width : DEFAULT_STATUS_LINE_CONFIG.max_width,
+      max_width: typeof partial.max_width === "number" ? partial.max_width : defaultMaxWidth(),
       thresholds: {
         ...DEFAULT_THRESHOLDS,
         ...typeof partial.thresholds === "object" && partial.thresholds !== null ? partial.thresholds : {}
@@ -69,6 +80,9 @@ function loadStatusLineConfig(dataDir) {
   }
 }
 
+// dist/shared/plugin-commands.mjs
+var LOGIN_COMMAND = "/fancysauce-savings:login";
+
 // dist/statusline/ansi.mjs
 var RESET = "\x1B[0m";
 var YELLOW = "\x1B[33m";
@@ -76,6 +90,8 @@ var RED = "\x1B[31m";
 var GREEN = "\x1B[32m";
 var CYAN = "\x1B[36m";
 var DIM = "\x1B[2m";
+var BRAND_ORANGE_TRUECOLOR = "\x1B[38;2;252;113;45m";
+var BRAND_ORANGE_256 = "\x1B[38;5;202m";
 var Severity;
 (function(Severity2) {
   Severity2["none"] = "none";
@@ -101,6 +117,11 @@ function visibleLength(text) {
 function cyan(text) {
   return `${CYAN}${text}${RESET}`;
 }
+function brandOrange(text) {
+  const colorterm = process.env.COLORTERM ?? "";
+  const code = /truecolor|24bit/i.test(colorterm) ? BRAND_ORANGE_TRUECOLOR : BRAND_ORANGE_256;
+  return `${code}${text}${RESET}`;
+}
 function severityFromThresholds(value, warn, crit) {
   if (value >= crit)
     return Severity.crit;
@@ -123,8 +144,11 @@ function colorBar(filled, empty, severity) {
 
 // dist/statusline/segments.mjs
 var MODEL_MAX = 18;
+var LOGIN_NAME_MAX = 12;
 function trimModelName(name) {
-  const stripped = name.replace(/^claude-/i, "");
+  const withoutPrefix = name.replace(/^claude-/i, "");
+  const withoutSuffix = withoutPrefix.replace(/\s*\([^()]*\)\s*$/, "");
+  const stripped = withoutSuffix === "" ? withoutPrefix : withoutSuffix;
   if (stripped.length <= MODEL_MAX)
     return stripped;
   return stripped.slice(0, MODEL_MAX - 1) + "\u2026";
@@ -201,6 +225,62 @@ function ioTokensSegment(config, cumulative, ioJump) {
   }
   return dim(text);
 }
+var NOT_LOGGED_IN_FULL = `Not logged in \u2014 run ${LOGIN_COMMAND}`;
+var NOT_LOGGED_IN_SHORT = "Not logged in";
+function loginViewFromEntry(entry) {
+  if (entry === null)
+    return { state: "unknown" };
+  if (entry.error !== void 0) {
+    return entry.error === "rejected" ? { state: "rejected" } : { state: "unknown" };
+  }
+  const result = entry.result;
+  if (result === void 0)
+    return { state: "unknown" };
+  const name = firstNameToken(result.user?.name ?? null);
+  const superseded = result.key.superseded;
+  return result.logged_in ? { state: "logged_in", name, superseded } : { state: "logged_out", name, superseded };
+}
+function loginSegment(config, view) {
+  if (!config.segments.login)
+    return null;
+  switch (view.state) {
+    case "logged_in": {
+      const text = view.name === null ? "Hi!" : `Hi ${view.name}!`;
+      return { full: brandOrange(text), short: brandOrange(text), severity: Severity.none };
+    }
+    case "logged_out": {
+      if (view.name === null) {
+        return {
+          full: colorize(NOT_LOGGED_IN_FULL, Severity.crit),
+          short: colorize(NOT_LOGGED_IN_SHORT, Severity.crit),
+          severity: Severity.crit
+        };
+      }
+      return {
+        full: colorize(`Hi ${view.name}! \u2014 log in to confirm identity`, Severity.warn),
+        short: colorize(`Hi ${view.name}! \u2014 log in`, Severity.warn),
+        severity: Severity.warn
+      };
+    }
+    case "rejected": {
+      return {
+        full: colorize(NOT_LOGGED_IN_FULL, Severity.crit),
+        short: colorize(NOT_LOGGED_IN_SHORT, Severity.crit),
+        severity: Severity.crit
+      };
+    }
+    case "unknown":
+      return null;
+  }
+}
+function firstNameToken(name) {
+  if (name === null)
+    return null;
+  const first = name.trim().split(/\s+/)[0];
+  if (!first)
+    return null;
+  return first.slice(0, LOGIN_NAME_MAX);
+}
 
 // dist/statusline/layout.mjs
 function assembleLine(segments, separator = "  ") {
@@ -269,13 +349,369 @@ function updateCumulative(sessionDir, current) {
   return { cum_in, cum_out };
 }
 
+// dist/shared/whoami/credential.mjs
+import { readFileSync as readFileSync3, statSync } from "node:fs";
+import { posix as posix2, win32 as win322 } from "node:path";
+
+// dist/shared/credential-paths.mjs
+import { homedir } from "node:os";
+import { posix, win32 } from "node:path";
+function credentialPaths() {
+  if (process.platform === "win32") {
+    const programData = process.env.PROGRAMDATA ?? "C:\\ProgramData";
+    const appData = process.env.APPDATA ?? win32.join(homedir(), "AppData", "Roaming");
+    return {
+      system: win32.join(programData, "fancysauce", "credentials.json"),
+      user: win32.join(appData, "fancysauce", "credentials.json")
+    };
+  }
+  return {
+    system: "/etc/fancysauce/credentials.json",
+    user: posix.join(process.env.HOME ?? homedir(), ".config", "fancysauce", "credentials.json")
+  };
+}
+
+// dist/shared/config.mjs
+import { join as join3 } from "node:path";
+import { homedir as homedir2 } from "node:os";
+
+// dist/shared/credential-file.mjs
+function permissiveModeReason(mode) {
+  if ((mode & 63) === 0)
+    return null;
+  return `file mode ${(mode & 511).toString(8)} too permissive; must be 0600`;
+}
+function validateCredentialFile(v) {
+  if (typeof v !== "object" || v === null)
+    return { kind: "bad", reason: "not an object" };
+  const o = v;
+  if (o.schema_version !== 1)
+    return { kind: "bad", reason: `unknown schema_version: ${String(o.schema_version)}` };
+  if (typeof o.credential !== "string" || !o.credential)
+    return { kind: "bad", reason: "credential missing or empty" };
+  if (typeof o.issued_at !== "string")
+    return { kind: "bad", reason: "issued_at missing" };
+  const hint = validateIdentityHint(o.identity_hint);
+  if (hint.kind === "bad")
+    return hint;
+  const endpoint = typeof o.endpoint === "string" && o.endpoint ? o.endpoint : void 0;
+  const api_endpoint = typeof o.api_endpoint === "string" && o.api_endpoint ? o.api_endpoint : void 0;
+  const identity_type = o.identity_type === "full" || o.identity_type === "hash" ? o.identity_type : void 0;
+  const provenance = o.provenance === "marketplace_url" || o.provenance === "login" || o.provenance === "env_tenant_key" ? o.provenance : void 0;
+  return {
+    kind: "ok",
+    cred: {
+      schema_version: 1,
+      issued_at: o.issued_at,
+      credential: o.credential,
+      identity_hint: hint.value,
+      ...endpoint !== void 0 ? { endpoint } : {},
+      ...api_endpoint !== void 0 ? { api_endpoint } : {},
+      ...identity_type !== void 0 ? { identity_type } : {},
+      ...provenance !== void 0 ? { provenance } : {}
+    }
+  };
+}
+function validateIdentityHint(v) {
+  if (v === null)
+    return { kind: "ok", value: null };
+  if (typeof v !== "object")
+    return { kind: "bad", reason: "identity_hint must be null or object" };
+  const o = v;
+  if (o.source === "os_user")
+    return { kind: "ok", value: { source: "os_user" } };
+  if (o.source === "directory") {
+    if (typeof o.value !== "string" || !o.value)
+      return { kind: "bad", reason: "identity_hint.value required for source=directory" };
+    return { kind: "ok", value: { source: "directory", value: o.value } };
+  }
+  if (o.source === "mdm_file") {
+    const user_email = typeof o.user_email === "string" ? o.user_email : void 0;
+    const user_upn = typeof o.user_upn === "string" ? o.user_upn : void 0;
+    return {
+      kind: "ok",
+      value: {
+        source: "mdm_file",
+        ...user_email !== void 0 ? { user_email } : {},
+        ...user_upn !== void 0 ? { user_upn } : {}
+      }
+    };
+  }
+  if (o.source === "plugin_login") {
+    const s = (k) => typeof o[k] === "string" && o[k] ? o[k] : void 0;
+    return {
+      kind: "ok",
+      value: {
+        source: "plugin_login",
+        ...s("email") ? { email: s("email") } : {},
+        ...s("account_id") ? { account_id: s("account_id") } : {},
+        ...s("user_id") ? { user_id: s("user_id") } : {},
+        ...s("org_id") ? { org_id: s("org_id") } : {},
+        ...s("org_name") ? { org_name: s("org_name") } : {},
+        ...s("plan") ? { plan: s("plan") } : {}
+      }
+    };
+  }
+  return { kind: "bad", reason: `identity_hint.source unknown: ${String(o.source)}` };
+}
+
+// dist/shared/tenant-key-bootstrap.mjs
+var KEY_RE = /^fs_(live|test)_t_[A-Za-z0-9_-]{43}$/;
+
+// dist/shared/config.mjs
+var DEFAULT_LOGIN_STATE_DIR = join3(homedir2(), ".config", "fancysauce");
+function parseCredentialPathsEnv() {
+  if (process.env.VITEST !== "true")
+    return null;
+  const raw = process.env.FANCYSAUCE_CREDENTIAL_PATHS;
+  if (!raw)
+    return null;
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return null;
+  }
+  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed))
+    return null;
+  const o = parsed;
+  if (typeof o.system !== "string" || typeof o.user !== "string")
+    return null;
+  if (o.login_state_dir !== void 0 && typeof o.login_state_dir !== "string")
+    return null;
+  return {
+    system: o.system,
+    user: o.user,
+    ...typeof o.login_state_dir === "string" ? { login_state_dir: o.login_state_dir } : {}
+  };
+}
+
+// dist/shared/hash.mjs
+import { createHash, createHmac } from "node:crypto";
+function sha256Hex(input) {
+  return createHash("sha256").update(input, "utf8").digest("hex");
+}
+
+// dist/shared/whoami/credential.mjs
+var FINGERPRINT_HEX_CHARS = 12;
+function whoamiCredentialPaths() {
+  const parsed = parseCredentialPathsEnv();
+  return parsed ? { system: parsed.system, user: parsed.user } : credentialPaths();
+}
+function pathFlavor() {
+  return process.platform === "win32" ? win322 : posix2;
+}
+function resolveCredentialSync(opts = {}) {
+  const paths = opts.paths ?? whoamiCredentialPaths();
+  const env = opts.env ?? process.env;
+  const sys = readOneSync(paths.system);
+  if (sys.kind === "ok")
+    return withFingerprint("system", sys.token, sys.apiEndpoint);
+  if (sys.kind === "malformed")
+    return null;
+  const usr = readOneSync(paths.user);
+  if (usr.kind === "ok")
+    return withFingerprint("user", usr.token, usr.apiEndpoint);
+  if (usr.kind === "malformed")
+    return null;
+  const tenantKey = env.FANCYSAUCE_TENANT_KEY ?? "";
+  if (KEY_RE.test(tenantKey))
+    return withFingerprint("env_tenant_key", tenantKey, null);
+  const apiKey = env.FANCYSAUCE_API_KEY;
+  if (apiKey)
+    return withFingerprint("env_api_key", apiKey, null);
+  return null;
+}
+function credentialFingerprint(opts = {}) {
+  return resolveCredentialSync(opts)?.fingerprint ?? null;
+}
+function withFingerprint(tier, token, apiEndpoint) {
+  return { tier, token, apiEndpoint, fingerprint: sha256Hex(token).slice(0, FINGERPRINT_HEX_CHARS) };
+}
+function readOneSync(path) {
+  let raw;
+  try {
+    raw = readFileSync3(path, "utf8");
+  } catch (err) {
+    if (err.code === "ENOENT")
+      return { kind: "absent" };
+    return { kind: "malformed" };
+  }
+  if (process.platform !== "win32") {
+    try {
+      if (permissiveModeReason(statSync(path).mode) !== null)
+        return { kind: "malformed" };
+    } catch {
+      return { kind: "malformed" };
+    }
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return { kind: "malformed" };
+  }
+  const v = validateCredentialFile(parsed);
+  if (v.kind !== "ok")
+    return { kind: "malformed" };
+  return { kind: "ok", token: v.cred.credential, apiEndpoint: v.cred.api_endpoint ?? null };
+}
+
+// dist/shared/whoami/cache.mjs
+import { closeSync, ftruncateSync, mkdirSync, openSync, readFileSync as readFileSync4, readdirSync, renameSync, rmSync, statSync as statSync2, writeSync } from "node:fs";
+var WHOAMI_SCHEMA_VERSION = 1;
+var SUCCESS_TTL_MS = 6 * 60 * 60 * 1e3;
+var ERROR_TTL_MS = 15 * 60 * 1e3;
+var CACHE_PREFIX = "whoami-cache-";
+var CACHE_SUFFIX = ".json";
+var TMP_ORPHAN_MAX_AGE_MS = 60 * 60 * 1e3;
+function whoamiCachePath(fingerprint, opts = {}) {
+  const p = pathFlavor();
+  return p.join(credentialDir(opts), `${CACHE_PREFIX}${fingerprint}${CACHE_SUFFIX}`);
+}
+function credentialDir(opts = {}) {
+  if (opts.dir !== void 0)
+    return opts.dir;
+  return pathFlavor().dirname(whoamiCredentialPaths().user);
+}
+function readWhoamiCache(fingerprint, now, opts = {}) {
+  let entry;
+  try {
+    const parsed = JSON.parse(readFileSync4(whoamiCachePath(fingerprint, opts), "utf8"));
+    const validated = validateEntry(parsed);
+    if (validated === null)
+      return null;
+    entry = validated;
+  } catch {
+    return null;
+  }
+  if (entry.credential_fingerprint !== fingerprint)
+    return null;
+  const ttl = entry.result !== void 0 ? SUCCESS_TTL_MS : ERROR_TTL_MS;
+  if (now - entry.fetched_at >= ttl)
+    return null;
+  return entry;
+}
+function validateEntry(v) {
+  if (typeof v !== "object" || v === null)
+    return null;
+  const o = v;
+  if (o.schema_version !== WHOAMI_SCHEMA_VERSION)
+    return null;
+  if (typeof o.fetched_at !== "number")
+    return null;
+  if (typeof o.credential_fingerprint !== "string")
+    return null;
+  const result = o.result === void 0 ? void 0 : parseWhoamiResult(o.result);
+  const error = parseErrorKind(o.error);
+  if (result === void 0 && error === void 0)
+    return null;
+  return {
+    schema_version: WHOAMI_SCHEMA_VERSION,
+    fetched_at: o.fetched_at,
+    credential_fingerprint: o.credential_fingerprint,
+    ...result !== void 0 ? { result } : {},
+    ...error !== void 0 ? { error } : {}
+  };
+}
+function parseErrorKind(v) {
+  return v === "rejected" || v === "rate_limited" || v === "server" || v === "transport" ? v : void 0;
+}
+function parseWhoamiResult(v) {
+  if (typeof v !== "object" || v === null)
+    return void 0;
+  const o = v;
+  if (typeof o.logged_in !== "boolean")
+    return void 0;
+  if (typeof o.tenant_id !== "string")
+    return void 0;
+  const user = parseUser(o.user);
+  if (user === void 0)
+    return void 0;
+  const key = parseKey(o.key);
+  if (key === void 0)
+    return void 0;
+  return { logged_in: o.logged_in, user, tenant_id: o.tenant_id, key };
+}
+function parseUser(v) {
+  if (v === null)
+    return null;
+  if (typeof v !== "object")
+    return void 0;
+  const o = v;
+  if (typeof o.id !== "string")
+    return void 0;
+  const name = o.name === null || typeof o.name === "string" ? o.name : void 0;
+  if (name === void 0)
+    return void 0;
+  const email = o.email_masked === null || typeof o.email_masked === "string" ? o.email_masked : void 0;
+  if (email === void 0)
+    return void 0;
+  return { id: o.id, name, email_masked: email };
+}
+function parseKey(v) {
+  if (typeof v !== "object" || v === null)
+    return void 0;
+  const o = v;
+  if (typeof o.id !== "string")
+    return void 0;
+  if (typeof o.env !== "string")
+    return void 0;
+  if (o.scope !== null && typeof o.scope !== "string")
+    return void 0;
+  if (typeof o.user_resolution_mode !== "string")
+    return void 0;
+  if (typeof o.vended_via !== "string")
+    return void 0;
+  if (typeof o.source_type !== "string")
+    return void 0;
+  if (typeof o.superseded !== "boolean")
+    return void 0;
+  return {
+    id: o.id,
+    env: o.env,
+    scope: o.scope,
+    user_resolution_mode: o.user_resolution_mode,
+    vended_via: o.vended_via,
+    source_type: o.source_type,
+    superseded: o.superseded
+  };
+}
+
+// dist/statusline/mascot.mjs
+var FRAMES = {
+  smile: { top: "[| (\u2022) (\u2022) |]", bottom: " |  \\___/  |" },
+  worried: { top: "[| (o) (o) |]", bottom: " |   ___   |" },
+  angry: { top: "[|  >   <  |]", bottom: " |  /\u203E\u203E\u203E\\  |" }
+};
+var MASCOT_WIDTH = visibleLength(FRAMES.smile.top);
+var WORRIED_AT = 80;
+var ANGRY_AT = 100;
+function mascotExpression(usagePct) {
+  if (usagePct !== null && usagePct !== void 0) {
+    const rounded = Math.round(usagePct);
+    if (rounded >= ANGRY_AT)
+      return "angry";
+    if (rounded >= WORRIED_AT)
+      return "worried";
+  }
+  return "smile";
+}
+function renderMascot(usagePct) {
+  const frame = FRAMES[mascotExpression(usagePct)];
+  return { top: brandOrange(frame.top), bottom: brandOrange(frame.bottom) };
+}
+var ALL_FRAMES = Object.entries(FRAMES);
+
 // dist/statusline/statusline.mjs
 var DROP_PRIORITY = [3, 2, 4, 1];
+var DROP_PRIORITY_LOGIN_FIRST = [5, 3, 2, 4, 1];
 var DEFAULT_CACHE_TTL_SEC = 3600;
 var TRANSCRIPT_TAIL_BYTES = 65536;
+var SEPARATOR = "  ";
 function readCacheExpiry(sessionDir, ttlSec) {
   try {
-    const raw = readFileSync3(join3(sessionDir, "cache-last-hit"), "utf-8").trim();
+    const raw = readFileSync5(join4(sessionDir, "cache-last-hit"), "utf-8").trim();
     const epoch = Number(raw);
     if (Number.isNaN(epoch))
       return null;
@@ -287,10 +723,10 @@ function readCacheExpiry(sessionDir, ttlSec) {
 function readCacheTtlFromTranscript(transcriptPath) {
   let fd = null;
   try {
-    const stats = statSync(transcriptPath);
+    const stats = statSync3(transcriptPath);
     const readLen = Math.min(stats.size, TRANSCRIPT_TAIL_BYTES);
     const offset = stats.size - readLen;
-    fd = openSync(transcriptPath, "r");
+    fd = openSync2(transcriptPath, "r");
     const buf = Buffer.allocUnsafe(readLen);
     readSync(fd, buf, 0, readLen, offset);
     const text = buf.toString("utf-8");
@@ -328,7 +764,7 @@ function readCacheTtlFromTranscript(transcriptPath) {
   } finally {
     if (fd !== null) {
       try {
-        closeSync(fd);
+        closeSync2(fd);
       } catch {
       }
     }
@@ -338,22 +774,22 @@ function updateCacheTracking(sessionDir, currentCacheTokens) {
   if (currentCacheTokens === 0)
     return;
   try {
-    const raw = readFileSync3(join3(sessionDir, "cache-last-tokens"), "utf-8").trim();
+    const raw = readFileSync5(join4(sessionDir, "cache-last-tokens"), "utf-8").trim();
     const lastTokens = Number(raw);
     if (currentCacheTokens !== lastTokens) {
       const now = Math.floor(Date.now() / 1e3);
-      writeFileSync2(join3(sessionDir, "cache-last-hit"), String(now));
-      writeFileSync2(join3(sessionDir, "cache-last-tokens"), String(currentCacheTokens));
+      writeFileSync2(join4(sessionDir, "cache-last-hit"), String(now));
+      writeFileSync2(join4(sessionDir, "cache-last-tokens"), String(currentCacheTokens));
     }
   } catch {
     const now = Math.floor(Date.now() / 1e3);
-    writeFileSync2(join3(sessionDir, "cache-last-hit"), String(now));
-    writeFileSync2(join3(sessionDir, "cache-last-tokens"), String(currentCacheTokens));
+    writeFileSync2(join4(sessionDir, "cache-last-hit"), String(now));
+    writeFileSync2(join4(sessionDir, "cache-last-tokens"), String(currentCacheTokens));
   }
 }
 function readPrevInputTokens(sessionDir) {
   try {
-    const raw = readFileSync3(join3(sessionDir, "prev-input-tokens"), "utf-8").trim();
+    const raw = readFileSync5(join4(sessionDir, "prev-input-tokens"), "utf-8").trim();
     const n = Number(raw);
     return Number.isNaN(n) ? 0 : n;
   } catch {
@@ -361,14 +797,14 @@ function readPrevInputTokens(sessionDir) {
   }
 }
 function writePrevInputTokens(sessionDir, n) {
-  writeFileSync2(join3(sessionDir, "prev-input-tokens"), String(n));
+  writeFileSync2(join4(sessionDir, "prev-input-tokens"), String(n));
 }
 function renderStatusLine(input, dataDir) {
   const config = loadStatusLineConfig(dataDir);
   const native = input;
-  const sessionDir = join3(dataDir, "status", native.session_id);
+  const sessionDir = join4(dataDir, "status", native.session_id);
   try {
-    mkdirSync(sessionDir, { recursive: true });
+    mkdirSync2(sessionDir, { recursive: true });
   } catch {
   }
   const cumulative = updateCumulative(sessionDir, native.context_window.current_usage);
@@ -379,25 +815,61 @@ function renderStatusLine(input, dataDir) {
   updateCacheTracking(sessionDir, native.context_window.current_usage?.cache_read_input_tokens ?? 0);
   const ttlSec = readCacheTtlFromTranscript(native.transcript_path) ?? DEFAULT_CACHE_TTL_SEC;
   const cacheExpiryEpoch = readCacheExpiry(sessionDir, ttlSec);
+  const login = loginSegment(config, readLoginView());
+  const mascotOn = config.segments.mascot;
   const segments = [
     modelSegment(native, config),
     contextSegment(native, config),
     cacheExpirySegment(config, cacheExpiryEpoch),
     usageSegment(native, config),
-    ioTokensSegment(config, cumulative, ioJump)
+    ioTokensSegment(config, cumulative, ioJump),
+    // With the mascot on, the login row rides row 2 beside the jaw and never
+    // competes for row 1. With it off there is no row 2, so it stays here and
+    // takes its chances with the drop priority.
+    mascotOn || login === null ? null : login.full
   ];
-  const fitted = fitLineToWidth(segments, config.max_width, DROP_PRIORITY);
-  return assembleLine(fitted);
+  const priority = login !== null && login.severity !== Severity.none ? DROP_PRIORITY : DROP_PRIORITY_LOGIN_FIRST;
+  const budget = mascotOn ? config.max_width - MASCOT_WIDTH - SEPARATOR.length : config.max_width;
+  if (!mascotOn && login !== null && visibleLength(assembleLine(segments)) > budget) {
+    segments[5] = login.short;
+  }
+  const fitted = fitLineToWidth(segments, budget, priority);
+  if (!mascotOn)
+    return assembleLine(fitted);
+  const face = renderMascot(native.rate_limits?.five_hour?.used_percentage);
+  return `${face.top}${SEPARATOR}${assembleLine(fitted)}
+${secondRow(face.bottom, login, config)}`;
+}
+function secondRow(jaw, login, config) {
+  if (login === null)
+    return jaw;
+  const head = jaw + " ".repeat(Math.max(0, MASCOT_WIDTH - visibleLength(jaw)));
+  const room = config.max_width - MASCOT_WIDTH - SEPARATOR.length;
+  for (const form of [login.full, login.short]) {
+    if (visibleLength(form) <= room)
+      return `${head}${SEPARATOR}${form}`;
+  }
+  return jaw;
+}
+function readLoginView() {
+  try {
+    const fingerprint = credentialFingerprint();
+    if (fingerprint === null)
+      return { state: "unknown" };
+    return loginViewFromEntry(readWhoamiCache(fingerprint, Date.now()));
+  } catch {
+    return { state: "unknown" };
+  }
 }
 function discoverDataDir() {
   const fromEnv = process.env.CLAUDE_PLUGIN_DATA;
   if (fromEnv)
     return fromEnv;
   try {
-    const pluginsData = join3(homedir(), ".claude", "plugins", "data");
-    const entries = readdirSync(pluginsData, { withFileTypes: true });
+    const pluginsData = join4(homedir3(), ".claude", "plugins", "data");
+    const entries = readdirSync2(pluginsData, { withFileTypes: true });
     const match = entries.find((e) => e.isDirectory() && e.name.startsWith("fancysauce"));
-    return match ? join3(pluginsData, match.name) : null;
+    return match ? join4(pluginsData, match.name) : null;
   } catch {
     return null;
   }

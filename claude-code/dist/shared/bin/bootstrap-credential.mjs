@@ -80,12 +80,9 @@ async function tryReadOne(path) {
   if (process.platform !== "win32") {
     try {
       const st = await stat(path);
-      if ((st.mode & 63) !== 0) {
-        return {
-          kind: "malformed",
-          reason: `file mode ${(st.mode & 511).toString(8)} too permissive; must be 0600`
-        };
-      }
+      const modeReason = permissiveModeReason(st.mode);
+      if (modeReason !== null)
+        return { kind: "malformed", reason: modeReason };
     } catch (err) {
       return { kind: "malformed", reason: `stat failed: ${err.message}` };
     }
@@ -96,12 +93,17 @@ async function tryReadOne(path) {
   } catch (err) {
     return { kind: "malformed", reason: `JSON parse failed: ${err.message}` };
   }
-  const v = validate(parsed);
+  const v = validateCredentialFile(parsed);
   if (v.kind === "ok")
     return { kind: "ok", cred: v.cred };
   return { kind: "malformed", reason: v.reason };
 }
-function validate(v) {
+function permissiveModeReason(mode) {
+  if ((mode & 63) === 0)
+    return null;
+  return `file mode ${(mode & 511).toString(8)} too permissive; must be 0600`;
+}
+function validateCredentialFile(v) {
   if (typeof v !== "object" || v === null)
     return { kind: "bad", reason: "not an object" };
   const o = v;
@@ -115,6 +117,7 @@ function validate(v) {
   if (hint.kind === "bad")
     return hint;
   const endpoint = typeof o.endpoint === "string" && o.endpoint ? o.endpoint : void 0;
+  const api_endpoint = typeof o.api_endpoint === "string" && o.api_endpoint ? o.api_endpoint : void 0;
   const identity_type = o.identity_type === "full" || o.identity_type === "hash" ? o.identity_type : void 0;
   const provenance = o.provenance === "marketplace_url" || o.provenance === "login" || o.provenance === "env_tenant_key" ? o.provenance : void 0;
   return {
@@ -125,6 +128,7 @@ function validate(v) {
       credential: o.credential,
       identity_hint: hint.value,
       ...endpoint !== void 0 ? { endpoint } : {},
+      ...api_endpoint !== void 0 ? { api_endpoint } : {},
       ...identity_type !== void 0 ? { identity_type } : {},
       ...provenance !== void 0 ? { provenance } : {}
     }

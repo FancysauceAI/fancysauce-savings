@@ -66,6 +66,7 @@ Write a per-user JSON file. macOS path (either is read; the system path wins if 
 | `identity_hint.user_email` | recommended | The user's email. This is what the plugin uses to attribute usage. Substitute your MDM's per-user email variable here. |
 | `identity_hint.user_upn` | optional | Set if your directory has a UPN distinct from email. |
 | `endpoint` | optional | Only set if fancysauce gave you a dedicated ingest endpoint. Omit otherwise. |
+| `api_endpoint` | optional | Only set if fancysauce gave you a dedicated API host. Omit otherwise. Ingest and the API run on separate hosts, so this is a separate field — do not put the ingest host here. Must be `https`. It routes two things: the login identity the statusline shows, and the MCP tools. The statusline honours it in either file. The MCP tools need a user-bound credential, so they stay switched off until the user runs `/fancysauce-savings:login`; that login keeps this field. A system-path credential blocks that login, so write `api_endpoint` to the **per-user** file if you need MCP. |
 
 ## Hard requirements (the plugin enforces these)
 

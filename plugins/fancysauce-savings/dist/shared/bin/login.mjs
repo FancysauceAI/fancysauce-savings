@@ -21,7 +21,12 @@ function verifyState(expected, actual) {
 
 // dist/shared/login/loopback.mjs
 import { createServer } from "node:http";
-import { URL } from "node:url";
+import { URL as URL2 } from "node:url";
+
+// dist/shared/plugin-commands.mjs
+var LOGIN_COMMAND = "/fancysauce-savings:login";
+
+// dist/shared/login/loopback.mjs
 var SECURITY_HEADERS = {
   "Referrer-Policy": "no-referrer",
   "Cache-Control": "no-store"
@@ -37,7 +42,7 @@ var SUCCESS_HTML = `<!doctype html>
   <p>You can close this window.</p>
 </body></html>`;
 var ERROR_HTML_400 = `<!doctype html><html><body><h1>Authentication failed</h1>
-  <p>State token did not match. Please re-run /fancysauce:login.</p></body></html>`;
+  <p>State token did not match. Please re-run ${LOGIN_COMMAND}.</p></body></html>`;
 async function startLoopback(opts) {
   let resolve;
   const completion = new Promise((res) => {
@@ -56,7 +61,7 @@ async function startLoopback(opts) {
       res.writeHead(404, { ...SECURITY_HEADERS }).end();
       return;
     }
-    const url = new URL(reqUrl, `http://127.0.0.1`);
+    const url = new URL2(reqUrl, `http://127.0.0.1`);
     const state = url.searchParams.get("state") ?? "";
     const credential = url.searchParams.get("credential") ?? "";
     const intent = url.searchParams.get("backfill_intent") ?? "unspecified";
@@ -205,12 +210,9 @@ async function tryReadOne(path) {
   if (process.platform !== "win32") {
     try {
       const st = await stat(path);
-      if ((st.mode & 63) !== 0) {
-        return {
-          kind: "malformed",
-          reason: `file mode ${(st.mode & 511).toString(8)} too permissive; must be 0600`
-        };
-      }
+      const modeReason = permissiveModeReason(st.mode);
+      if (modeReason !== null)
+        return { kind: "malformed", reason: modeReason };
     } catch (err) {
       return { kind: "malformed", reason: `stat failed: ${err.message}` };
     }
@@ -221,12 +223,17 @@ async function tryReadOne(path) {
   } catch (err) {
     return { kind: "malformed", reason: `JSON parse failed: ${err.message}` };
   }
-  const v = validate(parsed);
+  const v = validateCredentialFile(parsed);
   if (v.kind === "ok")
     return { kind: "ok", cred: v.cred };
   return { kind: "malformed", reason: v.reason };
 }
-function validate(v) {
+function permissiveModeReason(mode) {
+  if ((mode & 63) === 0)
+    return null;
+  return `file mode ${(mode & 511).toString(8)} too permissive; must be 0600`;
+}
+function validateCredentialFile(v) {
   if (typeof v !== "object" || v === null)
     return { kind: "bad", reason: "not an object" };
   const o = v;
@@ -240,6 +247,7 @@ function validate(v) {
   if (hint.kind === "bad")
     return hint;
   const endpoint = typeof o.endpoint === "string" && o.endpoint ? o.endpoint : void 0;
+  const api_endpoint = typeof o.api_endpoint === "string" && o.api_endpoint ? o.api_endpoint : void 0;
   const identity_type = o.identity_type === "full" || o.identity_type === "hash" ? o.identity_type : void 0;
   const provenance = o.provenance === "marketplace_url" || o.provenance === "login" || o.provenance === "env_tenant_key" ? o.provenance : void 0;
   return {
@@ -250,6 +258,7 @@ function validate(v) {
       credential: o.credential,
       identity_hint: hint.value,
       ...endpoint !== void 0 ? { endpoint } : {},
+      ...api_endpoint !== void 0 ? { api_endpoint } : {},
       ...identity_type !== void 0 ? { identity_type } : {},
       ...provenance !== void 0 ? { provenance } : {}
     }
@@ -314,6 +323,14 @@ function credentialPaths() {
     system: "/etc/fancysauce/credentials.json",
     user: posix.join(process.env.HOME ?? homedir(), ".config", "fancysauce", "credentials.json")
   };
+}
+
+// dist/shared/endpoint.mjs
+function isLoopbackHost(hostname) {
+  return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1" || hostname === "[::1]";
+}
+function allowsBearer(url) {
+  return url.protocol === "https:" || isLoopbackHost(url.hostname);
 }
 
 // dist/shared/tenant-key-bootstrap.mjs
@@ -411,6 +428,9 @@ async function runLogin(opts) {
     opts.logger.error(`login failed: ${transferResult.reason}`);
     return { kind: "error", reason: transferResult.reason };
   }
+  const carried = await readUserCredential(systemPath, opts.credentialUserPath);
+  const carriedEndpoint = carryableEndpoint(carried?.endpoint, "endpoint", opts.logger);
+  const carriedApiEndpoint = carryableEndpoint(carried?.api_endpoint, "api_endpoint", opts.logger);
   const loginIdentity = transferResult.identity;
   const hasIdentity = loginIdentity && Object.keys(loginIdentity).length > 0;
   const cred = {
@@ -418,6 +438,9 @@ async function runLogin(opts) {
     issued_at: (/* @__PURE__ */ new Date()).toISOString(),
     credential: transferResult.credential,
     identity_hint: hasIdentity ? { source: "plugin_login", ...loginIdentity } : null,
+    ...carriedEndpoint !== void 0 ? { endpoint: carriedEndpoint } : {},
+    ...carriedApiEndpoint !== void 0 ? { api_endpoint: carriedApiEndpoint } : {},
+    ...carried?.identity_type !== void 0 ? { identity_type: carried.identity_type } : {},
     ...hasIdentity ? { provenance: "login" } : {}
   };
   await writeCredential(opts.credentialUserPath, cred);
@@ -428,6 +451,26 @@ async function runLogin(opts) {
     credential: transferResult.credential,
     backfill_intent: transferResult.backfill_intent
   };
+}
+async function readUserCredential(systemPath, userPath) {
+  const read = await readCredential({ system: systemPath, user: userPath });
+  return read.source === "user" ? read.credential : null;
+}
+function carryableEndpoint(value, field, logger) {
+  if (value === void 0)
+    return void 0;
+  let url;
+  try {
+    url = new URL(value);
+  } catch {
+    logger.warn(`dropping unparseable ${field} from the previous credential file`);
+    return void 0;
+  }
+  if (!allowsBearer(url)) {
+    logger.warn(`dropping non-https ${field} (${url.origin}) from the previous credential file`);
+    return void 0;
+  }
+  return value;
 }
 async function writeIntentMarker(stateDir, intent) {
   if (intent === "accepted") {

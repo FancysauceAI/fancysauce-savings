@@ -1821,12 +1821,9 @@ async function tryReadOne(path) {
   if (process.platform !== "win32") {
     try {
       const st = await stat(path);
-      if ((st.mode & 63) !== 0) {
-        return {
-          kind: "malformed",
-          reason: `file mode ${(st.mode & 511).toString(8)} too permissive; must be 0600`
-        };
-      }
+      const modeReason = permissiveModeReason(st.mode);
+      if (modeReason !== null)
+        return { kind: "malformed", reason: modeReason };
     } catch (err) {
       return { kind: "malformed", reason: `stat failed: ${err.message}` };
     }
@@ -1837,12 +1834,17 @@ async function tryReadOne(path) {
   } catch (err) {
     return { kind: "malformed", reason: `JSON parse failed: ${err.message}` };
   }
-  const v = validate(parsed);
+  const v = validateCredentialFile(parsed);
   if (v.kind === "ok")
     return { kind: "ok", cred: v.cred };
   return { kind: "malformed", reason: v.reason };
 }
-function validate(v) {
+function permissiveModeReason(mode) {
+  if ((mode & 63) === 0)
+    return null;
+  return `file mode ${(mode & 511).toString(8)} too permissive; must be 0600`;
+}
+function validateCredentialFile(v) {
   if (typeof v !== "object" || v === null)
     return { kind: "bad", reason: "not an object" };
   const o = v;
@@ -1856,6 +1858,7 @@ function validate(v) {
   if (hint.kind === "bad")
     return hint;
   const endpoint = typeof o.endpoint === "string" && o.endpoint ? o.endpoint : void 0;
+  const api_endpoint = typeof o.api_endpoint === "string" && o.api_endpoint ? o.api_endpoint : void 0;
   const identity_type = o.identity_type === "full" || o.identity_type === "hash" ? o.identity_type : void 0;
   const provenance = o.provenance === "marketplace_url" || o.provenance === "login" || o.provenance === "env_tenant_key" ? o.provenance : void 0;
   return {
@@ -1866,6 +1869,7 @@ function validate(v) {
       credential: o.credential,
       identity_hint: hint.value,
       ...endpoint !== void 0 ? { endpoint } : {},
+      ...api_endpoint !== void 0 ? { api_endpoint } : {},
       ...identity_type !== void 0 ? { identity_type } : {},
       ...provenance !== void 0 ? { provenance } : {}
     }
@@ -3088,9 +3092,9 @@ function seal(plaintext, key) {
 import { readFileSync } from "node:fs";
 import { join as join8 } from "node:path";
 var BAKED_SERVER_KEY = {
-  keyid: "__BAKED_SERVER_KEYID__",
+  keyid: "env-production-1",
   alg: "RSA-OAEP-256+A256GCM",
-  publicKeyPem: "__BAKED_SERVER_PUBKEY__"
+  publicKeyPem: "-----BEGIN PUBLIC KEY-----\nMIIBojANBgkqhkiG9w0BAQEFAAOCAY8AMIIBigKCAYEA4Dh42p0kvReuiL194qp3\n8j0BSjOmwW9WU9NUUSlBSA1Kn0WPdfMKywsD+DPrlt/KyOKdNLoUXsXrriM212Si\nMgabz4e4pK8ItqgqCg1wPFArY8SEoy8MioMj8iZVz/UPeR3/7Rng8LT50HiaB/kc\nwkBjjLnSU2xYQkKROKMGuTlKDZ4BCpP/uVCFTrZ5BUFEn3r2WyAl3Z6NBjO9hTPB\njKx1AH+CitIZeWVmn39EUwrzUW+LiXbEe1Y+0SXkpTgdqvVMzMjytlEp5Ojisvs1\n/GqoHRoN/NcESILK2s4Rabe3PTquCmZItYbw2sBpFe/6xhHPn/LA2TVjEjx5d+GJ\ndxQnhUWlNPInWul8TCePBAhz6MGThrcVWj6b+V3K4CrjetFIlvF7R2dk/SlWLCUZ\nozfDPZnQfvSZInVSrSRiCqA3OXArmptmFzeZii1RDQsJnNA+Vc2lTvuf2ScepvgG\nWJPZewNj7dknrCLAyj79ZZrQH31cIjgPt3XpT7SHnkaLAgMBAAE=\n-----END PUBLIC KEY-----\n"
 };
 var CACHE_FILE = "server-key.json";
 var DEFAULT_TTL_MS = 24 * 60 * 60 * 1e3;

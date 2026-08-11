@@ -2,6 +2,51 @@
 
 All public releases of `fancysauce-savings`. Most recent first.
 
+## v0.15.0 — 2026-08-10
+
+### Features
+
+- The plugin now registers a fancysauce MCP server, so an agent can read your
+  own usage and set attributions without leaving Claude Code. Once you run
+  `/fancysauce-savings:login` the tools appear: list and inspect your sessions
+  with their tokens and estimated cost, read your workspace's attribution
+  vocabulary, add a category or a value, attribute a session or name it, and
+  read cost grouped by attribution value. Registration is a local stdio proxy
+  rather than a remote server declaration, because Claude Code expands only
+  environment variables into a remote server's headers and the credential
+  lives in a file. Logged out, the server is quiet rather than broken: it
+  answers with an empty tool list and a message telling you to log in, then
+  announces the tools the moment a login lands — no restart. Which tools you
+  see depends on your workspace's configuration, so a workspace with
+  attribution switched off serves fewer of them.
+- The statusline now tells you who fancysauce thinks you are. It greets you by
+  name when the credential is yours, warns when the key names somebody else,
+  and says so plainly when it names nobody. The answer is cached per
+  credential and refreshed in the background, so the line never blocks on the
+  network. A one-time notice at session start names the key type, its scope,
+  and the person your telemetry lands on, so a misattributed seat is visible
+  rather than silent.
+- Fancy, a two-row mascot, leads the statusline. The face smiles by default,
+  turns worried at 80% of your five-hour usage, and turns angry at 100%. It
+  changes only when usage crosses a threshold, never on its own, because a
+  face that animated repainted the line about once a second.
+- The model segment shows the name alone. `Opus 5 (1M context)` renders as
+  `Opus 5` — the trailing clause was the longest part of the name and the
+  context segment beside it already answers that question.
+
+### Notes
+
+- An MDM deployment can now point the API at a dedicated host with a new
+  `api_endpoint` field in the credential file. It is separate from `endpoint`,
+  which names the ingest host: ingest and the API run on different hostnames.
+  It routes both the login identity the statusline shows and the MCP tools.
+  Write it to the per-user file if you need MCP, because a system-path
+  credential blocks the login the tools require.
+- The MCP tools need the fancysauce API to be running a build that serves
+  them. A plugin from this release talks to whatever the API currently
+  exposes, so the tool list reflects the deployed API rather than the plugin
+  version.
+
 ## v0.14.0 — 2026-08-06
 
 ### Features

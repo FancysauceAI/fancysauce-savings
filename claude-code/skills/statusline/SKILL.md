@@ -322,6 +322,13 @@ If yes, give them the legend below. If no, stop.
 
 The parent statusline (from left to right):
 
+- **Fancy** — a two-row ASCII robot at the head of the line. Smiles by
+  default, turns worried at 80% 5-hour usage and angry at 100%. The face
+  never animates: CC re-renders the line about once a second, so a face
+  that changed on its own repainted the line constantly, which reads as
+  the whole status line blinking. It changes only when usage crosses a
+  threshold. This is the only segment that occupies a second row; the
+  line is never more than two rows tall.
 - **Model** — the running model's `display_name`, with `claude-` prefix stripped, truncated to 18 chars.
 - **ctx** — current context-window usage as a percentage + 10-cell bar. Colors at 50% / 80% thresholds.
 - **cache** — prompt-cache TTL remaining (or `expired`). Green/yellow/red by remaining seconds.
@@ -349,11 +356,11 @@ To edit, write the relevant `status_line` block:
 {
   "status_line": {
     "segments": {
-      "model": true, "ctx": true, "cache": true,
-      "usage": true, "tokens": true
+      "mascot": true, "model": true, "context_bar": true,
+      "cache_expiry": true, "usage": true, "io_tokens": true
     },
     "thresholds": {
-      "tokens": { "warn": 50, "danger": 80 }
+      "usage_warn": 50, "usage_crit": 80
     }
   }
 }
