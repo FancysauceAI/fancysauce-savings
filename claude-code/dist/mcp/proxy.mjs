@@ -170,12 +170,115 @@ function endpointUrl(endpoint, route) {
   return new URL(route, base);
 }
 
+// dist/mcp/breaker.mjs
+import { mkdir as mkdir2, readFile as readFile2, rename as rename2, writeFile } from "node:fs/promises";
+import { randomBytes } from "node:crypto";
+import { dirname, join as join2 } from "node:path";
+
+// dist/shared/hash.mjs
+import { createHash, createHmac } from "node:crypto";
+function sha256Hex(input) {
+  return createHash("sha256").update(input, "utf8").digest("hex");
+}
+
+// dist/mcp/breaker.mjs
+var TRIP_AFTER_FAILURES = 3;
+var TRIP_SCHEDULE_MS = [60 * 60 * 1e3, 6 * 60 * 60 * 1e3, 24 * 60 * 60 * 1e3];
+var DEFAULT = { consecutiveAuthFailures: 0 };
+var McpBreaker = class {
+  dir;
+  path;
+  tmpPath;
+  /** Takes the *user* credential path. The system path (/etc) is not writable,
+   *  and the trip is per-machine-user either way. */
+  constructor(userCredentialPath) {
+    this.dir = dirname(userCredentialPath);
+    this.path = join2(this.dir, "mcp-breaker.json");
+    this.tmpPath = `${this.path}.${process.pid}.${randomBytes(4).toString("hex")}.tmp`;
+  }
+  /** Reads the trip state for `credential`, resetting it first if the
+   *  credential has changed since the counters were written. */
+  async load(credential) {
+    const hash = sha256Hex(credential);
+    const f = await this.loadFile();
+    if (f.credentialHash !== hash) {
+      await this.mutate((next) => {
+        next.credentialHash = hash;
+        next.consecutiveAuthFailures = 0;
+        next.nextRetryAt = void 0;
+        next.lastRejection = void 0;
+      });
+      return { blocked: false, message: null, needsClear: false };
+    }
+    if (f.nextRetryAt !== void 0 && f.nextRetryAt > Date.now()) {
+      return { blocked: true, message: f.lastRejection ?? null, needsClear: false };
+    }
+    return {
+      blocked: false,
+      message: f.lastRejection ?? null,
+      needsClear: f.consecutiveAuthFailures > 0 || f.nextRetryAt !== void 0
+    };
+  }
+  async recordRejection(credential, message) {
+    const hash = sha256Hex(credential);
+    await this.mutate((next) => {
+      if (next.credentialHash !== hash) {
+        next.credentialHash = hash;
+        next.consecutiveAuthFailures = 0;
+      }
+      next.consecutiveAuthFailures++;
+      if (message !== null)
+        next.lastRejection = message;
+      const over = next.consecutiveAuthFailures - TRIP_AFTER_FAILURES;
+      if (over < 0)
+        return;
+      const delay = TRIP_SCHEDULE_MS[Math.min(over, TRIP_SCHEDULE_MS.length - 1)];
+      next.nextRetryAt = Date.now() + delay;
+    });
+  }
+  async recordSuccess(credential) {
+    const hash = sha256Hex(credential);
+    await this.mutate((next) => {
+      next.credentialHash = hash;
+      next.consecutiveAuthFailures = 0;
+      next.nextRetryAt = void 0;
+      next.lastRejection = void 0;
+    });
+  }
+  // Deliberately unlocked. Parallel panes can interleave a read-modify-write
+  // and lose one increment, which costs a single extra rejected request before
+  // the trip — not worth a cross-process mutex, and proper-lockfile would put a
+  // third-party import on the proxy's per-frame path. Writes stay atomic
+  // (unique temp file, then rename), so a reader never sees a torn file.
+  async mutate(fn) {
+    const f = await this.loadFile();
+    fn(f);
+    await this.save(f);
+  }
+  async loadFile() {
+    try {
+      const raw = await readFile2(this.path, "utf8");
+      const parsed = JSON.parse(raw);
+      return { ...DEFAULT, ...parsed };
+    } catch {
+      return { ...DEFAULT };
+    }
+  }
+  async save(f) {
+    await mkdir2(this.dir, { recursive: true, mode: 448 });
+    await writeFile(this.tmpPath, JSON.stringify(f), { encoding: "utf8", mode: 384 });
+    await rename2(this.tmpPath, this.path);
+  }
+};
+
 // dist/mcp/proxy.mjs
 var PROTOCOL_VERSION = "2025-06-18";
 var REQUEST_TIMEOUT_MS = 15e3;
 var MAX_RESPONSE_BYTES = 1e6;
 var LOGIN_POLL_INTERVAL_MS = 3e3;
 var LOGGED_OUT_MESSAGE = "Not logged in \u2014 run /fancysauce-savings:login";
+var REJECTED_MESSAGE = "The fancysauce MCP server refused this credential \u2014 ask your workspace admin to enable it";
+var NO_TRIP = { blocked: false, message: null, needsClear: false };
 var SERVER_INFO = { name: "fancysauce", version: "0.0.0" };
 async function resolveProxyCredential(paths = credentialPaths()) {
   const read = await readCredential(paths);
@@ -195,11 +298,17 @@ async function handleFrame(line, opts = {}) {
     return serialize(errorResponse(null, -32700, "parse error"));
   const id = frameId(frame);
   const wantsReply = id !== null && typeof frame.method === "string";
-  const cred = await resolveProxyCredential(opts.paths ?? credentialPaths());
+  const paths = opts.paths ?? credentialPaths();
+  const cred = await resolveProxyCredential(paths);
   opts.onCredential?.(cred);
   if (cred.kind === "logged-out")
-    return loggedOutReply(frame, id, wantsReply);
-  return await forward(
+    return localReply(frame, id, wantsReply, LOGGED_OUT_MESSAGE);
+  const breaker = new McpBreaker(paths.user);
+  const trip = await breaker.load(cred.credential).catch(() => NO_TRIP);
+  if (trip.blocked) {
+    return localReply(frame, id, wantsReply, trip.message ?? REJECTED_MESSAGE);
+  }
+  const { payload, auth } = await forward(
     line,
     id,
     wantsReply,
@@ -209,6 +318,14 @@ async function handleFrame(line, opts = {}) {
     cred.endpoint ?? opts.endpointOverride ?? API_ENDPOINT,
     opts.timeoutMs ?? REQUEST_TIMEOUT_MS
   );
+  if (auth.kind === "rejected" && frame.method !== "tools/call") {
+    await breaker.recordRejection(cred.credential, auth.message).catch(() => {
+    });
+  } else if (auth.kind === "ok" && trip.needsClear) {
+    await breaker.recordSuccess(cred.credential).catch(() => {
+    });
+  }
+  return payload;
 }
 async function runProxy(opts = {}) {
   const input = opts.input ?? process.stdin;
@@ -288,15 +405,18 @@ function createLoginAnnouncer(output, paths, pollIntervalMs) {
     stop
   };
 }
+function indeterminate(payload) {
+  return { payload, auth: { kind: "indeterminate" } };
+}
 async function forward(line, id, wantsReply, credential, endpoint, timeoutMs) {
   let url;
   try {
     url = endpointUrl(endpoint, "mcp");
   } catch (err) {
-    return failure(wantsReply, id, "invalid MCP endpoint", err.message);
+    return indeterminate(failure(wantsReply, id, "invalid MCP endpoint", err.message));
   }
   if (!allowsBearer(url)) {
-    return failure(wantsReply, id, "refusing non-https MCP endpoint", url.origin);
+    return indeterminate(failure(wantsReply, id, "refusing non-https MCP endpoint", url.origin));
   }
   let res;
   try {
@@ -315,18 +435,22 @@ async function forward(line, id, wantsReply, credential, endpoint, timeoutMs) {
       signal: AbortSignal.timeout(timeoutMs)
     });
   } catch (err) {
-    return failure(wantsReply, id, "MCP request failed", err.message);
+    return indeterminate(failure(wantsReply, id, "MCP request failed", err.message));
   }
   let body;
   try {
     body = await readBoundedText(res);
   } catch (err) {
-    return failure(wantsReply, id, "MCP response read failed", err.message);
+    return indeterminate(failure(wantsReply, id, "MCP response read failed", err.message));
   }
+  const auth = classifyAuth(res, body);
   if (!wantsReply)
-    return null;
+    return { payload: null, auth };
   if (body.kind === "too-large") {
-    return reply(true, id, -32e3, `MCP response exceeded ${MAX_RESPONSE_BYTES} bytes`);
+    return {
+      payload: reply(true, id, -32e3, `MCP response exceeded ${MAX_RESPONSE_BYTES} bytes`),
+      auth
+    };
   }
   const text = body.text.trim();
   const isSse = res.headers.get("content-type")?.includes("text/event-stream") ?? false;
@@ -337,9 +461,23 @@ async function forward(line, id, wantsReply, credential, endpoint, timeoutMs) {
       frames.push(serialize(withRequestId(parsed, id)));
   }
   if (frames.length === 0) {
-    return reply(true, id, -32e3, `MCP request failed (http ${res.status})`);
+    return { payload: reply(true, id, -32e3, `MCP request failed (http ${res.status})`), auth };
   }
-  return frames.join("\n");
+  return { payload: frames.join("\n"), auth };
+}
+function classifyAuth(res, body) {
+  if (res.status === 401 || res.status === 403) {
+    return { kind: "rejected", message: body.kind === "ok" ? rejectionMessage(body.text) : null };
+  }
+  return res.ok ? { kind: "ok" } : { kind: "indeterminate" };
+}
+function rejectionMessage(text) {
+  const parsed = parseJsonObject(text.trim());
+  const error = parsed?.error;
+  if (typeof error !== "object" || error === null)
+    return null;
+  const message = error.message;
+  return typeof message === "string" && message.length > 0 ? message : null;
 }
 function withRequestId(frame, id) {
   if (id === null)
@@ -350,7 +488,7 @@ function withRequestId(frame, id) {
     return frame;
   return { ...frame, id };
 }
-function loggedOutReply(frame, id, wantsReply) {
+function localReply(frame, id, wantsReply, message) {
   if (!wantsReply)
     return null;
   switch (frame.method) {
@@ -373,7 +511,7 @@ function loggedOutReply(frame, id, wantsReply) {
     case "ping":
       return serialize({ jsonrpc: "2.0", id, result: {} });
     case "tools/call":
-      return serialize(errorResponse(id, -32e3, LOGGED_OUT_MESSAGE));
+      return serialize(errorResponse(id, -32e3, message));
     default:
       return serialize(errorResponse(id, -32601, `method not found: ${String(frame.method)}`));
   }

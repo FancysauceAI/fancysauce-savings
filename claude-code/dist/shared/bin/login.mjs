@@ -483,6 +483,32 @@ async function writeIntentMarker(stateDir, intent) {
 // dist/shared/bin/login.mjs
 import { dirname as dirname2 } from "node:path";
 import { mkdir as mkdir2 } from "node:fs/promises";
+
+// dist/shared/is-main-module.mjs
+import { fileURLToPath } from "node:url";
+import { posix as posix2, win32 as win322 } from "node:path";
+import { realpathSync } from "node:fs";
+function isMainModule(importMetaUrl, argv1, platform = process.platform) {
+  if (typeof argv1 !== "string" || argv1.length === 0)
+    return false;
+  const windows = platform === "win32";
+  try {
+    const modulePath = real(fileURLToPath(importMetaUrl, { windows }));
+    const scriptPath = real((windows ? win322 : posix2).resolve(argv1));
+    return windows ? modulePath.toLowerCase() === scriptPath.toLowerCase() : modulePath === scriptPath;
+  } catch {
+    return false;
+  }
+}
+function real(p) {
+  try {
+    return realpathSync(p);
+  } catch {
+    return p;
+  }
+}
+
+// dist/shared/bin/login.mjs
 async function main(opts = {}) {
   const _runLogin = opts.runLogin ?? runLogin;
   const paths = credentialPaths();
@@ -507,7 +533,7 @@ async function main(opts = {}) {
     return 2;
   return 1;
 }
-var isMain = import.meta.url === `file://${process.argv[1]}`;
+var isMain = isMainModule(import.meta.url, process.argv[1]);
 if (isMain) {
   void main().then((code) => process.exit(code));
 }

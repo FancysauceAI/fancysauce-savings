@@ -233,6 +233,30 @@ function parseCredentialPathsEnv() {
   };
 }
 
+// dist/shared/is-main-module.mjs
+import { fileURLToPath } from "node:url";
+import { posix as posix2, win32 as win322 } from "node:path";
+import { realpathSync } from "node:fs";
+function isMainModule(importMetaUrl, argv1, platform = process.platform) {
+  if (typeof argv1 !== "string" || argv1.length === 0)
+    return false;
+  const windows = platform === "win32";
+  try {
+    const modulePath = real(fileURLToPath(importMetaUrl, { windows }));
+    const scriptPath = real((windows ? win322 : posix2).resolve(argv1));
+    return windows ? modulePath.toLowerCase() === scriptPath.toLowerCase() : modulePath === scriptPath;
+  } catch {
+    return false;
+  }
+}
+function real(p) {
+  try {
+    return realpathSync(p);
+  } catch {
+    return p;
+  }
+}
+
 // dist/shared/bin/bootstrap-credential.mjs
 async function main(argv = process.argv.slice(2), now = () => (/* @__PURE__ */ new Date()).toISOString()) {
   const tenantKey = process.env.FANCYSAUCE_TENANT_KEY ?? "";
@@ -264,7 +288,7 @@ async function main(argv = process.argv.slice(2), now = () => (/* @__PURE__ */ n
   }
   return 0;
 }
-var isMain = import.meta.url === `file://${process.argv[1]}`;
+var isMain = isMainModule(import.meta.url, process.argv[1]);
 if (isMain) {
   void main().then((code) => process.exit(code));
 }

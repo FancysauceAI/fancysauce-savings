@@ -2,7 +2,7 @@
 description: Sign in to fancysauce and write a credential to disk
 ---
 
-Run `${CLAUDE_PLUGIN_ROOT}/dist/shared/bin/login.mjs` via the Bash tool. The binary takes no arguments.
+Run `node "${CLAUDE_PLUGIN_ROOT}/dist/shared/bin/login.mjs"` via the Bash tool, or PowerShell where that is the registered shell. The binary takes no arguments.
 
 If the `FANCYSAUCE_TENANT_KEY` environment variable is set to a tenant-scoped
 key (`fs_live_t_…`), the binary skips the browser entirely and writes the

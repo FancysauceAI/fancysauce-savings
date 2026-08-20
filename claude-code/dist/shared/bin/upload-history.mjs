@@ -179,9 +179,9 @@ var init_runner_spawn = __esm({
   }
 });
 
-// node_modules/graceful-fs/polyfills.js
+// ../../node_modules/graceful-fs/polyfills.js
 var require_polyfills = __commonJS({
-  "node_modules/graceful-fs/polyfills.js"(exports, module) {
+  "../../node_modules/graceful-fs/polyfills.js"(exports, module) {
     var constants3 = __require("constants");
     var origCwd = process.cwd;
     var cwd = null;
@@ -467,9 +467,9 @@ var require_polyfills = __commonJS({
   }
 });
 
-// node_modules/graceful-fs/legacy-streams.js
+// ../../node_modules/graceful-fs/legacy-streams.js
 var require_legacy_streams = __commonJS({
-  "node_modules/graceful-fs/legacy-streams.js"(exports, module) {
+  "../../node_modules/graceful-fs/legacy-streams.js"(exports, module) {
     var Stream = __require("stream").Stream;
     module.exports = legacy;
     function legacy(fs) {
@@ -563,9 +563,9 @@ var require_legacy_streams = __commonJS({
   }
 });
 
-// node_modules/graceful-fs/clone.js
+// ../../node_modules/graceful-fs/clone.js
 var require_clone = __commonJS({
-  "node_modules/graceful-fs/clone.js"(exports, module) {
+  "../../node_modules/graceful-fs/clone.js"(exports, module) {
     "use strict";
     module.exports = clone;
     var getPrototypeOf = Object.getPrototypeOf || function(obj) {
@@ -586,9 +586,9 @@ var require_clone = __commonJS({
   }
 });
 
-// node_modules/graceful-fs/graceful-fs.js
+// ../../node_modules/graceful-fs/graceful-fs.js
 var require_graceful_fs = __commonJS({
-  "node_modules/graceful-fs/graceful-fs.js"(exports, module) {
+  "../../node_modules/graceful-fs/graceful-fs.js"(exports, module) {
     var fs = __require("fs");
     var polyfills = require_polyfills();
     var legacy = require_legacy_streams();
@@ -956,9 +956,9 @@ var require_graceful_fs = __commonJS({
   }
 });
 
-// node_modules/retry/lib/retry_operation.js
+// ../../node_modules/retry/lib/retry_operation.js
 var require_retry_operation = __commonJS({
-  "node_modules/retry/lib/retry_operation.js"(exports, module) {
+  "../../node_modules/retry/lib/retry_operation.js"(exports, module) {
     function RetryOperation(timeouts, options) {
       if (typeof options === "boolean") {
         options = { forever: options };
@@ -1087,9 +1087,9 @@ var require_retry_operation = __commonJS({
   }
 });
 
-// node_modules/retry/lib/retry.js
+// ../../node_modules/retry/lib/retry.js
 var require_retry = __commonJS({
-  "node_modules/retry/lib/retry.js"(exports) {
+  "../../node_modules/retry/lib/retry.js"(exports) {
     var RetryOperation = require_retry_operation();
     exports.operation = function(options) {
       var timeouts = exports.timeouts(options);
@@ -1173,16 +1173,16 @@ var require_retry = __commonJS({
   }
 });
 
-// node_modules/retry/index.js
+// ../../node_modules/retry/index.js
 var require_retry2 = __commonJS({
-  "node_modules/retry/index.js"(exports, module) {
+  "../../node_modules/retry/index.js"(exports, module) {
     module.exports = require_retry();
   }
 });
 
-// node_modules/proper-lockfile/node_modules/signal-exit/signals.js
+// ../../node_modules/proper-lockfile/node_modules/signal-exit/signals.js
 var require_signals = __commonJS({
-  "node_modules/proper-lockfile/node_modules/signal-exit/signals.js"(exports, module) {
+  "../../node_modules/proper-lockfile/node_modules/signal-exit/signals.js"(exports, module) {
     module.exports = [
       "SIGABRT",
       "SIGALRM",
@@ -1217,9 +1217,9 @@ var require_signals = __commonJS({
   }
 });
 
-// node_modules/proper-lockfile/node_modules/signal-exit/index.js
+// ../../node_modules/proper-lockfile/node_modules/signal-exit/index.js
 var require_signal_exit = __commonJS({
-  "node_modules/proper-lockfile/node_modules/signal-exit/index.js"(exports, module) {
+  "../../node_modules/proper-lockfile/node_modules/signal-exit/index.js"(exports, module) {
     var process2 = global.process;
     var processOk = function(process3) {
       return process3 && typeof process3 === "object" && typeof process3.removeListener === "function" && typeof process3.emit === "function" && typeof process3.reallyExit === "function" && typeof process3.listeners === "function" && typeof process3.kill === "function" && typeof process3.pid === "number" && typeof process3.on === "function";
@@ -1376,9 +1376,9 @@ var require_signal_exit = __commonJS({
   }
 });
 
-// node_modules/proper-lockfile/lib/mtime-precision.js
+// ../../node_modules/proper-lockfile/lib/mtime-precision.js
 var require_mtime_precision = __commonJS({
-  "node_modules/proper-lockfile/lib/mtime-precision.js"(exports, module) {
+  "../../node_modules/proper-lockfile/lib/mtime-precision.js"(exports, module) {
     "use strict";
     var cacheSymbol = /* @__PURE__ */ Symbol();
     function probe(file, fs, callback) {
@@ -1418,9 +1418,9 @@ var require_mtime_precision = __commonJS({
   }
 });
 
-// node_modules/proper-lockfile/lib/lockfile.js
+// ../../node_modules/proper-lockfile/lib/lockfile.js
 var require_lockfile = __commonJS({
-  "node_modules/proper-lockfile/lib/lockfile.js"(exports, module) {
+  "../../node_modules/proper-lockfile/lib/lockfile.js"(exports, module) {
     "use strict";
     var path = __require("path");
     var fs = require_graceful_fs();
@@ -1655,9 +1655,9 @@ var require_lockfile = __commonJS({
   }
 });
 
-// node_modules/proper-lockfile/lib/adapter.js
+// ../../node_modules/proper-lockfile/lib/adapter.js
 var require_adapter = __commonJS({
-  "node_modules/proper-lockfile/lib/adapter.js"(exports, module) {
+  "../../node_modules/proper-lockfile/lib/adapter.js"(exports, module) {
     "use strict";
     var fs = require_graceful_fs();
     function createSyncFs(fs2) {
@@ -1720,9 +1720,9 @@ var require_adapter = __commonJS({
   }
 });
 
-// node_modules/proper-lockfile/index.js
+// ../../node_modules/proper-lockfile/index.js
 var require_proper_lockfile = __commonJS({
-  "node_modules/proper-lockfile/index.js"(exports, module) {
+  "../../node_modules/proper-lockfile/index.js"(exports, module) {
     "use strict";
     var lockfile5 = require_lockfile();
     var { toPromise, toSync, toSyncOptions } = require_adapter();
@@ -3243,6 +3243,13 @@ var DEFAULT_TTL_MS = 24 * 60 * 60 * 1e3;
 
 // dist/shared/identity-cache.mjs
 var DEFAULT_TTL_MS2 = 12 * 60 * 60 * 1e3;
+var CACHED_IDENTITY_SOURCES = [
+  "native_claude",
+  "native_codex",
+  "dscl",
+  "whoami_upn"
+];
+var CACHED_SOURCE_SET = new Set(CACHED_IDENTITY_SOURCES);
 
 // dist/shared/health.mjs
 var import_proper_lockfile3 = __toESM(require_proper_lockfile(), 1);
@@ -3582,6 +3589,30 @@ async function scanThenDrain(args) {
   return spawnRunner(args);
 }
 
+// dist/shared/is-main-module.mjs
+import { fileURLToPath as fileURLToPath3 } from "node:url";
+import { posix as posix2, win32 as win322 } from "node:path";
+import { realpathSync } from "node:fs";
+function isMainModule(importMetaUrl, argv1, platform = process.platform) {
+  if (typeof argv1 !== "string" || argv1.length === 0)
+    return false;
+  const windows = platform === "win32";
+  try {
+    const modulePath = real(fileURLToPath3(importMetaUrl, { windows }));
+    const scriptPath = real((windows ? win322 : posix2).resolve(argv1));
+    return windows ? modulePath.toLowerCase() === scriptPath.toLowerCase() : modulePath === scriptPath;
+  } catch {
+    return false;
+  }
+}
+function real(p) {
+  try {
+    return realpathSync(p);
+  } catch {
+    return p;
+  }
+}
+
 // dist/shared/bin/upload-history.mjs
 async function main(opts) {
   const argv = opts.argv;
@@ -3642,7 +3673,7 @@ async function writeSkipMarker(stateDir, out) {
 `);
   return 0;
 }
-var isMain = import.meta.url === `file://${process.argv[1]}`;
+var isMain = isMainModule(import.meta.url, process.argv[1]);
 if (isMain) {
   void main({ argv: process.argv.slice(2) }).then((code) => process.exit(code));
 }

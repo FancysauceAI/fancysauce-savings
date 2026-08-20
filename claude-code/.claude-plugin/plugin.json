@@ -1,6 +1,6 @@
 {
   "name": "fancysauce-savings",
-  "version": "0.15.0",
+  "version": "0.16.0",
   "description": "Cost and usage observability for Claude Code",
   "author": {
     "name": "FancysauceAI"
@@ -20,7 +20,10 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node ${CLAUDE_PLUGIN_ROOT}/dist/agents/claude-code/collect.mjs"
+            "command": "node",
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/dist/agents/claude-code/collect.mjs"
+            ]
           }
         ]
       }
@@ -31,7 +34,10 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node ${CLAUDE_PLUGIN_ROOT}/dist/agents/claude-code/collect.mjs"
+            "command": "node",
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/dist/agents/claude-code/collect.mjs"
+            ]
           }
         ]
       }
@@ -42,7 +48,10 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node ${CLAUDE_PLUGIN_ROOT}/dist/agents/claude-code/collect.mjs"
+            "command": "node",
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/dist/agents/claude-code/collect.mjs"
+            ]
           }
         ]
       }
@@ -53,7 +62,10 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node ${CLAUDE_PLUGIN_ROOT}/dist/agents/claude-code/collect.mjs"
+            "command": "node",
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/dist/agents/claude-code/collect.mjs"
+            ]
           }
         ]
       }
@@ -64,7 +76,10 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node ${CLAUDE_PLUGIN_ROOT}/dist/agents/claude-code/collect.mjs"
+            "command": "node",
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/dist/agents/claude-code/collect.mjs"
+            ]
           }
         ]
       }
@@ -75,7 +90,10 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node ${CLAUDE_PLUGIN_ROOT}/dist/agents/claude-code/collect.mjs"
+            "command": "node",
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/dist/agents/claude-code/collect.mjs"
+            ]
           }
         ]
       }
@@ -86,7 +104,10 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node ${CLAUDE_PLUGIN_ROOT}/dist/agents/claude-code/collect.mjs"
+            "command": "node",
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/dist/agents/claude-code/collect.mjs"
+            ]
           }
         ]
       }
@@ -97,7 +118,10 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node ${CLAUDE_PLUGIN_ROOT}/dist/agents/claude-code/collect.mjs"
+            "command": "node",
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/dist/agents/claude-code/collect.mjs"
+            ]
           }
         ]
       }
@@ -108,7 +132,10 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node ${CLAUDE_PLUGIN_ROOT}/dist/agents/claude-code/collect.mjs"
+            "command": "node",
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/dist/agents/claude-code/collect.mjs"
+            ]
           }
         ]
       }
@@ -119,7 +146,10 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node ${CLAUDE_PLUGIN_ROOT}/dist/agents/claude-code/collect.mjs"
+            "command": "node",
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/dist/agents/claude-code/collect.mjs"
+            ]
           }
         ]
       }
@@ -130,7 +160,10 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node ${CLAUDE_PLUGIN_ROOT}/dist/agents/claude-code/collect.mjs"
+            "command": "node",
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/dist/agents/claude-code/collect.mjs"
+            ]
           }
         ]
       }
@@ -141,7 +174,10 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node ${CLAUDE_PLUGIN_ROOT}/dist/agents/claude-code/collect.mjs"
+            "command": "node",
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/dist/agents/claude-code/collect.mjs"
+            ]
           }
         ]
       }
@@ -152,7 +188,10 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node ${CLAUDE_PLUGIN_ROOT}/dist/agents/claude-code/collect.mjs"
+            "command": "node",
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/dist/agents/claude-code/collect.mjs"
+            ]
           }
         ]
       }
@@ -163,7 +202,10 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node ${CLAUDE_PLUGIN_ROOT}/dist/agents/claude-code/collect.mjs"
+            "command": "node",
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/dist/agents/claude-code/collect.mjs"
+            ]
           }
         ]
       }
@@ -174,7 +216,10 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node ${CLAUDE_PLUGIN_ROOT}/dist/agents/claude-code/collect.mjs"
+            "command": "node",
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/dist/agents/claude-code/collect.mjs"
+            ]
           }
         ]
       }

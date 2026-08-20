@@ -2,6 +2,29 @@
 
 All public releases of `fancysauce-savings`. Most recent first.
 
+## v0.16.0 — 2026-08-20
+
+### Features
+
+- feat(mdm): start a cut-over Mac from now when a plugin install already reported its history (FAN-656) (#123)
+- feat(mdm): one wrapper for Codex and Claude Code, plus the Claude Code managed-hooks arm (FAN-644) (#115)
+- feat(identity): emit the secure envelope on personal keys (FAN-461) (#98)
+
+### Fixes
+
+- fix(publish): refuse to publish bundles the server key was never baked into (#120)
+- fix(windows): make the collector run at all on Windows and through symlinks (#124)
+- fix(mdm): stop reporting an absent assigned-user email as an illegal one (FAN-613) (#111)
+- fix(identity): old-git fallback for the git tier; drop the per-cwd git_config cache (#101)
+- fix(mdm): stop root traversing the user's home, and make $EMAIL inert (FAN-558) (#107)
+- fix(mcp): stop re-sending a request the remote already refused (#104)
+- fix(test): isolate reset.test.mts from the real credential path (FAN-401) (#96)
+
+### Documentation
+
+- docs(mdm): plan the dual-tool wrapper and the Claude Code managed-hooks arm (FAN-644) (#114)
+- docs: plan the removal of the tenant-key envelope gate (FAN-461) (#97)
+
 ## v0.15.0 — 2026-08-10
 
 ### Features

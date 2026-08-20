@@ -437,8 +437,32 @@ function errorForStatus(status) {
   return "server";
 }
 
+// dist/shared/is-main-module.mjs
+import { fileURLToPath } from "node:url";
+import { posix as posix3, win32 as win323 } from "node:path";
+import { realpathSync } from "node:fs";
+function isMainModule(importMetaUrl, argv1, platform = process.platform) {
+  if (typeof argv1 !== "string" || argv1.length === 0)
+    return false;
+  const windows = platform === "win32";
+  try {
+    const modulePath = real(fileURLToPath(importMetaUrl, { windows }));
+    const scriptPath = real((windows ? win323 : posix3).resolve(argv1));
+    return windows ? modulePath.toLowerCase() === scriptPath.toLowerCase() : modulePath === scriptPath;
+  } catch {
+    return false;
+  }
+}
+function real(p) {
+  try {
+    return realpathSync(p);
+  } catch {
+    return p;
+  }
+}
+
 // dist/shared/bin/whoami-refresh.mjs
-var isMain = import.meta.url === `file://${process.argv[1]}`;
+var isMain = isMainModule(import.meta.url, process.argv[1]);
 if (isMain) {
   void runWhoamiRefresh().then(() => process.exit(0)).catch(() => process.exit(1));
 }

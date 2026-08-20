@@ -6,13 +6,13 @@ Five artifacts land on each managed Mac — three for Claude Code, two system-wi
 
 | Artifact | Path | Scope | Purpose |
 |---|---|---|---|
-| `managed-settings.json` | `/Library/Application Support/ClaudeCode/managed-settings.json` | System-wide | Registers the fancysauce marketplace and enables the plugin for every Claude Code user on the machine. Identical across all tenants — contains no secrets. |
+| `managed-settings.json` | `/Library/Application Support/ClaudeCode/managed-settings.json` | System-wide | Registers the fancysauce marketplace and enables the plugin for every Claude Code user on the machine. Identical across all tenants — contains no secrets. Jamf deploys the **plugin** arm; the managed-hooks arm described in [`../README.md`](../README.md) ships on Kandji only today. |
 | `ai.fancysauce.identity` config profile | managed-preferences domain | Per-user | Carries the user's directory email/UPN. **This is the only artifact where Jamf substitutes `$EMAIL`.** |
 | `credentials.json` | `~/.config/fancysauce/credentials.json` | Per-user | Carries the tenant API key and the user's email so the plugin can tag usage events. Materialized at each user login by a LaunchAgent that reads the identity profile above. |
 | `requirements.toml` | `/etc/codex/requirements.toml` | System-wide | Enforces the fancysauce telemetry hook for every Codex lifecycle event. Enforced hooks are **auto-trusted** — no user prompt, telemetry runs zero-step. Shipped verbatim from `../codex/`. |
 | `fancysauce.sh` | `/etc/codex/hooks/fancysauce.sh` | System-wide | The Codex hook wrapper `requirements.toml` invokes. Fail-open (never breaks a session); fetches the pinned plugin release into `~/.cache/fancysauce/codex/` and runs telemetry from there. Shipped verbatim from `../codex/`. |
 
-The plugin (`fancysauce-savings`) is fetched from the public GitHub dist repo `FancysauceAI/fancysauce-savings` on first use; it is not bundled in this package.
+The plugin (`fancysauce-savings`) comes from the public GitHub dist repo `FancysauceAI/fancysauce-savings`; it is not bundled in this package. Managed settings register the marketplace and enable the plugin, but do not install it — each user runs `claude plugin install fancysauce-savings@fancysauce` once. See [`../README.md`](../README.md) for the install-free managed-hooks alternative.
 
 ### Why three artifacts (read this — it's the whole design)
 

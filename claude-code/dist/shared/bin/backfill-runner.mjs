@@ -32,9 +32,9 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
   mod
 ));
 
-// node_modules/graceful-fs/polyfills.js
+// ../../node_modules/graceful-fs/polyfills.js
 var require_polyfills = __commonJS({
-  "node_modules/graceful-fs/polyfills.js"(exports, module) {
+  "../../node_modules/graceful-fs/polyfills.js"(exports, module) {
     var constants2 = __require("constants");
     var origCwd = process.cwd;
     var cwd = null;
@@ -320,9 +320,9 @@ var require_polyfills = __commonJS({
   }
 });
 
-// node_modules/graceful-fs/legacy-streams.js
+// ../../node_modules/graceful-fs/legacy-streams.js
 var require_legacy_streams = __commonJS({
-  "node_modules/graceful-fs/legacy-streams.js"(exports, module) {
+  "../../node_modules/graceful-fs/legacy-streams.js"(exports, module) {
     var Stream = __require("stream").Stream;
     module.exports = legacy;
     function legacy(fs) {
@@ -416,9 +416,9 @@ var require_legacy_streams = __commonJS({
   }
 });
 
-// node_modules/graceful-fs/clone.js
+// ../../node_modules/graceful-fs/clone.js
 var require_clone = __commonJS({
-  "node_modules/graceful-fs/clone.js"(exports, module) {
+  "../../node_modules/graceful-fs/clone.js"(exports, module) {
     "use strict";
     module.exports = clone;
     var getPrototypeOf = Object.getPrototypeOf || function(obj) {
@@ -439,9 +439,9 @@ var require_clone = __commonJS({
   }
 });
 
-// node_modules/graceful-fs/graceful-fs.js
+// ../../node_modules/graceful-fs/graceful-fs.js
 var require_graceful_fs = __commonJS({
-  "node_modules/graceful-fs/graceful-fs.js"(exports, module) {
+  "../../node_modules/graceful-fs/graceful-fs.js"(exports, module) {
     var fs = __require("fs");
     var polyfills = require_polyfills();
     var legacy = require_legacy_streams();
@@ -809,9 +809,9 @@ var require_graceful_fs = __commonJS({
   }
 });
 
-// node_modules/retry/lib/retry_operation.js
+// ../../node_modules/retry/lib/retry_operation.js
 var require_retry_operation = __commonJS({
-  "node_modules/retry/lib/retry_operation.js"(exports, module) {
+  "../../node_modules/retry/lib/retry_operation.js"(exports, module) {
     function RetryOperation(timeouts, options) {
       if (typeof options === "boolean") {
         options = { forever: options };
@@ -940,9 +940,9 @@ var require_retry_operation = __commonJS({
   }
 });
 
-// node_modules/retry/lib/retry.js
+// ../../node_modules/retry/lib/retry.js
 var require_retry = __commonJS({
-  "node_modules/retry/lib/retry.js"(exports) {
+  "../../node_modules/retry/lib/retry.js"(exports) {
     var RetryOperation = require_retry_operation();
     exports.operation = function(options) {
       var timeouts = exports.timeouts(options);
@@ -1026,16 +1026,16 @@ var require_retry = __commonJS({
   }
 });
 
-// node_modules/retry/index.js
+// ../../node_modules/retry/index.js
 var require_retry2 = __commonJS({
-  "node_modules/retry/index.js"(exports, module) {
+  "../../node_modules/retry/index.js"(exports, module) {
     module.exports = require_retry();
   }
 });
 
-// node_modules/proper-lockfile/node_modules/signal-exit/signals.js
+// ../../node_modules/proper-lockfile/node_modules/signal-exit/signals.js
 var require_signals = __commonJS({
-  "node_modules/proper-lockfile/node_modules/signal-exit/signals.js"(exports, module) {
+  "../../node_modules/proper-lockfile/node_modules/signal-exit/signals.js"(exports, module) {
     module.exports = [
       "SIGABRT",
       "SIGALRM",
@@ -1070,9 +1070,9 @@ var require_signals = __commonJS({
   }
 });
 
-// node_modules/proper-lockfile/node_modules/signal-exit/index.js
+// ../../node_modules/proper-lockfile/node_modules/signal-exit/index.js
 var require_signal_exit = __commonJS({
-  "node_modules/proper-lockfile/node_modules/signal-exit/index.js"(exports, module) {
+  "../../node_modules/proper-lockfile/node_modules/signal-exit/index.js"(exports, module) {
     var process2 = global.process;
     var processOk = function(process3) {
       return process3 && typeof process3 === "object" && typeof process3.removeListener === "function" && typeof process3.emit === "function" && typeof process3.reallyExit === "function" && typeof process3.listeners === "function" && typeof process3.kill === "function" && typeof process3.pid === "number" && typeof process3.on === "function";
@@ -1229,9 +1229,9 @@ var require_signal_exit = __commonJS({
   }
 });
 
-// node_modules/proper-lockfile/lib/mtime-precision.js
+// ../../node_modules/proper-lockfile/lib/mtime-precision.js
 var require_mtime_precision = __commonJS({
-  "node_modules/proper-lockfile/lib/mtime-precision.js"(exports, module) {
+  "../../node_modules/proper-lockfile/lib/mtime-precision.js"(exports, module) {
     "use strict";
     var cacheSymbol = /* @__PURE__ */ Symbol();
     function probe(file, fs, callback) {
@@ -1271,9 +1271,9 @@ var require_mtime_precision = __commonJS({
   }
 });
 
-// node_modules/proper-lockfile/lib/lockfile.js
+// ../../node_modules/proper-lockfile/lib/lockfile.js
 var require_lockfile = __commonJS({
-  "node_modules/proper-lockfile/lib/lockfile.js"(exports, module) {
+  "../../node_modules/proper-lockfile/lib/lockfile.js"(exports, module) {
     "use strict";
     var path = __require("path");
     var fs = require_graceful_fs();
@@ -1508,9 +1508,9 @@ var require_lockfile = __commonJS({
   }
 });
 
-// node_modules/proper-lockfile/lib/adapter.js
+// ../../node_modules/proper-lockfile/lib/adapter.js
 var require_adapter = __commonJS({
-  "node_modules/proper-lockfile/lib/adapter.js"(exports, module) {
+  "../../node_modules/proper-lockfile/lib/adapter.js"(exports, module) {
     "use strict";
     var fs = require_graceful_fs();
     function createSyncFs(fs2) {
@@ -1573,9 +1573,9 @@ var require_adapter = __commonJS({
   }
 });
 
-// node_modules/proper-lockfile/index.js
+// ../../node_modules/proper-lockfile/index.js
 var require_proper_lockfile = __commonJS({
-  "node_modules/proper-lockfile/index.js"(exports, module) {
+  "../../node_modules/proper-lockfile/index.js"(exports, module) {
     "use strict";
     var lockfile4 = require_lockfile();
     var { toPromise, toSync, toSyncOptions } = require_adapter();
@@ -3019,6 +3019,20 @@ import { randomBytes as randomBytes4 } from "node:crypto";
 // dist/shared/identity-sources.mjs
 import { execFile } from "node:child_process";
 var TIMEOUT_MS = 200;
+var MAX_EMAIL_LENGTH = 320;
+function plausibleEmail(value) {
+  const trimmed = value.trim();
+  if (trimmed.length === 0 || trimmed.length > MAX_EMAIL_LENGTH)
+    return null;
+  if (/[\s\u0000-\u001f\u007f]/.test(trimmed))
+    return null;
+  const parts = trimmed.split("@");
+  if (parts.length !== 2)
+    return null;
+  if (parts[0].length === 0 || parts[1].length === 0)
+    return null;
+  return trimmed;
+}
 function defaultRunner(cmd, args, timeoutMs) {
   return new Promise((resolve, reject) => {
     execFile(cmd, args, { timeout: timeoutMs }, (err, stdout) => {
@@ -3028,14 +3042,27 @@ function defaultRunner(cmd, args, timeoutMs) {
     });
   });
 }
-async function readGitConfigEmail(deps = {}) {
+var GIT_SCOPES = /* @__PURE__ */ new Set(["local", "worktree", "global", "system", "command"]);
+async function readGitConfigEmail(cwd, deps = {}) {
   const runner = deps.runner ?? defaultRunner;
   try {
-    const out = await runner("git", ["config", "--global", "user.email"], TIMEOUT_MS);
-    const trimmed = out.trim();
-    return trimmed.length > 0 ? trimmed : null;
-  } catch {
-    return null;
+    const out = await runner("git", ["-C", cwd, "config", "--show-scope", "--get", "user.email"], TIMEOUT_MS);
+    const tab = out.indexOf("	");
+    const rawScope = tab === -1 ? "" : out.slice(0, tab).trim();
+    const email = plausibleEmail(tab === -1 ? out : out.slice(tab + 1));
+    if (email === null)
+      return null;
+    return { email, scope: GIT_SCOPES.has(rawScope) ? rawScope : "unknown" };
+  } catch (err) {
+    const code = err.code;
+    if (typeof code !== "number" || code === 1)
+      return null;
+    try {
+      const email = plausibleEmail(await runner("git", ["-C", cwd, "config", "--get", "user.email"], TIMEOUT_MS));
+      return email === null ? null : { email, scope: "unknown" };
+    } catch {
+      return null;
+    }
   }
 }
 async function readMacOsDsclEmail(deps = {}) {
@@ -3049,7 +3076,7 @@ async function readMacOsDsclEmail(deps = {}) {
   try {
     const out = await runner("dscl", [".", "-read", `/Users/${user}`, "EMailAddress"], TIMEOUT_MS);
     const match = out.match(/^EMailAddress:\s*(\S+)/m);
-    return match?.[1] ?? null;
+    return match ? plausibleEmail(match[1]) : null;
   } catch {
     return null;
   }
@@ -3061,8 +3088,7 @@ async function readWindowsUpn(deps = {}) {
   const runner = deps.runner ?? defaultRunner;
   try {
     const out = await runner("whoami", ["/upn"], TIMEOUT_MS);
-    const trimmed = out.trim();
-    return trimmed.length > 0 ? trimmed : null;
+    return plausibleEmail(out);
   } catch {
     return null;
   }
@@ -3241,6 +3267,13 @@ import { readFileSync as readFileSync3, writeFileSync } from "node:fs";
 import { join as join10 } from "node:path";
 var CACHE_FILE2 = "identity-cache.json";
 var DEFAULT_TTL_MS2 = 12 * 60 * 60 * 1e3;
+var CACHED_IDENTITY_SOURCES = [
+  "native_claude",
+  "native_codex",
+  "dscl",
+  "whoami_upn"
+];
+var CACHED_SOURCE_SET = new Set(CACHED_IDENTITY_SOURCES);
 function readIdentityCache(deps) {
   const ttl = deps.ttlMs ?? DEFAULT_TTL_MS2;
   const read = deps.readFileImpl ?? ((p) => readFileSync3(p, "utf8"));
@@ -3259,7 +3292,7 @@ function readIdentityCache(deps) {
     if (typeof identity !== "object")
       return { fresh: false };
     const source = identity.source;
-    if (source !== "native_claude" && source !== "native_codex")
+    if (typeof source !== "string" || !CACHED_SOURCE_SET.has(source))
       return { fresh: false };
     return { fresh: true, identity };
   } catch {
@@ -3276,10 +3309,6 @@ function writeIdentityCache(deps) {
 }
 
 // dist/shared/identity-resolver.mjs
-var TENANT_KEY_PREFIXES = ["fs_live_t_", "fs_test_t_"];
-function isTenantKey(credential) {
-  return TENANT_KEY_PREFIXES.some((p) => credential.startsWith(p));
-}
 var GIT_TIMEOUT_MS = 200;
 var IdentityResolver = class {
   dir;
@@ -3296,9 +3325,7 @@ var IdentityResolver = class {
     const base = { install_id, ...repo };
     if (!opts)
       return base;
-    if (!isTenantKey(opts.credential))
-      return base;
-    const record = await resolveIdentityRecord(this.dir, opts);
+    const record = await resolveIdentityRecord({ dataDir: this.dir, cwd, opts });
     const result = { ...base };
     if (record) {
       result.identity_source = record.source;
@@ -3388,7 +3415,7 @@ function toResourceAttributes(id, opts) {
     attrs["fancysauce.secure_envelope"] = id.secure_envelope;
   return attrs;
 }
-async function resolveIdentityRecord(dir, opts) {
+async function resolveIdentityRecord({ dataDir, cwd, opts }) {
   const hint = opts.identity_hint;
   if (hint?.source === "mdm_file" && (hint.user_email || hint.user_upn)) {
     return {
@@ -3409,32 +3436,29 @@ async function resolveIdentityRecord(dir, opts) {
     };
   }
   const now = opts.now ?? Date.now();
-  const hit = readIdentityCache({ dir, now });
-  let native;
+  const hit = readIdentityCache({ dir: dataDir, now });
+  let cached;
   if (hit.fresh) {
-    native = hit.identity;
+    cached = hit.identity;
   } else {
-    native = (opts.nativeReader ?? readNativeIdentity)(opts.agent);
-    writeIdentityCache({ dir, now, identity: native });
+    cached = await probeMachineScopedIdentity(opts);
+    writeIdentityCache({ dir: dataDir, now, identity: cached });
   }
-  if (native) {
-    const { source, ...rest } = native;
-    return { source, ...rest };
-  }
-  const sources = opts.identitySources ?? {
-    dsclEmail: () => readMacOsDsclEmail(),
-    winUpn: () => readWindowsUpn(),
-    gitEmail: () => readGitConfigEmail()
-  };
-  const dscl = await sources.dsclEmail?.();
+  if (cached)
+    return cached;
+  const git = await (opts.identitySources?.gitEmail ?? readGitConfigEmail)(cwd);
+  return git ? { source: "git_config", email: git.email, scope: git.scope } : null;
+}
+async function probeMachineScopedIdentity(opts) {
+  const native = (opts.nativeReader ?? readNativeIdentity)(opts.agent);
+  if (native)
+    return native;
+  const dscl = await (opts.identitySources?.dsclEmail ?? readMacOsDsclEmail)();
   if (dscl)
     return { source: "dscl", email: dscl };
-  const upn = await sources.winUpn?.();
+  const upn = await (opts.identitySources?.winUpn ?? readWindowsUpn)();
   if (upn)
     return { source: "whoami_upn", upn, email: upn };
-  const git = await sources.gitEmail?.();
-  if (git)
-    return { source: "git_config", email: git };
   return null;
 }
 function defaultGitAccess() {
@@ -3455,6 +3479,30 @@ function gitRead(args) {
 
 // dist/shared/schema-version.mjs
 var SCHEMA_VERSION = "1.1.0";
+
+// dist/shared/is-main-module.mjs
+import { fileURLToPath } from "node:url";
+import { posix as posix2, win32 as win322 } from "node:path";
+import { realpathSync } from "node:fs";
+function isMainModule(importMetaUrl, argv1, platform = process.platform) {
+  if (typeof argv1 !== "string" || argv1.length === 0)
+    return false;
+  const windows = platform === "win32";
+  try {
+    const modulePath = real(fileURLToPath(importMetaUrl, { windows }));
+    const scriptPath = real((windows ? win322 : posix2).resolve(argv1));
+    return windows ? modulePath.toLowerCase() === scriptPath.toLowerCase() : modulePath === scriptPath;
+  } catch {
+    return false;
+  }
+}
+function real(p) {
+  try {
+    return realpathSync(p);
+  } catch {
+    return p;
+  }
+}
 
 // dist/shared/bin/backfill-runner.mjs
 var DEFAULT_IDLE_TIMEOUT_MS = 5 * 6e4;
@@ -3599,7 +3647,7 @@ async function writeRenewalMarker(stateDir) {
   await writeFile5(path, JSON.stringify({ noticed_at: (/* @__PURE__ */ new Date()).toISOString() }), { mode: 384 }).catch(() => {
   });
 }
-var isMain = import.meta.url === `file://${process.argv[1]}`;
+var isMain = isMainModule(import.meta.url, process.argv[1]);
 if (isMain) {
   const args = process.argv.slice(2);
   const getArg = (name) => {

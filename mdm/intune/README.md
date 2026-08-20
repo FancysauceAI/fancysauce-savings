@@ -6,10 +6,10 @@ Two distinct artifacts land on each managed Windows machine:
 
 | Artifact | Path | Scope | Purpose |
 |---|---|---|---|
-| `managed-settings.json` | System-wide ClaudeCode path (see V2 note below) | System-wide | Registers the fancysauce marketplace and enables the plugin for every Claude Code user on the machine. Identical across all tenants — contains no secrets. |
+| `managed-settings.json` | System-wide ClaudeCode path (see V2 note below) | System-wide | Registers the fancysauce marketplace and enables the plugin for every Claude Code user on the machine. Identical across all tenants — contains no secrets. Intune deploys the **plugin** arm; the managed-hooks arm described in [`../README.md`](../README.md) is macOS-only today. |
 | `credentials.json` | `%APPDATA%\fancysauce\credentials.json` | Per-user | Carries the tenant API key and the user's directory email so the plugin can tag usage events. Written at Intune deployment time by a Win32 user-context app. |
 
-The plugin (`fancysauce-savings`) is fetched from the public GitHub dist repo `FancysauceAI/fancysauce-savings` on first use; it is not bundled in this package.
+The plugin (`fancysauce-savings`) comes from the public GitHub dist repo `FancysauceAI/fancysauce-savings`; it is not bundled in this package. Managed settings register the marketplace and enable the plugin, but do not install it — each user runs `claude plugin install fancysauce-savings@fancysauce` once.
 
 > **Codex on Windows: not yet available.** Codex telemetry uses an enforced
 > managed hook whose wrapper is POSIX `sh`, so it currently runs on macOS and
