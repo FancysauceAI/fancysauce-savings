@@ -2,6 +2,34 @@
 
 All public releases of `fancysauce-savings`. Most recent first.
 
+## v0.16.1 — 2026-08-25
+
+### Fixes
+
+- Codex no longer re-bills rewritten session history. The event id keyed on the
+  rollout line's timestamp. Codex writes session history back into the rollout
+  file with each payload unchanged, but it restamps every line with the write
+  time. Each rewrite therefore minted a new id for the whole session history,
+  server-side dedup could not see the collision, and the same tokens were
+  counted again. Affected tenants read materially high, and the size depends on
+  how often Codex rewrote the file. The id now keys on the turn itself — the
+  session, the scope, the cumulative total, and the input, output, and
+  cache-read deltas — and a rewrite changes none of those. Claude Code was
+  never affected, because it dedups on vendor ids that survive a rewrite.
+  (FAN-670)
+- The publish suites now bake a server key, so the guard that refuses an
+  unbaked release is itself covered by a test. (#129)
+
+### Notes
+
+- Every Codex event id changes from this release forward. If anything you run
+  reconciles against historical Codex event ids, update it before you upgrade.
+- This release stops new over-counting. It does not correct rows already
+  stored, so earlier phantom tokens stay in reporting until a separate
+  correction lands.
+- Managed deployments pin a release, and the Codex pin in the shipped templates
+  still names v0.13.0. Re-pin to v0.16.1 to get this fix on a managed fleet.
+
 ## v0.16.0 — 2026-08-20
 
 ### Features
