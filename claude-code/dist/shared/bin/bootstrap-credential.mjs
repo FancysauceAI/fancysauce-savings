@@ -184,6 +184,12 @@ function parseIdentity(argv) {
   const v = i >= 0 && i + 1 < argv.length ? argv[i + 1] : void 0;
   return v === "full" ? "full" : v === "hash" ? "hash" : void 0;
 }
+function parseTenantKeyArg(argv) {
+  const i = argv.indexOf("--tenant-key");
+  if (i < 0)
+    return void 0;
+  return i + 1 < argv.length ? argv[i + 1] : "";
+}
 function decide(existing, args) {
   switch (existing.source) {
     case "absent":
@@ -259,9 +265,10 @@ function real(p) {
 
 // dist/shared/bin/bootstrap-credential.mjs
 async function main(argv = process.argv.slice(2), now = () => (/* @__PURE__ */ new Date()).toISOString()) {
-  const tenantKey = process.env.FANCYSAUCE_TENANT_KEY ?? "";
+  const argvKey = parseTenantKeyArg(argv);
+  const tenantKey = argvKey ?? process.env.FANCYSAUCE_TENANT_KEY ?? "";
   if (!KEY_RE.test(tenantKey)) {
-    process.stderr.write("bootstrap-credential: missing or malformed FANCYSAUCE_TENANT_KEY\n");
+    process.stderr.write("bootstrap-credential: missing or malformed FANCYSAUCE_TENANT_KEY env var or --tenant-key argv\n");
     return 2;
   }
   const args = { tenantKey, identity: parseIdentity(argv), ownProvenance: "marketplace_url" };

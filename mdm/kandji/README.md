@@ -86,11 +86,11 @@ Open `deploy.sh` and set the configuration values at the top:
 ```sh
 TENANT_KEY="fs_live_t_REPLACE_ME"   # replace with your tenant key
 IDENTITY_TYPE="full"
-CODEX_TAG="v0.13.0"                 # pinned plugin release for Codex telemetry
-CODEX_SHA="5becf72699fb086092ae1588155cf3213627ba80"   # commit sha of CODEX_TAG
+CODEX_TAG="v0.16.1"                 # pinned plugin release for Codex telemetry
+CODEX_SHA="8b80f00c8292dabd0ee1816c9e20185877acef7c"   # commit sha of CODEX_TAG
 CC_MODE="managed-hooks"             # plugin | managed-hooks
-CC_TAG="v0.15.0"                    # pinned plugin release for Claude Code telemetry
-CC_SHA="0ffd779ee55500ce990c21e2abc985b4e747e8b5"   # commit sha of CC_TAG
+CC_TAG="v0.16.1"                    # pinned plugin release for Claude Code telemetry
+CC_SHA="8b80f00c8292dabd0ee1816c9e20185877acef7c"   # commit sha of CC_TAG
 CC_SESSION_END_TIMEOUT="5"          # seconds, 2-60; raises the shared SessionEnd budget
 ```
 

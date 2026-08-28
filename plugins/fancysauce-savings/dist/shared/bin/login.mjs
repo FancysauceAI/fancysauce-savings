@@ -121,30 +121,40 @@ async function startLoopback(opts) {
 
 // dist/shared/login/browser.mjs
 import { spawn } from "node:child_process";
-function BROWSER_COMMAND_FOR_PLATFORM(platform) {
+function BROWSER_COMMAND_FOR_PLATFORM(platform, url) {
   switch (platform) {
     case "darwin":
-      return { cmd: "open", args: [] };
+      return { cmd: "open", args: [url] };
     case "win32":
-      return { cmd: "cmd", args: ["/c", "start", ""] };
+      return {
+        cmd: `${process.env.SYSTEMROOT ?? "C:\\Windows"}\\System32\\WindowsPowerShell\\v1.0\\powershell.exe`,
+        args: [
+          "-NoProfile",
+          "-NonInteractive",
+          "-Command",
+          `Start-Process '${url.replaceAll("'", "''")}'`
+        ]
+      };
     default:
-      return { cmd: "xdg-open", args: [] };
+      return { cmd: "xdg-open", args: [url] };
   }
+}
+function SPAWN_OPTIONS_FOR_PLATFORM(platform) {
+  return { detached: platform !== "win32", stdio: "ignore" };
 }
 async function openBrowser(url, opts = {}) {
   const platform = opts.platform ?? process.platform;
-  const spec = BROWSER_COMMAND_FOR_PLATFORM(platform);
-  const args = [...spec.args, url];
-  const spawner = opts.spawner ?? defaultSpawner;
+  const spec = BROWSER_COMMAND_FOR_PLATFORM(platform, url);
+  const spawner = opts.spawner ?? ((cmd, args) => defaultSpawner(cmd, args, platform));
   try {
-    await spawner(spec.cmd, args);
+    await spawner(spec.cmd, spec.args);
   } catch (err) {
     opts.onError?.(err);
   }
 }
-function defaultSpawner(cmd, args) {
+function defaultSpawner(cmd, args, platform) {
   return new Promise((resolve, reject) => {
-    const child = spawn(cmd, args, { detached: true, stdio: "ignore" });
+    const child = spawn(cmd, args, SPAWN_OPTIONS_FOR_PLATFORM(platform));
     child.once("error", reject);
     child.once("spawn", () => {
       child.unref();
@@ -525,7 +535,11 @@ async function main(opts = {}) {
   const result = await _runLogin({
     credentialUserPath: paths.user,
     stateDir,
-    logger
+    logger,
+    // Printed whether or not the browser opens. A launcher that exits cleanly
+    // without showing the page leaves the user with nothing to fall back on.
+    onBrowserUrl: (url) => logger.info(`if the browser does not open, visit:
+${url}`)
   });
   if (result.kind === "ok")
     return 0;

@@ -389,13 +389,13 @@ script deletes that file outright — the name is exclusively ours.
 `/etc/fancysauce/claude-code.pin` is one line, root-owned, mode `0644`:
 
 ```
-v0.15.0 0ffd779ee55500ce990c21e2abc985b4e747e8b5
+v0.16.1 8b80f00c8292dabd0ee1816c9e20185877acef7c
 ```
 
 Resolve the sha for a tag with:
 
 ```sh
-git ls-remote https://github.com/FancysauceAI/fancysauce-savings.git 'refs/tags/v0.15.0^{}'
+git ls-remote https://github.com/FancysauceAI/fancysauce-savings.git 'refs/tags/v0.16.1^{}'
 ```
 
 The wrapper validates both fields on every read (`vX.Y.Z` tag, 40 hex sha). A

@@ -2355,7 +2355,7 @@ function defaultUnknownEnvVarHandler(_name, _value) {
 
 // dist/shared/data-dir.mjs
 import { readFileSync } from "node:fs";
-import { basename, join as join2, dirname as dirname2 } from "node:path";
+import { basename, join as join2, dirname as dirname2, relative, isAbsolute, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { homedir as homedir3 } from "node:os";
 function resolveDataDir(opts = {}) {
@@ -2384,7 +2384,7 @@ function defaultPluginRoot() {
   return join2(here, "..", "..", "..");
 }
 function trimTrailingSlash(p) {
-  return p.endsWith("/") ? p.slice(0, -1) : p;
+  return p.endsWith("/") || p.endsWith("\\") ? p.slice(0, -1) : p;
 }
 function deriveFromRegistry(root, home) {
   try {
@@ -2439,9 +2439,10 @@ function deriveFromMarketplaces(root, home) {
 }
 function deriveFromCodexCache(root, home) {
   const prefix = trimTrailingSlash(join2(home, ".codex", "plugins", "cache"));
-  if (!root.startsWith(prefix + "/"))
+  const rel = relative(prefix, root);
+  if (rel === "" || rel.startsWith("..") || isAbsolute(rel))
     return null;
-  const parts = root.slice(prefix.length + 1).split("/");
+  const parts = rel.split(sep);
   const alias = parts[0];
   const plugin = parts[1];
   if (!alias || !plugin)
@@ -4784,7 +4785,7 @@ var SubagentMetaCache = class {
 // dist/agents/claude-code/transcript-tail.mjs
 var import_proper_lockfile4 = __toESM(require_proper_lockfile(), 1);
 import { mkdir as mkdir11, readFile as readFile13, readdir, writeFile as writeFile10, appendFile as appendFile4, rename as rename11, lstat as lstat2 } from "node:fs/promises";
-import { basename as basename2, dirname as dirname7, isAbsolute, join as join21, relative, sep } from "node:path";
+import { basename as basename2, dirname as dirname7, isAbsolute as isAbsolute2, join as join21, relative as relative2, sep as sep2 } from "node:path";
 import { homedir as homedir5 } from "node:os";
 import { randomUUID as randomUUID4 } from "node:crypto";
 
@@ -5019,7 +5020,7 @@ var TranscriptTail = class {
     this.maxReadBytes = options.maxReadBytes ?? DEFAULT_MAX_READ_BYTES;
     this.errorLogPath = options.errorLogPath;
     const root = options.transcriptRoot ?? join21(homedir5(), ".claude", "projects");
-    this.transcriptRoot = root.endsWith(sep) ? root : root + sep;
+    this.transcriptRoot = root.endsWith(sep2) ? root : root + sep2;
   }
   // `persist` runs after all events are read but BEFORE any cursor is
   // advanced. If it throws, every cursor stays at its previous offset and
@@ -5049,7 +5050,7 @@ var TranscriptTail = class {
       const { events, endOffset, truncated } = await this.readSince(sessionId, transcriptPath, startOffset, sequenceBase, this.maxReadBytes);
       const sessionDir = join21(dirname7(transcriptPath), basename2(transcriptPath, ".jsonl"));
       const subagentsRoot = join21(sessionDir, "subagents");
-      const subagentPaths = await discoverSubagentTranscripts(sessionDir, (dir, err) => this.logSubagentError(sessionId, relative(sessionDir, dir) || "subagents", err));
+      const subagentPaths = await discoverSubagentTranscripts(sessionDir, (dir, err) => this.logSubagentError(sessionId, relative2(sessionDir, dir) || "subagents", err));
       const metaCache = new SubagentMetaCache();
       let seq = sequenceBase + events.length;
       const subagentCommits = [];
@@ -5116,7 +5117,7 @@ var TranscriptTail = class {
   isValidTranscriptPath(p) {
     if (typeof p !== "string" || p.length === 0)
       return false;
-    if (!isAbsolute(p))
+    if (!isAbsolute2(p))
       return false;
     if (!p.endsWith(".jsonl"))
       return false;
@@ -5309,8 +5310,8 @@ function deriveSubagentCursorDir(sessCursorDir, subagentsRoot, subagentPath) {
   if (!AGENT_ID_RE.test(agentId)) {
     return { ok: false, agentId, reason: `unsafe agent id in transcript name: ${subagentPath}` };
   }
-  const nestedDir = relative(subagentsRoot, dirname7(subagentPath));
-  if (nestedDir === ".." || nestedDir.startsWith(".." + sep)) {
+  const nestedDir = relative2(subagentsRoot, dirname7(subagentPath));
+  if (nestedDir === ".." || nestedDir.startsWith(".." + sep2)) {
     return { ok: false, agentId, reason: `transcript outside subagents root: ${subagentPath}` };
   }
   const cursorDir = nestedDir === "" ? join21(sessCursorDir, "subagents", agentId) : join21(sessCursorDir, "subagents", nestedDir, agentId);

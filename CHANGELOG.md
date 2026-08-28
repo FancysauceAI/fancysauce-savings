@@ -2,6 +2,34 @@
 
 All public releases of `fancysauce-savings`. Most recent first.
 
+## v0.16.2 — 2026-08-28
+
+### Fixes
+
+- Windows installs can sign in and report again. Four defects blocked an end
+  user on Windows. First, `/login` opened a truncated URL, because cmd.exe
+  reads the `&` in that URL as a command separator; the handoff now runs
+  through PowerShell `Start-Process`, and login also prints the URL as a
+  fallback. Second, the handoff was detached, so an AppX browser such as Store
+  Firefox reported a clean exit and opened no tab; win32 now keeps the
+  interpreter attached until the browser starts. Third, a Codex cache install
+  resolved two different data dirs, because the path match assumed `/`
+  separators; hooks and slash commands now read one store. Fourth, the tenant
+  bootstrap hook for a URL install used shell form, which PowerShell cannot
+  parse, so the tenant credential was never written; that hook is exec form
+  now. (#128)
+
+### Notes
+
+- The tenant key moves from the wrapper shell's command line to the argv of
+  `bootstrap-credential`, for about 40 ms once per session. That is wider for
+  `ps` sampling and for node crash dumps. The key is tenant-scoped and
+  write-only, so the exposure is accepted here. Full closure needs a key file
+  and a reader across the plugin and the dashboard renderer, and stays
+  deferred.
+- Managed deployments pin a release. Re-pin the shipped templates to v0.16.2
+  to get these fixes on a managed fleet.
+
 ## v0.16.1 — 2026-08-25
 
 ### Fixes

@@ -2353,7 +2353,7 @@ function defaultUnknownEnvVarHandler(_name, _value) {
 
 // dist/shared/data-dir.mjs
 import { readFileSync } from "node:fs";
-import { basename, join as join2, dirname as dirname2 } from "node:path";
+import { basename, join as join2, dirname as dirname2, relative, isAbsolute, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { homedir as homedir3 } from "node:os";
 function resolveDataDir(opts = {}) {
@@ -2382,7 +2382,7 @@ function defaultPluginRoot() {
   return join2(here, "..", "..", "..");
 }
 function trimTrailingSlash(p) {
-  return p.endsWith("/") ? p.slice(0, -1) : p;
+  return p.endsWith("/") || p.endsWith("\\") ? p.slice(0, -1) : p;
 }
 function deriveFromRegistry(root, home) {
   try {
@@ -2437,9 +2437,10 @@ function deriveFromMarketplaces(root, home) {
 }
 function deriveFromCodexCache(root, home) {
   const prefix = trimTrailingSlash(join2(home, ".codex", "plugins", "cache"));
-  if (!root.startsWith(prefix + "/"))
+  const rel = relative(prefix, root);
+  if (rel === "" || rel.startsWith("..") || isAbsolute(rel))
     return null;
-  const parts = root.slice(prefix.length + 1).split("/");
+  const parts = rel.split(sep);
   const alias = parts[0];
   const plugin = parts[1];
   if (!alias || !plugin)

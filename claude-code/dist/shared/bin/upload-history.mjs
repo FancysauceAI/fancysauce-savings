@@ -1767,7 +1767,7 @@ var UPLOAD_HISTORY_COMMAND = "/fancysauce-savings:upload-history";
 
 // dist/shared/data-dir.mjs
 import { readFileSync } from "node:fs";
-import { basename, join, dirname } from "node:path";
+import { basename, join, dirname, relative, isAbsolute, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { homedir as homedir2 } from "node:os";
 function resolveDataDir(opts = {}) {
@@ -1796,7 +1796,7 @@ function defaultPluginRoot() {
   return join(here, "..", "..", "..");
 }
 function trimTrailingSlash(p) {
-  return p.endsWith("/") ? p.slice(0, -1) : p;
+  return p.endsWith("/") || p.endsWith("\\") ? p.slice(0, -1) : p;
 }
 function deriveFromRegistry(root, home) {
   try {
@@ -1851,9 +1851,10 @@ function deriveFromMarketplaces(root, home) {
 }
 function deriveFromCodexCache(root, home) {
   const prefix = trimTrailingSlash(join(home, ".codex", "plugins", "cache"));
-  if (!root.startsWith(prefix + "/"))
+  const rel = relative(prefix, root);
+  if (rel === "" || rel.startsWith("..") || isAbsolute(rel))
     return null;
-  const parts = root.slice(prefix.length + 1).split("/");
+  const parts = rel.split(sep);
   const alias = parts[0];
   const plugin = parts[1];
   if (!alias || !plugin)
@@ -2393,12 +2394,12 @@ init_runner_spawn();
 // dist/shared/backfill/scan.mjs
 import { appendFile as appendFile2, mkdir as mkdir7, readdir as readdir2 } from "node:fs/promises";
 import { homedir as homedir5 } from "node:os";
-import { join as join10, relative as relative2 } from "node:path";
+import { join as join10, relative as relative3 } from "node:path";
 
 // dist/agents/claude-code/transcript-tail.mjs
 var import_proper_lockfile2 = __toESM(require_proper_lockfile(), 1);
 import { mkdir as mkdir5, readFile as readFile5, readdir, writeFile as writeFile2, appendFile, rename as rename4, lstat as lstat2 } from "node:fs/promises";
-import { basename as basename2, dirname as dirname5, isAbsolute, join as join7, relative, sep } from "node:path";
+import { basename as basename2, dirname as dirname5, isAbsolute as isAbsolute2, join as join7, relative as relative2, sep as sep2 } from "node:path";
 import { homedir as homedir4 } from "node:os";
 import { randomUUID as randomUUID2 } from "node:crypto";
 
@@ -2689,7 +2690,7 @@ var TranscriptTail = class {
     this.maxReadBytes = options.maxReadBytes ?? DEFAULT_MAX_READ_BYTES;
     this.errorLogPath = options.errorLogPath;
     const root = options.transcriptRoot ?? join7(homedir4(), ".claude", "projects");
-    this.transcriptRoot = root.endsWith(sep) ? root : root + sep;
+    this.transcriptRoot = root.endsWith(sep2) ? root : root + sep2;
   }
   // `persist` runs after all events are read but BEFORE any cursor is
   // advanced. If it throws, every cursor stays at its previous offset and
@@ -2719,7 +2720,7 @@ var TranscriptTail = class {
       const { events, endOffset, truncated } = await this.readSince(sessionId, transcriptPath, startOffset, sequenceBase, this.maxReadBytes);
       const sessionDir = join7(dirname5(transcriptPath), basename2(transcriptPath, ".jsonl"));
       const subagentsRoot = join7(sessionDir, "subagents");
-      const subagentPaths = await discoverSubagentTranscripts(sessionDir, (dir, err) => this.logSubagentError(sessionId, relative(sessionDir, dir) || "subagents", err));
+      const subagentPaths = await discoverSubagentTranscripts(sessionDir, (dir, err) => this.logSubagentError(sessionId, relative2(sessionDir, dir) || "subagents", err));
       const metaCache = new SubagentMetaCache();
       let seq = sequenceBase + events.length;
       const subagentCommits = [];
@@ -2786,7 +2787,7 @@ var TranscriptTail = class {
   isValidTranscriptPath(p) {
     if (typeof p !== "string" || p.length === 0)
       return false;
-    if (!isAbsolute(p))
+    if (!isAbsolute2(p))
       return false;
     if (!p.endsWith(".jsonl"))
       return false;
@@ -2979,8 +2980,8 @@ function deriveSubagentCursorDir(sessCursorDir, subagentsRoot, subagentPath) {
   if (!AGENT_ID_RE.test(agentId)) {
     return { ok: false, agentId, reason: `unsafe agent id in transcript name: ${subagentPath}` };
   }
-  const nestedDir = relative(subagentsRoot, dirname5(subagentPath));
-  if (nestedDir === ".." || nestedDir.startsWith(".." + sep)) {
+  const nestedDir = relative2(subagentsRoot, dirname5(subagentPath));
+  if (nestedDir === ".." || nestedDir.startsWith(".." + sep2)) {
     return { ok: false, agentId, reason: `transcript outside subagents root: ${subagentPath}` };
   }
   const cursorDir = nestedDir === "" ? join7(sessCursorDir, "subagents", agentId) : join7(sessCursorDir, "subagents", nestedDir, agentId);
@@ -3397,7 +3398,7 @@ async function runBackfillScan(opts) {
     summary.sessionsScanned++;
     try {
       const subagentsRoot = join10(sessionDir, "subagents");
-      const subagentPaths = await discoverSubagentTranscripts(sessionDir, (dir, err) => logScanError(opts.errorLogPath, sessionId, relative2(sessionDir, dir) || "subagents", err));
+      const subagentPaths = await discoverSubagentTranscripts(sessionDir, (dir, err) => logScanError(opts.errorLogPath, sessionId, relative3(sessionDir, dir) || "subagents", err));
       const metaCache = new SubagentMetaCache();
       const sessCursorDir = sessionCursorDir(stateDir, sessionId);
       for (const subagentPath of subagentPaths) {
