@@ -1882,7 +1882,7 @@ import { dirname as dirname8, join as join27 } from "node:path";
 import { fileURLToPath as fileURLToPath4 } from "node:url";
 
 // dist/shared/run-collect.mjs
-import { readFileSync as readFileSync5 } from "node:fs";
+import { readFileSync as readFileSync7 } from "node:fs";
 import { randomUUID as randomUUID2 } from "node:crypto";
 import { mkdir as mkdir10, writeFile as writeFile8, appendFile as appendFile3, stat as stat3, rm as rm3 } from "node:fs/promises";
 import { join as join19 } from "node:path";
@@ -1915,7 +1915,12 @@ function defaultPolicy() {
       "correlation_id",
       "subsession_id",
       "agent_type",
-      "skill_name"
+      "skill_name",
+      "ref_system",
+      "ref_kind",
+      "ref_id",
+      "ref_scope",
+      "ref_source"
     ]),
     "tool_call.failed": Object.freeze([
       "tool_name",
@@ -2021,6 +2026,9 @@ function defaultPolicy() {
       "secondary_resets_at",
       "secondary_window_minutes",
       "speed",
+      "api_error",
+      "api_error_kind",
+      "api_error_status",
       "reached_type",
       "plan_type",
       "credits_has",
@@ -2594,6 +2602,11 @@ function toolCallComplete(a) {
   });
   if (typeof a.skill_name === "string" && a.skill_name)
     out.skill_name = a.skill_name;
+  const refKeys = ["ref_system", "ref_kind", "ref_id", "ref_scope", "ref_source"];
+  if (refKeys.every((key) => typeof a[key] === "string" && a[key] !== "")) {
+    for (const key of refKeys)
+      out[key] = a[key];
+  }
   return out;
 }
 function toolCallFailed(a) {
@@ -3585,6 +3598,11 @@ var ATTR_TYPE = {
   response_size_bytes: "int",
   success: "bool",
   correlation_id: "string",
+  ref_system: "string",
+  ref_kind: "string",
+  ref_id: "string",
+  ref_scope: "string",
+  ref_source: "string",
   // subagent.{start,complete}
   agent_id: "string",
   agent_type: "string",
@@ -3601,6 +3619,9 @@ var ATTR_TYPE = {
   transcript_message_uuid: "string",
   stop_reason: "string",
   speed: "string",
+  api_error: "bool",
+  api_error_kind: "string",
+  api_error_status: "int",
   // notification
   notification_type: "string",
   // task.completed
@@ -3625,8 +3646,7 @@ var ATTR_TYPE = {
   limit_message: "string",
   limit_kind_guess: "string",
   reset_at_guess: "int",
-  api_error_status: "int",
-  // request_id + transcript_message_uuid already typed above (api.request).
+  // request_id, transcript_message_uuid + api_error_status already typed above (api.request).
   // usage_limit.snapshot + Codex rate-limit lens
   window: "string",
   used_percent: "double",
@@ -4340,6 +4360,259 @@ function sessionIndexSink(opts = {}) {
 // dist/shared/schema-version.mjs
 var SCHEMA_VERSION = "1.1.0";
 
+// dist/shared/whoami/credential.mjs
+init_credential_paths();
+import { readFileSync as readFileSync5, statSync } from "node:fs";
+import { posix as posix2, win32 as win322 } from "node:path";
+var FINGERPRINT_HEX_CHARS = 12;
+function whoamiCredentialPaths() {
+  const parsed = parseCredentialPathsEnv();
+  return parsed ? { system: parsed.system, user: parsed.user } : credentialPaths();
+}
+function pathFlavor() {
+  return process.platform === "win32" ? win322 : posix2;
+}
+function resolveCredentialSync(opts = {}) {
+  const paths = opts.paths ?? whoamiCredentialPaths();
+  const env = opts.env ?? process.env;
+  const sys = readOneSync(paths.system);
+  if (sys.kind === "ok")
+    return withFingerprint("system", sys.token, sys.apiEndpoint);
+  if (sys.kind === "malformed")
+    return null;
+  const usr = readOneSync(paths.user);
+  if (usr.kind === "ok")
+    return withFingerprint("user", usr.token, usr.apiEndpoint);
+  if (usr.kind === "malformed")
+    return null;
+  const tenantKey = env.FANCYSAUCE_TENANT_KEY ?? "";
+  if (KEY_RE.test(tenantKey))
+    return withFingerprint("env_tenant_key", tenantKey, null);
+  const apiKey = env.FANCYSAUCE_API_KEY;
+  if (apiKey)
+    return withFingerprint("env_api_key", apiKey, null);
+  return null;
+}
+function withFingerprint(tier, token, apiEndpoint) {
+  return { tier, token, apiEndpoint, fingerprint: sha256Hex(token).slice(0, FINGERPRINT_HEX_CHARS) };
+}
+function readOneSync(path) {
+  let raw;
+  try {
+    raw = readFileSync5(path, "utf8");
+  } catch (err) {
+    if (err.code === "ENOENT")
+      return { kind: "absent" };
+    return { kind: "malformed" };
+  }
+  if (process.platform !== "win32") {
+    try {
+      if (permissiveModeReason(statSync(path).mode) !== null)
+        return { kind: "malformed" };
+    } catch {
+      return { kind: "malformed" };
+    }
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return { kind: "malformed" };
+  }
+  const v = validateCredentialFile(parsed);
+  if (v.kind !== "ok")
+    return { kind: "malformed" };
+  return { kind: "ok", token: v.cred.credential, apiEndpoint: v.cred.api_endpoint ?? null };
+}
+
+// dist/shared/whoami/cache.mjs
+import { closeSync, ftruncateSync, mkdirSync, openSync, readFileSync as readFileSync6, readdirSync, renameSync, rmSync, statSync as statSync2, writeSync } from "node:fs";
+var WHOAMI_SCHEMA_VERSION = 1;
+var SUCCESS_TTL_MS = 6 * 60 * 60 * 1e3;
+var ERROR_TTL_MS = 15 * 60 * 1e3;
+var CACHE_PREFIX = "whoami-cache-";
+var CACHE_SUFFIX = ".json";
+var TMP_ORPHAN_MAX_AGE_MS = 60 * 60 * 1e3;
+function whoamiCachePath(fingerprint2, opts = {}) {
+  const p = pathFlavor();
+  return p.join(credentialDir(opts), `${CACHE_PREFIX}${fingerprint2}${CACHE_SUFFIX}`);
+}
+function credentialDir(opts = {}) {
+  if (opts.dir !== void 0)
+    return opts.dir;
+  return pathFlavor().dirname(whoamiCredentialPaths().user);
+}
+function ensureCredentialDir(opts = {}) {
+  mkdirSync(credentialDir(opts), { recursive: true, mode: 448 });
+}
+function readWhoamiCache(fingerprint2, now, opts = {}) {
+  const entry = readWhoamiCacheAnyAge(fingerprint2, opts);
+  if (entry === null)
+    return null;
+  const ttl = entry.result !== void 0 ? SUCCESS_TTL_MS : ERROR_TTL_MS;
+  if (now - entry.fetched_at >= ttl)
+    return null;
+  return entry;
+}
+function readWhoamiCacheAnyAge(fingerprint2, opts = {}) {
+  let entry;
+  try {
+    const parsed = JSON.parse(readFileSync6(whoamiCachePath(fingerprint2, opts), "utf8"));
+    const validated = validateEntry(parsed);
+    if (validated === null)
+      return null;
+    entry = validated;
+  } catch {
+    return null;
+  }
+  if (entry.credential_fingerprint !== fingerprint2)
+    return null;
+  return entry;
+}
+function overwriteExisting(path, contents) {
+  const fd = openSync(path, "r+");
+  try {
+    ftruncateSync(fd, 0);
+    writeSync(fd, contents);
+  } finally {
+    closeSync(fd);
+  }
+}
+function validateEntry(v) {
+  if (typeof v !== "object" || v === null)
+    return null;
+  const o = v;
+  if (o.schema_version !== WHOAMI_SCHEMA_VERSION)
+    return null;
+  if (typeof o.fetched_at !== "number")
+    return null;
+  if (typeof o.credential_fingerprint !== "string")
+    return null;
+  const result = o.result === void 0 ? void 0 : parseWhoamiResult(o.result);
+  const error = parseErrorKind(o.error);
+  if (result === void 0 && error === void 0)
+    return null;
+  const hasPluginFlagsTimestamp = o.plugin_flags_fetched_at !== void 0;
+  const pluginFlagsFetchedAt = typeof o.plugin_flags_fetched_at === "number" ? o.plugin_flags_fetched_at : void 0;
+  const pluginFlags = hasPluginFlagsTimestamp && pluginFlagsFetchedAt === void 0 ? void 0 : parsePluginFlags(o.plugin_flags);
+  return {
+    schema_version: WHOAMI_SCHEMA_VERSION,
+    fetched_at: o.fetched_at,
+    credential_fingerprint: o.credential_fingerprint,
+    ...result !== void 0 ? { result } : {},
+    ...error !== void 0 ? { error } : {},
+    ...pluginFlags !== void 0 ? {
+      plugin_flags: pluginFlags,
+      ...pluginFlagsFetchedAt !== void 0 ? { plugin_flags_fetched_at: pluginFlagsFetchedAt } : {}
+    } : {}
+  };
+}
+function parsePluginFlags(v) {
+  if (typeof v !== "object" || v === null || Array.isArray(v))
+    return void 0;
+  const out = {};
+  for (const [key, value] of Object.entries(v)) {
+    if (typeof value === "boolean")
+      out[key] = value;
+  }
+  return out;
+}
+function parseErrorKind(v) {
+  return v === "rejected" || v === "rate_limited" || v === "server" || v === "transport" ? v : void 0;
+}
+function parseWhoamiResult(v) {
+  if (typeof v !== "object" || v === null)
+    return void 0;
+  const o = v;
+  if (typeof o.logged_in !== "boolean")
+    return void 0;
+  if (typeof o.tenant_id !== "string")
+    return void 0;
+  const user = parseUser(o.user);
+  if (user === void 0)
+    return void 0;
+  const key = parseKey(o.key);
+  if (key === void 0)
+    return void 0;
+  const pluginFlags = parsePluginFlags(o.plugin_flags);
+  return {
+    logged_in: o.logged_in,
+    user,
+    tenant_id: o.tenant_id,
+    key,
+    ...pluginFlags !== void 0 ? { plugin_flags: pluginFlags } : {}
+  };
+}
+function parseUser(v) {
+  if (v === null)
+    return null;
+  if (typeof v !== "object")
+    return void 0;
+  const o = v;
+  if (typeof o.id !== "string")
+    return void 0;
+  const name = o.name === null || typeof o.name === "string" ? o.name : void 0;
+  if (name === void 0)
+    return void 0;
+  const email = o.email_masked === null || typeof o.email_masked === "string" ? o.email_masked : void 0;
+  if (email === void 0)
+    return void 0;
+  return { id: o.id, name, email_masked: email };
+}
+function parseKey(v) {
+  if (typeof v !== "object" || v === null)
+    return void 0;
+  const o = v;
+  if (typeof o.id !== "string")
+    return void 0;
+  if (typeof o.env !== "string")
+    return void 0;
+  if (o.scope !== null && typeof o.scope !== "string")
+    return void 0;
+  if (typeof o.user_resolution_mode !== "string")
+    return void 0;
+  if (typeof o.vended_via !== "string")
+    return void 0;
+  if (typeof o.source_type !== "string")
+    return void 0;
+  if (typeof o.superseded !== "boolean")
+    return void 0;
+  return {
+    id: o.id,
+    env: o.env,
+    scope: o.scope,
+    user_resolution_mode: o.user_resolution_mode,
+    vended_via: o.vended_via,
+    source_type: o.source_type,
+    superseded: o.superseded
+  };
+}
+
+// dist/shared/whoami/flags.mjs
+var PLUGIN_FLAG_GITHUB_PR_REF = "fancytab-github-pr-ref";
+var PLUGIN_FLAGS_MAX_AGE_MS = 24 * 60 * 60 * 1e3;
+var NO_PLUGIN_FLAGS = Object.freeze({});
+function readPluginFlags(opts = {}) {
+  const resolved = resolveCredentialSync({
+    ...opts.paths !== void 0 ? { paths: opts.paths } : {},
+    ...opts.env !== void 0 ? { env: opts.env } : {}
+  });
+  if (resolved === null)
+    return NO_PLUGIN_FLAGS;
+  const cacheOpts = opts.dir !== void 0 ? { dir: opts.dir } : {};
+  const entry = readWhoamiCacheAnyAge(resolved.fingerprint, cacheOpts);
+  const fetchedAt = entry?.plugin_flags_fetched_at;
+  if (entry?.plugin_flags === void 0 || fetchedAt === void 0)
+    return NO_PLUGIN_FLAGS;
+  const now = opts.now ?? Date.now();
+  if (now - fetchedAt > PLUGIN_FLAGS_MAX_AGE_MS)
+    return NO_PLUGIN_FLAGS;
+  return entry.plugin_flags;
+}
+function pluginFlagOn(flags, key) {
+  return flags[key] === true;
+}
+
 // dist/shared/run-collect.mjs
 var HOOK_BUDGET_MS = 1800;
 var FLUSH_MARGIN_MS = 200;
@@ -4352,7 +4625,7 @@ function pluginVersion() {
     ];
     for (const p of candidatePaths) {
       try {
-        const pkg = JSON.parse(readFileSync5(p, "utf8"));
+        const pkg = JSON.parse(readFileSync7(p, "utf8"));
         if (pkg.version)
           return pkg.version;
       } catch {
@@ -4426,7 +4699,8 @@ async function runCollect(adapter, opts) {
       schemaVersion: SCHEMA_VERSION,
       agent: adapter.agent
     });
-    const enrichedRaw = await adapter.mapHookEvent(hookPayload);
+    const pluginFlags = adapter.agent === "claude-code" ? readPluginFlags() : NO_PLUGIN_FLAGS;
+    const enrichedRaw = await adapter.mapHookEvent(hookPayload, { pluginFlags });
     const stamped = enrichedRaw && enrichedRaw.event_type === "session.start" && identity.repo_url_hash ? { ...enrichedRaw, attributes: { ...enrichedRaw.attributes, "fancysauce.repo_url_hash": identity.repo_url_hash } } : enrichedRaw;
     const withId = stamped === null ? null : { ...stamped, event_uuid: randomUUID2() };
     const primary = withId === null ? null : filterEvent(withId, config.policy);
@@ -4561,6 +4835,34 @@ ${err.stack ?? ""}` : String(err);
 import { homedir as homedir6 } from "node:os";
 import { join as join24 } from "node:path";
 
+// dist/shared/ref-extract.mjs
+var GITHUB_PR_URL = /https:\/\/github\.com\/([A-Za-z0-9._-]{1,100})\/([A-Za-z0-9._-]{1,100})\/pull\/([0-9]{1,9})(?![0-9])/g;
+function extractGithubPrRef(toolName, toolResponseRaw) {
+  if (toolName !== "Bash" || !toolResponseRaw)
+    return null;
+  const matches = /* @__PURE__ */ new Map();
+  GITHUB_PR_URL.lastIndex = 0;
+  for (const match2 of toolResponseRaw.matchAll(GITHUB_PR_URL)) {
+    const scope = `${match2[1]}/${match2[2]}`;
+    const id = String(Number(match2[3]));
+    const key = `${scope}\0${id}`;
+    if (!matches.has(key))
+      matches.set(key, { scope, id });
+    if (matches.size > 1)
+      return null;
+  }
+  const match = matches.values().next().value;
+  if (!match)
+    return null;
+  return {
+    system: "github",
+    kind: "pull_request",
+    id: match.id,
+    scope: match.scope,
+    source: "tool_output"
+  };
+}
+
 // dist/shared/stable-stringify.mjs
 function stableStringify(value) {
   if (value === null || typeof value !== "object")
@@ -4596,7 +4898,8 @@ var TOOL_HOOKS = /* @__PURE__ */ new Set([
   "PostToolUse",
   "PostToolUseFailure"
 ]);
-function mapHookToEvent(input, sequence) {
+function mapHookToEvent(input, sequence, opts = {}) {
+  const pluginFlags = opts.pluginFlags ?? NO_PLUGIN_FLAGS;
   const eventType = HOOK_TO_EVENT_TYPE[input.hook_event_name];
   if (!eventType) {
     throw new Error(`Unknown hook_event_name: ${String(input.hook_event_name)}`);
@@ -4617,7 +4920,18 @@ function mapHookToEvent(input, sequence) {
         attributes.skill_name = inp.skill;
     }
     if (input.tool_response !== void 0) {
-      attributes.tool_response_raw = stableStringify(input.tool_response);
+      const toolResponseRaw = stableStringify(input.tool_response);
+      attributes.tool_response_raw = toolResponseRaw;
+      if (input.hook_event_name === "PostToolUse" && pluginFlagOn(pluginFlags, PLUGIN_FLAG_GITHUB_PR_REF)) {
+        const ref = extractGithubPrRef(input.tool_name ?? "", toolResponseRaw);
+        if (ref) {
+          attributes.ref_system = ref.system;
+          attributes.ref_kind = ref.kind;
+          attributes.ref_id = ref.id;
+          attributes.ref_scope = ref.scope;
+          attributes.ref_source = ref.source;
+        }
+      }
     }
     if (input.tool_use_id)
       attributes.correlation_id = input.tool_use_id;
@@ -5010,6 +5324,13 @@ function detectUsageLimit(rec, sessionId, sequence, nowMs) {
 // dist/agents/claude-code/transcript-tail.mjs
 var SESSION_ID_RE2 = /^[A-Za-z0-9_-]{16,128}$/;
 var AGENT_ID_RE = /^[A-Za-z0-9_-]{16,128}$/;
+var ERROR_KIND_RE = /^[a-z][a-z0-9_]{0,63}$/;
+function apiErrorKind(v) {
+  return typeof v === "string" && ERROR_KIND_RE.test(v) ? v : void 0;
+}
+function isHttpStatus(v) {
+  return typeof v === "number" && Number.isInteger(v) && v >= 100 && v <= 599;
+}
 var TranscriptTail = class {
   stateDir;
   maxReadBytes;
@@ -5364,6 +5685,16 @@ function toApiRequestEvent(r, sessionId, sequence) {
   if (typeof usage.speed === "string" && usage.speed) {
     attrs.speed = usage.speed;
   }
+  if (typeof r.isApiErrorMessage === "boolean") {
+    attrs.api_error = r.isApiErrorMessage;
+  }
+  const kind = apiErrorKind(r.error);
+  if (kind !== void 0) {
+    attrs.api_error_kind = kind;
+  }
+  if (isHttpStatus(r.apiErrorStatus)) {
+    attrs.api_error_status = r.apiErrorStatus;
+  }
   return {
     event_uuid: randomUUID4(),
     event_type: "api.request",
@@ -5524,8 +5855,8 @@ async function writeStateAtomic(stateDir, path, body) {
 // dist/agents/claude-code/adapter.mjs
 var ClaudeCodeAdapter = class {
   agent = "claude-code";
-  async mapHookEvent(input) {
-    const raw = mapHookToEvent(input, 0);
+  async mapHookEvent(input, ctx) {
+    const raw = mapHookToEvent(input, 0, { pluginFlags: ctx.pluginFlags });
     if (raw === null)
       return null;
     return enrichSubagentComplete(raw, input.agent_transcript_path);
@@ -5582,204 +5913,6 @@ var ClaudeCodeAdapter = class {
     });
   }
 };
-
-// dist/shared/whoami/credential.mjs
-init_credential_paths();
-import { readFileSync as readFileSync6, statSync } from "node:fs";
-import { posix as posix2, win32 as win322 } from "node:path";
-var FINGERPRINT_HEX_CHARS = 12;
-function whoamiCredentialPaths() {
-  const parsed = parseCredentialPathsEnv();
-  return parsed ? { system: parsed.system, user: parsed.user } : credentialPaths();
-}
-function pathFlavor() {
-  return process.platform === "win32" ? win322 : posix2;
-}
-function resolveCredentialSync(opts = {}) {
-  const paths = opts.paths ?? whoamiCredentialPaths();
-  const env = opts.env ?? process.env;
-  const sys = readOneSync(paths.system);
-  if (sys.kind === "ok")
-    return withFingerprint("system", sys.token, sys.apiEndpoint);
-  if (sys.kind === "malformed")
-    return null;
-  const usr = readOneSync(paths.user);
-  if (usr.kind === "ok")
-    return withFingerprint("user", usr.token, usr.apiEndpoint);
-  if (usr.kind === "malformed")
-    return null;
-  const tenantKey = env.FANCYSAUCE_TENANT_KEY ?? "";
-  if (KEY_RE.test(tenantKey))
-    return withFingerprint("env_tenant_key", tenantKey, null);
-  const apiKey = env.FANCYSAUCE_API_KEY;
-  if (apiKey)
-    return withFingerprint("env_api_key", apiKey, null);
-  return null;
-}
-function withFingerprint(tier, token, apiEndpoint) {
-  return { tier, token, apiEndpoint, fingerprint: sha256Hex(token).slice(0, FINGERPRINT_HEX_CHARS) };
-}
-function readOneSync(path) {
-  let raw;
-  try {
-    raw = readFileSync6(path, "utf8");
-  } catch (err) {
-    if (err.code === "ENOENT")
-      return { kind: "absent" };
-    return { kind: "malformed" };
-  }
-  if (process.platform !== "win32") {
-    try {
-      if (permissiveModeReason(statSync(path).mode) !== null)
-        return { kind: "malformed" };
-    } catch {
-      return { kind: "malformed" };
-    }
-  }
-  let parsed;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
-    return { kind: "malformed" };
-  }
-  const v = validateCredentialFile(parsed);
-  if (v.kind !== "ok")
-    return { kind: "malformed" };
-  return { kind: "ok", token: v.cred.credential, apiEndpoint: v.cred.api_endpoint ?? null };
-}
-
-// dist/shared/whoami/cache.mjs
-import { closeSync, ftruncateSync, mkdirSync, openSync, readFileSync as readFileSync7, readdirSync, renameSync, rmSync, statSync as statSync2, writeSync } from "node:fs";
-var WHOAMI_SCHEMA_VERSION = 1;
-var SUCCESS_TTL_MS = 6 * 60 * 60 * 1e3;
-var ERROR_TTL_MS = 15 * 60 * 1e3;
-var CACHE_PREFIX = "whoami-cache-";
-var CACHE_SUFFIX = ".json";
-var TMP_ORPHAN_MAX_AGE_MS = 60 * 60 * 1e3;
-function whoamiCachePath(fingerprint2, opts = {}) {
-  const p = pathFlavor();
-  return p.join(credentialDir(opts), `${CACHE_PREFIX}${fingerprint2}${CACHE_SUFFIX}`);
-}
-function credentialDir(opts = {}) {
-  if (opts.dir !== void 0)
-    return opts.dir;
-  return pathFlavor().dirname(whoamiCredentialPaths().user);
-}
-function ensureCredentialDir(opts = {}) {
-  mkdirSync(credentialDir(opts), { recursive: true, mode: 448 });
-}
-function readWhoamiCache(fingerprint2, now, opts = {}) {
-  let entry;
-  try {
-    const parsed = JSON.parse(readFileSync7(whoamiCachePath(fingerprint2, opts), "utf8"));
-    const validated = validateEntry(parsed);
-    if (validated === null)
-      return null;
-    entry = validated;
-  } catch {
-    return null;
-  }
-  if (entry.credential_fingerprint !== fingerprint2)
-    return null;
-  const ttl = entry.result !== void 0 ? SUCCESS_TTL_MS : ERROR_TTL_MS;
-  if (now - entry.fetched_at >= ttl)
-    return null;
-  return entry;
-}
-function overwriteExisting(path, contents) {
-  const fd = openSync(path, "r+");
-  try {
-    ftruncateSync(fd, 0);
-    writeSync(fd, contents);
-  } finally {
-    closeSync(fd);
-  }
-}
-function validateEntry(v) {
-  if (typeof v !== "object" || v === null)
-    return null;
-  const o = v;
-  if (o.schema_version !== WHOAMI_SCHEMA_VERSION)
-    return null;
-  if (typeof o.fetched_at !== "number")
-    return null;
-  if (typeof o.credential_fingerprint !== "string")
-    return null;
-  const result = o.result === void 0 ? void 0 : parseWhoamiResult(o.result);
-  const error = parseErrorKind(o.error);
-  if (result === void 0 && error === void 0)
-    return null;
-  return {
-    schema_version: WHOAMI_SCHEMA_VERSION,
-    fetched_at: o.fetched_at,
-    credential_fingerprint: o.credential_fingerprint,
-    ...result !== void 0 ? { result } : {},
-    ...error !== void 0 ? { error } : {}
-  };
-}
-function parseErrorKind(v) {
-  return v === "rejected" || v === "rate_limited" || v === "server" || v === "transport" ? v : void 0;
-}
-function parseWhoamiResult(v) {
-  if (typeof v !== "object" || v === null)
-    return void 0;
-  const o = v;
-  if (typeof o.logged_in !== "boolean")
-    return void 0;
-  if (typeof o.tenant_id !== "string")
-    return void 0;
-  const user = parseUser(o.user);
-  if (user === void 0)
-    return void 0;
-  const key = parseKey(o.key);
-  if (key === void 0)
-    return void 0;
-  return { logged_in: o.logged_in, user, tenant_id: o.tenant_id, key };
-}
-function parseUser(v) {
-  if (v === null)
-    return null;
-  if (typeof v !== "object")
-    return void 0;
-  const o = v;
-  if (typeof o.id !== "string")
-    return void 0;
-  const name = o.name === null || typeof o.name === "string" ? o.name : void 0;
-  if (name === void 0)
-    return void 0;
-  const email = o.email_masked === null || typeof o.email_masked === "string" ? o.email_masked : void 0;
-  if (email === void 0)
-    return void 0;
-  return { id: o.id, name, email_masked: email };
-}
-function parseKey(v) {
-  if (typeof v !== "object" || v === null)
-    return void 0;
-  const o = v;
-  if (typeof o.id !== "string")
-    return void 0;
-  if (typeof o.env !== "string")
-    return void 0;
-  if (o.scope !== null && typeof o.scope !== "string")
-    return void 0;
-  if (typeof o.user_resolution_mode !== "string")
-    return void 0;
-  if (typeof o.vended_via !== "string")
-    return void 0;
-  if (typeof o.source_type !== "string")
-    return void 0;
-  if (typeof o.superseded !== "boolean")
-    return void 0;
-  return {
-    id: o.id,
-    env: o.env,
-    scope: o.scope,
-    user_resolution_mode: o.user_resolution_mode,
-    vended_via: o.vended_via,
-    source_type: o.source_type,
-    superseded: o.superseded
-  };
-}
 
 // dist/shared/whoami/lease.mjs
 import { openSync as openSync2, closeSync as closeSync2, readFileSync as readFileSync8, rmSync as rmSync2, statSync as statSync3, writeSync as writeSync2 } from "node:fs";

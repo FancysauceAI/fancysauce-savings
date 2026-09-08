@@ -575,6 +575,15 @@ function credentialDir(opts = {}) {
   return pathFlavor().dirname(whoamiCredentialPaths().user);
 }
 function readWhoamiCache(fingerprint, now, opts = {}) {
+  const entry = readWhoamiCacheAnyAge(fingerprint, opts);
+  if (entry === null)
+    return null;
+  const ttl = entry.result !== void 0 ? SUCCESS_TTL_MS : ERROR_TTL_MS;
+  if (now - entry.fetched_at >= ttl)
+    return null;
+  return entry;
+}
+function readWhoamiCacheAnyAge(fingerprint, opts = {}) {
   let entry;
   try {
     const parsed = JSON.parse(readFileSync4(whoamiCachePath(fingerprint, opts), "utf8"));
@@ -586,9 +595,6 @@ function readWhoamiCache(fingerprint, now, opts = {}) {
     return null;
   }
   if (entry.credential_fingerprint !== fingerprint)
-    return null;
-  const ttl = entry.result !== void 0 ? SUCCESS_TTL_MS : ERROR_TTL_MS;
-  if (now - entry.fetched_at >= ttl)
     return null;
   return entry;
 }
@@ -606,13 +612,30 @@ function validateEntry(v) {
   const error = parseErrorKind(o.error);
   if (result === void 0 && error === void 0)
     return null;
+  const hasPluginFlagsTimestamp = o.plugin_flags_fetched_at !== void 0;
+  const pluginFlagsFetchedAt = typeof o.plugin_flags_fetched_at === "number" ? o.plugin_flags_fetched_at : void 0;
+  const pluginFlags = hasPluginFlagsTimestamp && pluginFlagsFetchedAt === void 0 ? void 0 : parsePluginFlags(o.plugin_flags);
   return {
     schema_version: WHOAMI_SCHEMA_VERSION,
     fetched_at: o.fetched_at,
     credential_fingerprint: o.credential_fingerprint,
     ...result !== void 0 ? { result } : {},
-    ...error !== void 0 ? { error } : {}
+    ...error !== void 0 ? { error } : {},
+    ...pluginFlags !== void 0 ? {
+      plugin_flags: pluginFlags,
+      ...pluginFlagsFetchedAt !== void 0 ? { plugin_flags_fetched_at: pluginFlagsFetchedAt } : {}
+    } : {}
   };
+}
+function parsePluginFlags(v) {
+  if (typeof v !== "object" || v === null || Array.isArray(v))
+    return void 0;
+  const out = {};
+  for (const [key, value] of Object.entries(v)) {
+    if (typeof value === "boolean")
+      out[key] = value;
+  }
+  return out;
 }
 function parseErrorKind(v) {
   return v === "rejected" || v === "rate_limited" || v === "server" || v === "transport" ? v : void 0;
@@ -631,7 +654,14 @@ function parseWhoamiResult(v) {
   const key = parseKey(o.key);
   if (key === void 0)
     return void 0;
-  return { logged_in: o.logged_in, user, tenant_id: o.tenant_id, key };
+  const pluginFlags = parsePluginFlags(o.plugin_flags);
+  return {
+    logged_in: o.logged_in,
+    user,
+    tenant_id: o.tenant_id,
+    key,
+    ...pluginFlags !== void 0 ? { plugin_flags: pluginFlags } : {}
+  };
 }
 function parseUser(v) {
   if (v === null)

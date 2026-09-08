@@ -242,6 +242,21 @@ function credentialDir(opts = {}) {
 function ensureCredentialDir(opts = {}) {
   mkdirSync(credentialDir(opts), { recursive: true, mode: 448 });
 }
+function readWhoamiCacheAnyAge(fingerprint, opts = {}) {
+  let entry;
+  try {
+    const parsed = JSON.parse(readFileSync2(whoamiCachePath(fingerprint, opts), "utf8"));
+    const validated = validateEntry(parsed);
+    if (validated === null)
+      return null;
+    entry = validated;
+  } catch {
+    return null;
+  }
+  if (entry.credential_fingerprint !== fingerprint)
+    return null;
+  return entry;
+}
 function writeWhoamiCache(entry, opts = {}) {
   ensureCredentialDir(opts);
   const target = whoamiCachePath(entry.credential_fingerprint, opts);
@@ -292,6 +307,48 @@ function pruneWhoamiCaches(opts = {}) {
   } catch {
   }
 }
+function validateEntry(v) {
+  if (typeof v !== "object" || v === null)
+    return null;
+  const o = v;
+  if (o.schema_version !== WHOAMI_SCHEMA_VERSION)
+    return null;
+  if (typeof o.fetched_at !== "number")
+    return null;
+  if (typeof o.credential_fingerprint !== "string")
+    return null;
+  const result = o.result === void 0 ? void 0 : parseWhoamiResult(o.result);
+  const error = parseErrorKind(o.error);
+  if (result === void 0 && error === void 0)
+    return null;
+  const hasPluginFlagsTimestamp = o.plugin_flags_fetched_at !== void 0;
+  const pluginFlagsFetchedAt = typeof o.plugin_flags_fetched_at === "number" ? o.plugin_flags_fetched_at : void 0;
+  const pluginFlags = hasPluginFlagsTimestamp && pluginFlagsFetchedAt === void 0 ? void 0 : parsePluginFlags(o.plugin_flags);
+  return {
+    schema_version: WHOAMI_SCHEMA_VERSION,
+    fetched_at: o.fetched_at,
+    credential_fingerprint: o.credential_fingerprint,
+    ...result !== void 0 ? { result } : {},
+    ...error !== void 0 ? { error } : {},
+    ...pluginFlags !== void 0 ? {
+      plugin_flags: pluginFlags,
+      ...pluginFlagsFetchedAt !== void 0 ? { plugin_flags_fetched_at: pluginFlagsFetchedAt } : {}
+    } : {}
+  };
+}
+function parsePluginFlags(v) {
+  if (typeof v !== "object" || v === null || Array.isArray(v))
+    return void 0;
+  const out = {};
+  for (const [key, value] of Object.entries(v)) {
+    if (typeof value === "boolean")
+      out[key] = value;
+  }
+  return out;
+}
+function parseErrorKind(v) {
+  return v === "rejected" || v === "rate_limited" || v === "server" || v === "transport" ? v : void 0;
+}
 function parseWhoamiResult(v) {
   if (typeof v !== "object" || v === null)
     return void 0;
@@ -306,7 +363,14 @@ function parseWhoamiResult(v) {
   const key = parseKey(o.key);
   if (key === void 0)
     return void 0;
-  return { logged_in: o.logged_in, user, tenant_id: o.tenant_id, key };
+  const pluginFlags = parsePluginFlags(o.plugin_flags);
+  return {
+    logged_in: o.logged_in,
+    user,
+    tenant_id: o.tenant_id,
+    key,
+    ...pluginFlags !== void 0 ? { plugin_flags: pluginFlags } : {}
+  };
 }
 function parseUser(v) {
   if (v === null)
@@ -376,7 +440,7 @@ async function runWhoamiRefresh(opts = {}) {
     return { kind: "no-credential" };
   const cacheOpts = opts.dir !== void 0 ? { dir: opts.dir } : {};
   try {
-    const entry = await fetchEntry(resolved, opts);
+    const entry = await fetchEntry(resolved, opts, cacheOpts);
     try {
       writeWhoamiCache(entry, cacheOpts);
     } catch {
@@ -386,8 +450,17 @@ async function runWhoamiRefresh(opts = {}) {
     releaseWhoamiLease(resolved.fingerprint, cacheOpts);
   }
 }
-async function fetchEntry(resolved, opts) {
+async function fetchEntry(resolved, opts, cacheOpts) {
   const now = opts.now ?? Date.now();
+  const carried = readWhoamiCacheAnyAge(resolved.fingerprint, cacheOpts);
+  const failed = (error) => ({
+    ...head,
+    error,
+    ...error !== "rejected" && carried?.plugin_flags !== void 0 ? {
+      plugin_flags: carried.plugin_flags,
+      ...carried.plugin_flags_fetched_at !== void 0 ? { plugin_flags_fetched_at: carried.plugin_flags_fetched_at } : {}
+    } : {}
+  });
   const base = resolved.apiEndpoint ?? opts.apiBase ?? API_ENDPOINT;
   const doFetch = opts.fetchImpl ?? fetch;
   const head = {
@@ -399,10 +472,10 @@ async function fetchEntry(resolved, opts) {
   try {
     url = endpointUrl(base, "v1/whoami");
   } catch {
-    return { ...head, error: "transport" };
+    return failed("transport");
   }
   if (!allowsBearer(url))
-    return { ...head, error: "transport" };
+    return failed("transport");
   let res;
   try {
     res = await doFetch(url.href, {
@@ -411,21 +484,26 @@ async function fetchEntry(resolved, opts) {
       signal: AbortSignal.timeout(WHOAMI_TIMEOUT_MS)
     });
   } catch {
-    return { ...head, error: "transport" };
+    return failed("transport");
   }
   const failure = errorForStatus(res.status);
   if (failure !== null)
-    return { ...head, error: failure };
+    return failed(failure);
   let body;
   try {
     body = await res.json();
   } catch {
-    return { ...head, error: "transport" };
+    return failed("transport");
   }
   const result = parseWhoamiResult(body);
   if (result === void 0)
-    return { ...head, error: "transport" };
-  return { ...head, result };
+    return failed("transport");
+  return {
+    ...head,
+    result,
+    plugin_flags: result.plugin_flags ?? {},
+    plugin_flags_fetched_at: now
+  };
 }
 function errorForStatus(status) {
   if (status === 200)

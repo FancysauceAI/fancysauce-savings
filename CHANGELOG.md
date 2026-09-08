@@ -2,6 +2,36 @@
 
 All public releases of `fancysauce-savings`. Most recent first.
 
+## v0.17.0 — 2026-09-08
+
+### Features
+
+- The plugin captures the GitHub pull-request reference from Bash tool output.
+  When a Claude Code `Bash` call prints exactly one
+  `https://github.com/<owner>/<repo>/pull/<number>` URL, `tool_call.complete`
+  carries five flat attributes: `ref_system`, `ref_kind`, `ref_id`,
+  `ref_scope`, and `ref_source`. A response that names two different pull
+  requests yields no attributes. The extractor reads the response only, never
+  the command. (#133)
+
+- The capture is gated by a per-tenant feature flag. `GET /v1/whoami` now
+  publishes a `plugin_flags` map, the whoami cache stores it with its own
+  `plugin_flags_fetched_at` stamp, and every hook fire reads it from disk. The
+  flag `fancytab-github-pr-ref` is off for every tenant until an admin turns it
+  on. A stale grant survives transport, 429, and 5xx failures for at most 24
+  hours and clears on 401. The Codex adapter does not read the cache. (#135)
+
+- `api.request` carries turn-failure detail: `api_error`, `api_error_kind`, and
+  `api_error_status`, taken from Claude Code's own error fields. A failed turn
+  is now distinguishable from a healthy one in the data. (#93)
+
+### Fixes
+
+- A Codex subagent turn now reaches `otlp.llm_calls` with a `model` attribute.
+  On `SubagentStart` the tail writes the parent's model into the subagent's
+  cursor file, so subagent turns price at their real Codex rate instead of the
+  fallback rate. (#112)
+
 ## v0.16.2 — 2026-08-28
 
 ### Fixes

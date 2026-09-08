@@ -1954,7 +1954,12 @@ function defaultPolicy() {
       "correlation_id",
       "subsession_id",
       "agent_type",
-      "skill_name"
+      "skill_name",
+      "ref_system",
+      "ref_kind",
+      "ref_id",
+      "ref_scope",
+      "ref_source"
     ]),
     "tool_call.failed": Object.freeze([
       "tool_name",
@@ -2060,6 +2065,9 @@ function defaultPolicy() {
       "secondary_resets_at",
       "secondary_window_minutes",
       "speed",
+      "api_error",
+      "api_error_kind",
+      "api_error_status",
       "reached_type",
       "plan_type",
       "credits_has",
@@ -2680,6 +2688,13 @@ function detectUsageLimit(rec, sessionId, sequence, nowMs) {
 // dist/agents/claude-code/transcript-tail.mjs
 var SESSION_ID_RE = /^[A-Za-z0-9_-]{16,128}$/;
 var AGENT_ID_RE = /^[A-Za-z0-9_-]{16,128}$/;
+var ERROR_KIND_RE = /^[a-z][a-z0-9_]{0,63}$/;
+function apiErrorKind(v) {
+  return typeof v === "string" && ERROR_KIND_RE.test(v) ? v : void 0;
+}
+function isHttpStatus(v) {
+  return typeof v === "number" && Number.isInteger(v) && v >= 100 && v <= 599;
+}
 var TranscriptTail = class {
   stateDir;
   maxReadBytes;
@@ -3034,6 +3049,16 @@ function toApiRequestEvent(r, sessionId, sequence) {
   if (typeof usage.speed === "string" && usage.speed) {
     attrs.speed = usage.speed;
   }
+  if (typeof r.isApiErrorMessage === "boolean") {
+    attrs.api_error = r.isApiErrorMessage;
+  }
+  const kind = apiErrorKind(r.error);
+  if (kind !== void 0) {
+    attrs.api_error_kind = kind;
+  }
+  if (isHttpStatus(r.apiErrorStatus)) {
+    attrs.api_error_status = r.apiErrorStatus;
+  }
   return {
     event_uuid: randomUUID2(),
     event_type: "api.request",
@@ -3178,6 +3203,11 @@ function toolCallComplete(a) {
   });
   if (typeof a.skill_name === "string" && a.skill_name)
     out.skill_name = a.skill_name;
+  const refKeys = ["ref_system", "ref_kind", "ref_id", "ref_scope", "ref_source"];
+  if (refKeys.every((key) => typeof a[key] === "string" && a[key] !== "")) {
+    for (const key of refKeys)
+      out[key] = a[key];
+  }
   return out;
 }
 function toolCallFailed(a) {
@@ -3328,6 +3358,18 @@ import { gzip } from "node:zlib";
 import { promisify } from "node:util";
 var gzipAsync = promisify(gzip);
 var MAX_RESPONSE_BYTES = 64 * 1024;
+
+// dist/shared/whoami/credential.mjs
+init_credential_paths();
+
+// dist/shared/whoami/cache.mjs
+var SUCCESS_TTL_MS = 6 * 60 * 60 * 1e3;
+var ERROR_TTL_MS = 15 * 60 * 1e3;
+var TMP_ORPHAN_MAX_AGE_MS = 60 * 60 * 1e3;
+
+// dist/shared/whoami/flags.mjs
+var PLUGIN_FLAGS_MAX_AGE_MS = 24 * 60 * 60 * 1e3;
+var NO_PLUGIN_FLAGS = Object.freeze({});
 
 // dist/shared/run-collect.mjs
 var QUEUE_CAP_BYTES = 100 * 1024 * 1024;

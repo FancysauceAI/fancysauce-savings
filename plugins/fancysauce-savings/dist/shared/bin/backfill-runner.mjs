@@ -1641,7 +1641,12 @@ function defaultPolicy() {
       "correlation_id",
       "subsession_id",
       "agent_type",
-      "skill_name"
+      "skill_name",
+      "ref_system",
+      "ref_kind",
+      "ref_id",
+      "ref_scope",
+      "ref_source"
     ]),
     "tool_call.failed": Object.freeze([
       "tool_name",
@@ -1747,6 +1752,9 @@ function defaultPolicy() {
       "secondary_resets_at",
       "secondary_window_minutes",
       "speed",
+      "api_error",
+      "api_error_kind",
+      "api_error_status",
       "reached_type",
       "plan_type",
       "credits_has",
@@ -2504,6 +2512,11 @@ var ATTR_TYPE = {
   response_size_bytes: "int",
   success: "bool",
   correlation_id: "string",
+  ref_system: "string",
+  ref_kind: "string",
+  ref_id: "string",
+  ref_scope: "string",
+  ref_source: "string",
   // subagent.{start,complete}
   agent_id: "string",
   agent_type: "string",
@@ -2520,6 +2533,9 @@ var ATTR_TYPE = {
   transcript_message_uuid: "string",
   stop_reason: "string",
   speed: "string",
+  api_error: "bool",
+  api_error_kind: "string",
+  api_error_status: "int",
   // notification
   notification_type: "string",
   // task.completed
@@ -2544,8 +2560,7 @@ var ATTR_TYPE = {
   limit_message: "string",
   limit_kind_guess: "string",
   reset_at_guess: "int",
-  api_error_status: "int",
-  // request_id + transcript_message_uuid already typed above (api.request).
+  // request_id, transcript_message_uuid + api_error_status already typed above (api.request).
   // usage_limit.snapshot + Codex rate-limit lens
   window: "string",
   used_percent: "double",
