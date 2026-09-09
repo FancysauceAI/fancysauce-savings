@@ -2,6 +2,17 @@
 
 All public releases of `fancysauce-savings`. Most recent first.
 
+## v0.18.0 — 2026-09-09
+
+### Features
+
+- feat(claude-code): usage probe — Team-seat allowance windows and reported spend without a statusline (#138)
+- feat(codex): forward the rate-limit family as limit_id (#131)
+
+### Fixes
+
+- fix(release): repeat the server-key flags in the variant rerun hint (#139)
+
 ## v0.17.0 — 2026-09-08
 
 ### Features

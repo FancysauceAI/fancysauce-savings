@@ -220,7 +220,7 @@ function readOneSync(path) {
 }
 
 // dist/shared/whoami/cache.mjs
-import { closeSync, ftruncateSync, mkdirSync, openSync, readFileSync as readFileSync2, readdirSync, renameSync, rmSync, statSync as statSync2, writeSync } from "node:fs";
+import { closeSync, mkdirSync, openSync, readFileSync as readFileSync2, readdirSync, renameSync, rmSync, statSync as statSync2, writeSync } from "node:fs";
 import { randomBytes } from "node:crypto";
 var WHOAMI_SCHEMA_VERSION = 1;
 var SUCCESS_TTL_MS = 6 * 60 * 60 * 1e3;
@@ -417,16 +417,21 @@ function parseKey(v) {
   };
 }
 
+// dist/shared/lease.mjs
+import { closeSync as closeSync2, ftruncateSync, openSync as openSync2, readFileSync as readFileSync3, rmSync as rmSync2, statSync as statSync3, writeSync as writeSync2 } from "node:fs";
+function releaseLease(path) {
+  try {
+    rmSync2(path, { force: true });
+  } catch {
+  }
+}
+
 // dist/shared/whoami/lease.mjs
-import { openSync as openSync2, closeSync as closeSync2, readFileSync as readFileSync3, rmSync as rmSync2, statSync as statSync3, writeSync as writeSync2 } from "node:fs";
 function whoamiLeasePath(fingerprint, opts = {}) {
   return pathFlavor().join(credentialDir(opts), `whoami-refresh-${fingerprint}.lock`);
 }
 function releaseWhoamiLease(fingerprint, opts = {}) {
-  try {
-    rmSync2(whoamiLeasePath(fingerprint, opts), { force: true });
-  } catch {
-  }
+  releaseLease(whoamiLeasePath(fingerprint, opts));
 }
 
 // dist/shared/whoami/refresh.mjs

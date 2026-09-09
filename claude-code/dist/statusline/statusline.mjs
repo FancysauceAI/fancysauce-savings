@@ -558,7 +558,7 @@ function readOneSync(path) {
 }
 
 // dist/shared/whoami/cache.mjs
-import { closeSync, ftruncateSync, mkdirSync, openSync, readFileSync as readFileSync4, readdirSync, renameSync, rmSync, statSync as statSync2, writeSync } from "node:fs";
+import { closeSync, mkdirSync, openSync, readFileSync as readFileSync4, readdirSync, renameSync, rmSync, statSync as statSync2, writeSync } from "node:fs";
 var WHOAMI_SCHEMA_VERSION = 1;
 var SUCCESS_TTL_MS = 6 * 60 * 60 * 1e3;
 var ERROR_TTL_MS = 15 * 60 * 1e3;

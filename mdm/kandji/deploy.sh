@@ -42,11 +42,11 @@ set -eo pipefail
 # --- configuration (edit before uploading to Kandji) ----------------------
 TENANT_KEY="fs_live_t_REPLACE_ME"   # from your fancysauce dashboard
 IDENTITY_TYPE="full"
-CODEX_TAG="v0.16.2"                 # pinned plugin release for Codex telemetry
-CODEX_SHA="c39a7c77b9d3f962696186f9f5fbd225440b9e19"   # commit sha of CODEX_TAG
+CODEX_TAG="v0.17.0"                 # pinned plugin release for Codex telemetry
+CODEX_SHA="c5ff8de67006b4f6e056fd9291d73d03788f89e8"   # commit sha of CODEX_TAG
 CC_MODE="managed-hooks"             # plugin | managed-hooks
-CC_TAG="v0.16.2"                    # pinned plugin release for Claude Code telemetry
-CC_SHA="c39a7c77b9d3f962696186f9f5fbd225440b9e19"   # commit sha of CC_TAG
+CC_TAG="v0.17.0"                    # pinned plugin release for Claude Code telemetry
+CC_SHA="c5ff8de67006b4f6e056fd9291d73d03788f89e8"   # commit sha of CC_TAG
 # SessionEnd hooks share a 1.5s budget, which the collector's own 1800ms
 # self-budget already overruns. Claude Code raises the shared budget to the
 # longest per-hook timeout, so this one field is what keeps the end-of-session
@@ -606,7 +606,7 @@ if [ "$CC_MODE" = "managed-hooks" ]; then
   # Paths inside the generated file are real device paths — never the test prefix.
   # Must equal src/agents/claude-code/hooks.json; kandji-mdm-template.test.mjs
   # derives the expected set from it. An event added here alone fails the suite.
-  CC_EVENTS="SessionStart SessionEnd UserPromptSubmit PreToolUse PostToolUse PostToolUseFailure SubagentStart SubagentStop PreCompact PostCompact Stop ConfigChange Notification TaskCompleted PermissionRequest"
+  CC_EVENTS="SessionStart SessionEnd UserPromptSubmit PreToolUse PostToolUse PostToolUseFailure SubagentStart SubagentStop PreCompact PostCompact Stop StopFailure ConfigChange Notification TaskCompleted PermissionRequest"
   {
     /usr/bin/printf '{\n  "hooks": {\n'
     _first=1

@@ -35,138 +35,10 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
   mod
 ));
 
-// dist/shared/credential-paths.mjs
-import { homedir } from "node:os";
-import { posix, win32 } from "node:path";
-function credentialPaths() {
-  if (process.platform === "win32") {
-    const programData = process.env.PROGRAMDATA ?? "C:\\ProgramData";
-    const appData = process.env.APPDATA ?? win32.join(homedir(), "AppData", "Roaming");
-    return {
-      system: win32.join(programData, "fancysauce", "credentials.json"),
-      user: win32.join(appData, "fancysauce", "credentials.json")
-    };
-  }
-  return {
-    system: "/etc/fancysauce/credentials.json",
-    user: posix.join(process.env.HOME ?? homedir(), ".config", "fancysauce", "credentials.json")
-  };
-}
-var init_credential_paths = __esm({
-  "dist/shared/credential-paths.mjs"() {
-    "use strict";
-  }
-});
-
-// dist/shared/backfill/pid-guard.mjs
-import { readFile as readFile2, rm, mkdir as mkdir2, open as open2 } from "node:fs/promises";
-import { join as join2 } from "node:path";
-async function isBackfillActive(stateDir) {
-  try {
-    const raw = await readFile2(join2(stateDir, "backfill.pid"), "utf8");
-    const pid = Number(raw.trim());
-    if (!Number.isFinite(pid) || pid <= 0)
-      return null;
-    try {
-      process.kill(pid, 0);
-      return pid;
-    } catch {
-      return null;
-    }
-  } catch {
-    return null;
-  }
-}
-var init_pid_guard = __esm({
-  "dist/shared/backfill/pid-guard.mjs"() {
-    "use strict";
-  }
-});
-
-// dist/shared/backfill/runner-env.mjs
-function buildRunnerEnv(env) {
-  const out = {};
-  for (const [k, v] of Object.entries(env)) {
-    if (ALLOWED.has(k))
-      out[k] = v;
-  }
-  return out;
-}
-var ALLOWED;
-var init_runner_env = __esm({
-  "dist/shared/backfill/runner-env.mjs"() {
-    "use strict";
-    ALLOWED = /* @__PURE__ */ new Set([
-      "PATH",
-      "HOME",
-      "APPDATA",
-      "PROGRAMDATA",
-      "USER",
-      "LOGNAME",
-      "SHELL",
-      "LANG",
-      "LC_ALL",
-      "LC_CTYPE",
-      "TZ",
-      "TERM",
-      "VITEST",
-      "CLAUDE_PLUGIN_DATA",
-      "CLAUDE_CODE_EXECPATH",
-      "FANCYSAUCE_CREDENTIAL_PATHS",
-      "FANCYSAUCE_API_KEY",
-      "FANCYSAUCE_TENANT_KEY"
-    ]);
-  }
-});
-
-// dist/shared/backfill/runner-spawn.mjs
-import { spawn } from "node:child_process";
-import { join as join3, dirname as dirname2 } from "node:path";
-import { fileURLToPath } from "node:url";
-function resolveDistBinPath(containerDir, binName) {
-  return join3(containerDir, "..", "..", "shared", "bin", binName);
-}
-async function spawnBackfillRunner(input) {
-  const here = dirname2(fileURLToPath(import.meta.url));
-  const binPath = resolveDistBinPath(here, "backfill-runner.mjs");
-  const args = ["--data-dir", input.dataDir, "--credential-path", input.credentialPath];
-  return spawnDetachedBin(binPath, args, input.spawner);
-}
-async function spawnDetachedBin(binPath, args, spawner) {
-  const spawnFn = spawner ?? defaultSpawner;
-  try {
-    const { pid } = await spawnFn(binPath, args);
-    return { kind: "spawned", pid };
-  } catch (err) {
-    return { kind: "error", reason: err.message };
-  }
-}
-function defaultSpawner(binPath, args) {
-  return new Promise((resolve, reject) => {
-    const child = spawn(process.execPath, [binPath, ...args], {
-      detached: true,
-      stdio: "ignore",
-      env: buildRunnerEnv(process.env)
-    });
-    child.once("error", reject);
-    child.once("spawn", () => {
-      const pid = child.pid ?? 0;
-      child.unref();
-      resolve({ pid });
-    });
-  });
-}
-var init_runner_spawn = __esm({
-  "dist/shared/backfill/runner-spawn.mjs"() {
-    "use strict";
-    init_runner_env();
-  }
-});
-
 // node_modules/graceful-fs/polyfills.js
 var require_polyfills = __commonJS({
   "node_modules/graceful-fs/polyfills.js"(exports, module) {
-    var constants3 = __require("constants");
+    var constants2 = __require("constants");
     var origCwd = process.cwd;
     var cwd = null;
     var platform = process.env.GRACEFUL_FS_PLATFORM || process.platform;
@@ -190,7 +62,7 @@ var require_polyfills = __commonJS({
     var chdir;
     module.exports = patch;
     function patch(fs) {
-      if (constants3.hasOwnProperty("O_SYMLINK") && process.version.match(/^v0\.6\.[0-2]|^v0\.5\./)) {
+      if (constants2.hasOwnProperty("O_SYMLINK") && process.version.match(/^v0\.6\.[0-2]|^v0\.5\./)) {
         patchLchmod(fs);
       }
       if (!fs.lutimes) {
@@ -230,7 +102,7 @@ var require_polyfills = __commonJS({
       }
       if (platform === "win32") {
         fs.rename = typeof fs.rename !== "function" ? fs.rename : (function(fs$rename) {
-          function rename5(from, to, cb) {
+          function rename3(from, to, cb) {
             var start = Date.now();
             var backoff = 0;
             fs$rename(from, to, function CB(er) {
@@ -250,8 +122,8 @@ var require_polyfills = __commonJS({
               if (cb) cb(er);
             });
           }
-          if (Object.setPrototypeOf) Object.setPrototypeOf(rename5, fs$rename);
-          return rename5;
+          if (Object.setPrototypeOf) Object.setPrototypeOf(rename3, fs$rename);
+          return rename3;
         })(fs.rename);
       }
       fs.read = typeof fs.read !== "function" ? fs.read : (function(fs$read) {
@@ -292,7 +164,7 @@ var require_polyfills = __commonJS({
         fs2.lchmod = function(path, mode, callback) {
           fs2.open(
             path,
-            constants3.O_WRONLY | constants3.O_SYMLINK,
+            constants2.O_WRONLY | constants2.O_SYMLINK,
             mode,
             function(err, fd) {
               if (err) {
@@ -308,7 +180,7 @@ var require_polyfills = __commonJS({
           );
         };
         fs2.lchmodSync = function(path, mode) {
-          var fd = fs2.openSync(path, constants3.O_WRONLY | constants3.O_SYMLINK, mode);
+          var fd = fs2.openSync(path, constants2.O_WRONLY | constants2.O_SYMLINK, mode);
           var threw = true;
           var ret;
           try {
@@ -328,9 +200,9 @@ var require_polyfills = __commonJS({
         };
       }
       function patchLutimes(fs2) {
-        if (constants3.hasOwnProperty("O_SYMLINK") && fs2.futimes) {
+        if (constants2.hasOwnProperty("O_SYMLINK") && fs2.futimes) {
           fs2.lutimes = function(path, at, mt, cb) {
-            fs2.open(path, constants3.O_SYMLINK, function(er, fd) {
+            fs2.open(path, constants2.O_SYMLINK, function(er, fd) {
               if (er) {
                 if (cb) cb(er);
                 return;
@@ -343,7 +215,7 @@ var require_polyfills = __commonJS({
             });
           };
           fs2.lutimesSync = function(path, at, mt) {
-            var fd = fs2.openSync(path, constants3.O_SYMLINK);
+            var fd = fs2.openSync(path, constants2.O_SYMLINK);
             var ret;
             var threw = true;
             try {
@@ -552,18 +424,18 @@ var require_clone = __commonJS({
   "node_modules/graceful-fs/clone.js"(exports, module) {
     "use strict";
     module.exports = clone;
-    var getPrototypeOf = Object.getPrototypeOf || function(obj) {
-      return obj.__proto__;
+    var getPrototypeOf = Object.getPrototypeOf || function(obj2) {
+      return obj2.__proto__;
     };
-    function clone(obj) {
-      if (obj === null || typeof obj !== "object")
-        return obj;
-      if (obj instanceof Object)
-        var copy = { __proto__: getPrototypeOf(obj) };
+    function clone(obj2) {
+      if (obj2 === null || typeof obj2 !== "object")
+        return obj2;
+      if (obj2 instanceof Object)
+        var copy = { __proto__: getPrototypeOf(obj2) };
       else
         var copy = /* @__PURE__ */ Object.create(null);
-      Object.getOwnPropertyNames(obj).forEach(function(key) {
-        Object.defineProperty(copy, key, Object.getOwnPropertyDescriptor(obj, key));
+      Object.getOwnPropertyNames(obj2).forEach(function(key) {
+        Object.defineProperty(copy, key, Object.getOwnPropertyDescriptor(obj2, key));
       });
       return copy;
     }
@@ -624,14 +496,14 @@ var require_graceful_fs = __commonJS({
         return close;
       })(fs.close);
       fs.closeSync = (function(fs$closeSync) {
-        function closeSync(fd) {
+        function closeSync2(fd) {
           fs$closeSync.apply(fs, arguments);
           resetQueue();
         }
-        Object.defineProperty(closeSync, previousSymbol, {
+        Object.defineProperty(closeSync2, previousSymbol, {
           value: fs$closeSync
         });
-        return closeSync;
+        return closeSync2;
       })(fs.closeSync);
       if (/\bgfs4\b/i.test(process.env.NODE_DEBUG || "")) {
         process.on("exit", function() {
@@ -655,8 +527,8 @@ var require_graceful_fs = __commonJS({
       fs2.createReadStream = createReadStream;
       fs2.createWriteStream = createWriteStream;
       var fs$readFile = fs2.readFile;
-      fs2.readFile = readFile6;
-      function readFile6(path, options, cb) {
+      fs2.readFile = readFile5;
+      function readFile5(path, options, cb) {
         if (typeof options === "function")
           cb = options, options = null;
         return go$readFile(path, options, cb);
@@ -672,8 +544,8 @@ var require_graceful_fs = __commonJS({
         }
       }
       var fs$writeFile = fs2.writeFile;
-      fs2.writeFile = writeFile4;
-      function writeFile4(path, data, options, cb) {
+      fs2.writeFile = writeFile2;
+      function writeFile2(path, data, options, cb) {
         if (typeof options === "function")
           cb = options, options = null;
         return go$writeFile(path, data, options, cb);
@@ -690,8 +562,8 @@ var require_graceful_fs = __commonJS({
       }
       var fs$appendFile = fs2.appendFile;
       if (fs$appendFile)
-        fs2.appendFile = appendFile4;
-      function appendFile4(path, data, options, cb) {
+        fs2.appendFile = appendFile2;
+      function appendFile2(path, data, options, cb) {
         if (typeof options === "function")
           cb = options, options = null;
         return go$appendFile(path, data, options, cb);
@@ -727,9 +599,9 @@ var require_graceful_fs = __commonJS({
         }
       }
       var fs$readdir = fs2.readdir;
-      fs2.readdir = readdir3;
+      fs2.readdir = readdir;
       var noReaddirOptionVersions = /^v[0-5]\./;
-      function readdir3(path, options, cb) {
+      function readdir(path, options, cb) {
         if (typeof options === "function")
           cb = options, options = null;
         var go$readdir = noReaddirOptionVersions.test(process.version) ? function go$readdir2(path2, options2, cb2, startTime) {
@@ -832,7 +704,7 @@ var require_graceful_fs = __commonJS({
       }
       function ReadStream$open() {
         var that = this;
-        open6(that.path, that.flags, that.mode, function(err, fd) {
+        open3(that.path, that.flags, that.mode, function(err, fd) {
           if (err) {
             if (that.autoClose)
               that.destroy();
@@ -852,7 +724,7 @@ var require_graceful_fs = __commonJS({
       }
       function WriteStream$open() {
         var that = this;
-        open6(that.path, that.flags, that.mode, function(err, fd) {
+        open3(that.path, that.flags, that.mode, function(err, fd) {
           if (err) {
             that.destroy();
             that.emit("error", err);
@@ -869,8 +741,8 @@ var require_graceful_fs = __commonJS({
         return new fs2.WriteStream(path, options);
       }
       var fs$open = fs2.open;
-      fs2.open = open6;
-      function open6(path, flags, mode, cb) {
+      fs2.open = open3;
+      function open3(path, flags, mode, cb) {
         if (typeof mode === "function")
           cb = mode, mode = null;
         return go$open(path, flags, mode, cb);
@@ -1118,23 +990,23 @@ var require_retry = __commonJS({
       timeout = Math.min(timeout, opts.maxTimeout);
       return timeout;
     };
-    exports.wrap = function(obj, options, methods) {
+    exports.wrap = function(obj2, options, methods) {
       if (options instanceof Array) {
         methods = options;
         options = null;
       }
       if (!methods) {
         methods = [];
-        for (var key in obj) {
-          if (typeof obj[key] === "function") {
+        for (var key in obj2) {
+          if (typeof obj2[key] === "function") {
             methods.push(key);
           }
         }
       }
       for (var i = 0; i < methods.length; i++) {
         var method = methods[i];
-        var original = obj[method];
-        obj[method] = function retryWrapper(original2) {
+        var original = obj2[method];
+        obj2[method] = function retryWrapper(original2) {
           var op = exports.operation(options);
           var args = Array.prototype.slice.call(arguments, 1);
           var callback = args.pop();
@@ -1148,10 +1020,10 @@ var require_retry = __commonJS({
             callback.apply(this, arguments);
           });
           op.attempt(function() {
-            original2.apply(obj, args);
+            original2.apply(obj2, args);
           });
-        }.bind(obj, original);
-        obj[method].options = options;
+        }.bind(obj2, original);
+        obj2[method].options = options;
       }
     };
   }
@@ -1368,11 +1240,11 @@ var require_mtime_precision = __commonJS({
     function probe(file, fs, callback) {
       const cachedPrecision = fs[cacheSymbol];
       if (cachedPrecision) {
-        return fs.stat(file, (err, stat3) => {
+        return fs.stat(file, (err, stat2) => {
           if (err) {
             return callback(err);
           }
-          callback(null, stat3.mtime, cachedPrecision);
+          callback(null, stat2.mtime, cachedPrecision);
         });
       }
       const mtime = new Date(Math.ceil(Date.now() / 1e3) * 1e3 + 5);
@@ -1380,13 +1252,13 @@ var require_mtime_precision = __commonJS({
         if (err) {
           return callback(err);
         }
-        fs.stat(file, (err2, stat3) => {
+        fs.stat(file, (err2, stat2) => {
           if (err2) {
             return callback(err2);
           }
-          const precision = stat3.mtime.getTime() % 1e3 === 0 ? "s" : "ms";
+          const precision = stat2.mtime.getTime() % 1e3 === 0 ? "s" : "ms";
           Object.defineProperty(fs, cacheSymbol, { value: precision });
-          callback(null, stat3.mtime, precision);
+          callback(null, stat2.mtime, precision);
         });
       });
     }
@@ -1440,14 +1312,14 @@ var require_lockfile = __commonJS({
         if (options.stale <= 0) {
           return callback(Object.assign(new Error("Lock file is already being held"), { code: "ELOCKED", file }));
         }
-        options.fs.stat(lockfilePath, (err2, stat3) => {
+        options.fs.stat(lockfilePath, (err2, stat2) => {
           if (err2) {
             if (err2.code === "ENOENT") {
               return acquireLock(file, { ...options, stale: 0 }, callback);
             }
             return callback(err2);
           }
-          if (!isLockStale(stat3, options)) {
+          if (!isLockStale(stat2, options)) {
             return callback(Object.assign(new Error("Lock file is already being held"), { code: "ELOCKED", file }));
           }
           removeLock(file, options, (err3) => {
@@ -1459,8 +1331,8 @@ var require_lockfile = __commonJS({
         });
       });
     }
-    function isLockStale(stat3, options) {
-      return stat3.mtime.getTime() < Date.now() - options.stale;
+    function isLockStale(stat2, options) {
+      return stat2.mtime.getTime() < Date.now() - options.stale;
     }
     function removeLock(file, options, callback) {
       options.fs.rmdir(getLockFile(file, options), (err) => {
@@ -1478,7 +1350,7 @@ var require_lockfile = __commonJS({
       lock2.updateDelay = lock2.updateDelay || options.update;
       lock2.updateTimeout = setTimeout(() => {
         lock2.updateTimeout = null;
-        options.fs.stat(lock2.lockfilePath, (err, stat3) => {
+        options.fs.stat(lock2.lockfilePath, (err, stat2) => {
           const isOverThreshold = lock2.lastUpdate + options.stale < Date.now();
           if (err) {
             if (err.code === "ENOENT" || isOverThreshold) {
@@ -1487,7 +1359,7 @@ var require_lockfile = __commonJS({
             lock2.updateDelay = 1e3;
             return updateLock(file, options);
           }
-          const isMtimeOurs = lock2.mtime.getTime() === stat3.mtime.getTime();
+          const isMtimeOurs = lock2.mtime.getTime() === stat2.mtime.getTime();
           if (!isMtimeOurs) {
             return setLockAsCompromised(
               file,
@@ -1612,11 +1484,11 @@ var require_lockfile = __commonJS({
         if (err) {
           return callback(err);
         }
-        options.fs.stat(getLockFile(file2, options), (err2, stat3) => {
+        options.fs.stat(getLockFile(file2, options), (err2, stat2) => {
           if (err2) {
             return err2.code === "ENOENT" ? callback(null, false) : callback(err2);
           }
-          return callback(null, !isLockStale(stat3, options));
+          return callback(null, !isLockStale(stat2, options));
         });
       });
     }
@@ -1708,27 +1580,27 @@ var require_adapter = __commonJS({
 var require_proper_lockfile = __commonJS({
   "node_modules/proper-lockfile/index.js"(exports, module) {
     "use strict";
-    var lockfile5 = require_lockfile();
+    var lockfile4 = require_lockfile();
     var { toPromise, toSync, toSyncOptions } = require_adapter();
     async function lock(file, options) {
-      const release = await toPromise(lockfile5.lock)(file, options);
+      const release = await toPromise(lockfile4.lock)(file, options);
       return toPromise(release);
     }
     function lockSync(file, options) {
-      const release = toSync(lockfile5.lock)(file, toSyncOptions(options));
+      const release = toSync(lockfile4.lock)(file, toSyncOptions(options));
       return toSync(release);
     }
     function unlock(file, options) {
-      return toPromise(lockfile5.unlock)(file, options);
+      return toPromise(lockfile4.unlock)(file, options);
     }
     function unlockSync(file, options) {
-      return toSync(lockfile5.unlock)(file, toSyncOptions(options));
+      return toSync(lockfile4.unlock)(file, toSyncOptions(options));
     }
     function check(file, options) {
-      return toPromise(lockfile5.check)(file, options);
+      return toPromise(lockfile4.check)(file, options);
     }
     function checkSync(file, options) {
-      return toSync(lockfile5.check)(file, toSyncOptions(options));
+      return toSync(lockfile4.check)(file, toSyncOptions(options));
     }
     module.exports = lock;
     module.exports.lock = lock;
@@ -1740,17 +1612,92 @@ var require_proper_lockfile = __commonJS({
   }
 });
 
-// dist/shared/bin/auto-scan.mjs
-import { appendFileSync } from "node:fs";
-import { appendFile as appendFile3 } from "node:fs/promises";
-import { join as join10 } from "node:path";
+// dist/shared/credential-paths.mjs
+var init_credential_paths = __esm({
+  "dist/shared/credential-paths.mjs"() {
+    "use strict";
+  }
+});
 
-// dist/shared/backfill/scan-then-drain.mjs
-import { join as join9 } from "node:path";
+// dist/shared/bin/usage-probe.mjs
+import { appendFile } from "node:fs/promises";
+import { isAbsolute as isAbsolute2, join as join10 } from "node:path";
 
-// dist/shared/config.mjs
-import { join } from "node:path";
-import { homedir as homedir2 } from "node:os";
+// dist/shared/usage-probe/run.mjs
+import { spawn } from "node:child_process";
+import { isAbsolute, join as join9 } from "node:path";
+
+// dist/shared/account-posture.mjs
+import { readFile } from "node:fs/promises";
+
+// dist/shared/hash.mjs
+import { createHash, createHmac } from "node:crypto";
+function sha256Hex(input) {
+  return createHash("sha256").update(input, "utf8").digest("hex");
+}
+function deterministicUuid(parts) {
+  const h = sha256Hex(parts.join("|"));
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20, 32)}`;
+}
+
+// dist/shared/account-posture.mjs
+function str(v) {
+  return typeof v === "string" && v.length > 0 ? v : void 0;
+}
+function bool(v) {
+  return typeof v === "boolean" ? v : void 0;
+}
+async function readPosture(path) {
+  let raw;
+  try {
+    raw = await readFile(path, "utf8");
+  } catch {
+    return null;
+  }
+  let doc;
+  try {
+    doc = JSON.parse(raw);
+  } catch {
+    return null;
+  }
+  if (typeof doc !== "object" || doc === null)
+    return null;
+  const d = doc;
+  const oauth = typeof d.oauthAccount === "object" && d.oauthAccount !== null ? d.oauthAccount : {};
+  const posture = {};
+  const planType = str(oauth.organizationType);
+  if (planType)
+    posture.plan_type = planType;
+  const seatTier = str(oauth.seatTier);
+  if (seatTier)
+    posture.seat_tier = seatTier;
+  const tier = str(oauth.organizationRateLimitTier);
+  if (tier)
+    posture.rate_limit_tier = tier;
+  const billing = str(oauth.billingType);
+  if (billing)
+    posture.billing_type = billing;
+  const extra = bool(oauth.hasExtraUsageEnabled);
+  if (extra !== void 0)
+    posture.extra_usage_enabled = extra;
+  const reason = str(d.cachedExtraUsageDisabledReason);
+  if (reason)
+    posture.extra_usage_disabled_reason = reason;
+  const grants = typeof d.overageCreditGrantCache === "object" && d.overageCreditGrantCache !== null ? Object.values(d.overageCreditGrantCache) : [];
+  const firstGrant = grants[0];
+  if (typeof firstGrant === "object" && firstGrant !== null) {
+    const info = firstGrant.info;
+    if (typeof info === "object" && info !== null) {
+      const avail = bool(info.available);
+      if (avail !== void 0)
+        posture.overage_credit_available = avail;
+      const elig = bool(info.eligible);
+      if (elig !== void 0)
+        posture.overage_credit_eligible = elig;
+    }
+  }
+  return posture;
+}
 
 // dist/shared/policy.mjs
 function defaultPolicy() {
@@ -1951,23 +1898,401 @@ function defaultPolicy() {
   });
 }
 
-// dist/shared/credential-file.mjs
-import { mkdir, rename, open, chmod, unlink, readFile, stat } from "node:fs/promises";
-import { dirname } from "node:path";
-import { randomBytes } from "node:crypto";
-async function writeCredential(path, cred) {
-  const parent = dirname(path);
-  await mkdir(parent, { recursive: true, mode: 448 });
-  if (process.platform !== "win32") {
-    await chmod(parent, 448).catch(() => {
+// dist/shared/identity-resolver.mjs
+import { createHash as createHash2, randomUUID } from "node:crypto";
+import { execFile as execFile2 } from "node:child_process";
+import { open, readFile as readFile2, rename, unlink } from "node:fs/promises";
+import { join as join4 } from "node:path";
+import { randomBytes as randomBytes2 } from "node:crypto";
+
+// dist/shared/locking.mjs
+var import_proper_lockfile = __toESM(require_proper_lockfile(), 1);
+import { mkdir } from "node:fs/promises";
+var LOCK_OPTIONS = {
+  realpath: false,
+  retries: { retries: 100, minTimeout: 5, maxTimeout: 100, factor: 1.5 },
+  stale: 1e4
+};
+async function withDirLock(dir, fn) {
+  await mkdir(dir, { recursive: true });
+  const release = await import_proper_lockfile.default.lock(dir, LOCK_OPTIONS);
+  try {
+    return await fn();
+  } finally {
+    await release();
+  }
+}
+
+// dist/shared/identity-sources.mjs
+import { execFile } from "node:child_process";
+var TIMEOUT_MS = 200;
+var MAX_EMAIL_LENGTH = 320;
+function plausibleEmail(value) {
+  const trimmed = value.trim();
+  if (trimmed.length === 0 || trimmed.length > MAX_EMAIL_LENGTH)
+    return null;
+  if (/[\s\u0000-\u001f\u007f]/.test(trimmed))
+    return null;
+  const parts = trimmed.split("@");
+  if (parts.length !== 2)
+    return null;
+  if (parts[0].length === 0 || parts[1].length === 0)
+    return null;
+  return trimmed;
+}
+function defaultRunner(cmd, args, timeoutMs) {
+  return new Promise((resolve, reject) => {
+    execFile(cmd, args, { timeout: timeoutMs }, (err, stdout) => {
+      if (err)
+        return reject(err);
+      resolve(stdout.toString());
+    });
+  });
+}
+var GIT_SCOPES = /* @__PURE__ */ new Set(["local", "worktree", "global", "system", "command"]);
+async function readGitConfigEmail(cwd, deps = {}) {
+  const runner = deps.runner ?? defaultRunner;
+  try {
+    const out = await runner("git", ["-C", cwd, "config", "--show-scope", "--get", "user.email"], TIMEOUT_MS);
+    const tab = out.indexOf("	");
+    const rawScope = tab === -1 ? "" : out.slice(0, tab).trim();
+    const email = plausibleEmail(tab === -1 ? out : out.slice(tab + 1));
+    if (email === null)
+      return null;
+    return { email, scope: GIT_SCOPES.has(rawScope) ? rawScope : "unknown" };
+  } catch (err) {
+    const code = err.code;
+    if (typeof code !== "number" || code === 1)
+      return null;
+    try {
+      const email = plausibleEmail(await runner("git", ["-C", cwd, "config", "--get", "user.email"], TIMEOUT_MS));
+      return email === null ? null : { email, scope: "unknown" };
+    } catch {
+      return null;
+    }
+  }
+}
+async function readMacOsDsclEmail(deps = {}) {
+  const platform = deps.platform ?? process.platform;
+  if (platform !== "darwin")
+    return null;
+  const runner = deps.runner ?? defaultRunner;
+  const user = deps.username ?? process.env.USER ?? process.env.LOGNAME;
+  if (!user)
+    return null;
+  try {
+    const out = await runner("dscl", [".", "-read", `/Users/${user}`, "EMailAddress"], TIMEOUT_MS);
+    const match = out.match(/^EMailAddress:\s*(\S+)/m);
+    return match ? plausibleEmail(match[1]) : null;
+  } catch {
+    return null;
+  }
+}
+async function readWindowsUpn(deps = {}) {
+  const platform = deps.platform ?? process.platform;
+  if (platform !== "win32")
+    return null;
+  const runner = deps.runner ?? defaultRunner;
+  try {
+    const out = await runner("whoami", ["/upn"], TIMEOUT_MS);
+    return plausibleEmail(out);
+  } catch {
+    return null;
+  }
+}
+
+// dist/shared/secure-envelope.mjs
+import { randomBytes, createCipheriv, publicEncrypt, constants, createPublicKey } from "node:crypto";
+function seal(plaintext, key) {
+  const aesKey = randomBytes(32);
+  const iv = randomBytes(12);
+  const cipher = createCipheriv("aes-256-gcm", aesKey, iv);
+  const body = Buffer.concat([cipher.update(plaintext), cipher.final()]);
+  const tag = cipher.getAuthTag();
+  const ct = Buffer.concat([body, tag]);
+  const ek = publicEncrypt({ key: createPublicKey(key.publicKeyPem), padding: constants.RSA_PKCS1_OAEP_PADDING, oaepHash: "sha256" }, aesKey);
+  return {
+    v: 1,
+    keyid: key.keyid,
+    alg: "RSA-OAEP-256+A256GCM",
+    ek: ek.toString("base64"),
+    iv: iv.toString("base64"),
+    ct: ct.toString("base64")
+  };
+}
+
+// dist/shared/server-key.mjs
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+var BAKED_SERVER_KEY = {
+  keyid: "env-production-1",
+  alg: "RSA-OAEP-256+A256GCM",
+  publicKeyPem: "-----BEGIN PUBLIC KEY-----\nMIIBojANBgkqhkiG9w0BAQEFAAOCAY8AMIIBigKCAYEA4Dh42p0kvReuiL194qp3\n8j0BSjOmwW9WU9NUUSlBSA1Kn0WPdfMKywsD+DPrlt/KyOKdNLoUXsXrriM212Si\nMgabz4e4pK8ItqgqCg1wPFArY8SEoy8MioMj8iZVz/UPeR3/7Rng8LT50HiaB/kc\nwkBjjLnSU2xYQkKROKMGuTlKDZ4BCpP/uVCFTrZ5BUFEn3r2WyAl3Z6NBjO9hTPB\njKx1AH+CitIZeWVmn39EUwrzUW+LiXbEe1Y+0SXkpTgdqvVMzMjytlEp5Ojisvs1\n/GqoHRoN/NcESILK2s4Rabe3PTquCmZItYbw2sBpFe/6xhHPn/LA2TVjEjx5d+GJ\ndxQnhUWlNPInWul8TCePBAhz6MGThrcVWj6b+V3K4CrjetFIlvF7R2dk/SlWLCUZ\nozfDPZnQfvSZInVSrSRiCqA3OXArmptmFzeZii1RDQsJnNA+Vc2lTvuf2ScepvgG\nWJPZewNj7dknrCLAyj79ZZrQH31cIjgPt3XpT7SHnkaLAgMBAAE=\n-----END PUBLIC KEY-----\n"
+};
+var CACHE_FILE = "server-key.json";
+var DEFAULT_TTL_MS = 24 * 60 * 60 * 1e3;
+function isServerKeyShape(v) {
+  if (typeof v !== "object" || v === null)
+    return false;
+  const o = v;
+  return typeof o.keyid === "string" && !!o.keyid && typeof o.alg === "string" && !!o.alg && typeof o.publicKeyPem === "string" && o.publicKeyPem.includes("BEGIN PUBLIC KEY");
+}
+function loadServerKey(deps) {
+  const ttl = deps.ttlMs ?? DEFAULT_TTL_MS;
+  const read = deps.readFileImpl ?? ((p) => readFileSync(p, "utf8"));
+  try {
+    const parsed = JSON.parse(read(join(deps.cacheDir, CACHE_FILE)));
+    if (!isServerKeyShape(parsed) || typeof parsed.fetched_at !== "number")
+      return BAKED_SERVER_KEY;
+    if (deps.now - parsed.fetched_at > ttl)
+      return BAKED_SERVER_KEY;
+    return { keyid: parsed.keyid, alg: parsed.alg, publicKeyPem: parsed.publicKeyPem };
+  } catch {
+    return BAKED_SERVER_KEY;
+  }
+}
+
+// dist/shared/native-identity.mjs
+import { readFileSync as readFileSync2 } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { join as join2 } from "node:path";
+import { homedir } from "node:os";
+var CLI_TIMEOUT_MS = 500;
+function defaultClaudeStatus() {
+  try {
+    return execFileSync("claude", ["auth", "status", "--json"], {
+      timeout: CLI_TIMEOUT_MS,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"]
+    });
+  } catch {
+    return null;
+  }
+}
+function pick(o, k) {
+  const v = o[k];
+  return typeof v === "string" && v.length > 0 ? v : void 0;
+}
+function readNativeIdentity(agent, deps = {}) {
+  const home = deps.home ?? homedir();
+  const read = deps.readFileImpl ?? ((p) => readFileSync2(p, "utf8"));
+  return agent === "claude-code" ? readClaude(home, read, deps.claudeStatus ?? defaultClaudeStatus) : readCodex(home, read);
+}
+function readClaude(home, read, status) {
+  try {
+    const parsed = JSON.parse(read(join2(home, ".claude.json")));
+    const oa = parsed.oauthAccount;
+    if (oa && typeof oa === "object") {
+      const email = pick(oa, "emailAddress");
+      const account_id = pick(oa, "accountUuid");
+      if (email || account_id) {
+        return {
+          source: "native_claude",
+          ...email ? { email } : {},
+          ...account_id ? { account_id } : {},
+          ...pick(oa, "organizationUuid") ? { org_id: pick(oa, "organizationUuid") } : {},
+          ...pick(oa, "organizationName") ? { org_name: pick(oa, "organizationName") } : {},
+          ...pick(oa, "organizationType") ? { plan: pick(oa, "organizationType") } : {}
+        };
+      }
+    }
+  } catch {
+  }
+  const raw = status();
+  if (!raw)
+    return null;
+  try {
+    const s = JSON.parse(raw);
+    if (s.apiProvider !== "firstParty")
+      return null;
+    const email = pick(s, "email");
+    const org_id = pick(s, "orgId");
+    if (!email && !org_id)
+      return null;
+    return {
+      source: "native_claude",
+      ...email ? { email } : {},
+      ...org_id ? { org_id } : {},
+      ...pick(s, "orgName") ? { org_name: pick(s, "orgName") } : {},
+      ...pick(s, "subscriptionType") ? { plan: pick(s, "subscriptionType") } : {}
+    };
+  } catch {
+    return null;
+  }
+}
+function readCodex(home, read) {
+  let auth;
+  try {
+    auth = JSON.parse(read(join2(home, ".codex", "auth.json")));
+  } catch {
+    return null;
+  }
+  const tokens = typeof auth === "object" && auth !== null ? auth.tokens : void 0;
+  const idToken = tokens?.id_token;
+  if (typeof idToken !== "string")
+    return null;
+  const payload = decodeJwtPayload(idToken);
+  if (!payload)
+    return null;
+  const claims = payload["https://api.openai.com/auth"];
+  const au = typeof claims === "object" && claims !== null ? claims : {};
+  const orgs = Array.isArray(au["organizations"]) ? au["organizations"] : [];
+  const org0 = orgs[0] ?? {};
+  const email = pick(payload, "email");
+  const user_id = pick(au, "chatgpt_user_id");
+  const account_id = pick(au, "chatgpt_account_id");
+  const plan = pick(au, "chatgpt_plan_type");
+  const org_id = pick(org0, "id");
+  const org_name = pick(org0, "title");
+  if (!email && !account_id && !pick(payload, "sub"))
+    return null;
+  return {
+    source: "native_codex",
+    ...email ? { email } : {},
+    ...account_id ? { account_id } : {},
+    ...user_id ? { user_id } : {},
+    ...org_id ? { org_id } : {},
+    ...org_name ? { org_name } : {},
+    ...plan ? { plan } : {}
+  };
+}
+function decodeJwtPayload(token) {
+  const parts = token.split(".");
+  if (parts.length !== 3)
+    return null;
+  try {
+    const json = Buffer.from(parts[1], "base64url").toString("utf8");
+    const obj2 = JSON.parse(json);
+    return typeof obj2 === "object" && obj2 !== null ? obj2 : null;
+  } catch {
+    return null;
+  }
+}
+
+// dist/shared/identity-cache.mjs
+import { readFileSync as readFileSync3, writeFileSync } from "node:fs";
+import { join as join3 } from "node:path";
+var CACHE_FILE2 = "identity-cache.json";
+var DEFAULT_TTL_MS2 = 12 * 60 * 60 * 1e3;
+var CACHED_IDENTITY_SOURCES = [
+  "native_claude",
+  "native_codex",
+  "dscl",
+  "whoami_upn"
+];
+var CACHED_SOURCE_SET = new Set(CACHED_IDENTITY_SOURCES);
+function readIdentityCache(deps) {
+  const ttl = deps.ttlMs ?? DEFAULT_TTL_MS2;
+  const read = deps.readFileImpl ?? ((p) => readFileSync3(p, "utf8"));
+  try {
+    const parsed = JSON.parse(read(join3(deps.dir, CACHE_FILE2)));
+    if (typeof parsed !== "object" || parsed === null)
+      return { fresh: false };
+    const entry = parsed;
+    if (typeof entry.fetched_at !== "number")
+      return { fresh: false };
+    if (deps.now - entry.fetched_at > ttl)
+      return { fresh: false };
+    const identity = entry.identity;
+    if (identity === null || identity === void 0)
+      return { fresh: true, identity: null };
+    if (typeof identity !== "object")
+      return { fresh: false };
+    const source = identity.source;
+    if (typeof source !== "string" || !CACHED_SOURCE_SET.has(source))
+      return { fresh: false };
+    return { fresh: true, identity };
+  } catch {
+    return { fresh: false };
+  }
+}
+function writeIdentityCache(deps) {
+  const write = deps.writeFileImpl ?? ((p, data) => writeFileSync(p, data, { mode: 384 }));
+  try {
+    const entry = { identity: deps.identity, fetched_at: deps.now };
+    write(join3(deps.dir, CACHE_FILE2), JSON.stringify(entry));
+  } catch {
+  }
+}
+
+// dist/shared/identity-resolver.mjs
+var GIT_TIMEOUT_MS = 200;
+var IdentityResolver = class {
+  dir;
+  installPath;
+  git;
+  constructor(dir, git = defaultGitAccess()) {
+    this.dir = dir;
+    this.installPath = join4(dir, "install.json");
+    this.git = git;
+  }
+  async resolve(cwd, opts) {
+    const install_id = await this.loadOrCreateInstallId();
+    const repo = await this.resolveRepoHash(cwd);
+    const base = { install_id, ...repo };
+    if (!opts)
+      return base;
+    const record = await resolveIdentityRecord({ dataDir: this.dir, cwd, opts });
+    const result = { ...base };
+    if (record) {
+      result.identity_source = record.source;
+    }
+    if (record) {
+      const key = (opts.serverKeyLoader ?? (() => loadServerKey({ cacheDir: this.dir, now: opts.now ?? Date.now() })))();
+      if (key.publicKeyPem.includes("BEGIN PUBLIC KEY")) {
+        try {
+          const sealer = opts.sealer ?? seal;
+          const plaintext = Buffer.from(JSON.stringify({ v: 1, agent: opts.agent, ...record }), "utf8");
+          result.secure_envelope = JSON.stringify(sealer(plaintext, { keyid: key.keyid, publicKeyPem: key.publicKeyPem }));
+        } catch {
+        }
+      }
+    }
+    return result;
+  }
+  async resolveRepoHash(cwd) {
+    const url = await this.git.gitRemoteUrl(cwd);
+    if (!url)
+      return {};
+    return { repo_url_hash: createHash2("sha256").update(url, "utf8").digest("hex") };
+  }
+  async loadOrCreateInstallId() {
+    return withDirLock(this.dir, async () => {
+      const existing = await readInstallId(this.installPath);
+      if (existing !== null)
+        return existing;
+      const install_id = randomUUID();
+      const body = { install_id, created_at: (/* @__PURE__ */ new Date()).toISOString() };
+      await writeInstallFile(this.installPath, body);
+      return install_id;
     });
   }
-  const tmp = `${path}.${process.pid}.${randomBytes(4).toString("hex")}.tmp`;
+};
+async function readInstallId(path) {
+  let buf;
+  try {
+    buf = await readFile2(path, "utf8");
+  } catch {
+    return null;
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(buf);
+  } catch {
+    return null;
+  }
+  if (typeof parsed !== "object" || parsed === null)
+    return null;
+  const id = parsed.install_id;
+  return typeof id === "string" && id.length > 0 ? id : null;
+}
+async function writeInstallFile(path, body) {
+  const tmp = `${path}.${process.pid}.${randomBytes2(4).toString("hex")}.tmp`;
   let renamed = false;
   try {
     const fh = await open(tmp, "wx", 384);
     try {
-      await fh.writeFile(JSON.stringify(cred));
+      await fh.writeFile(JSON.stringify(body));
       await fh.sync();
     } finally {
       await fh.close();
@@ -1983,986 +2308,83 @@ async function writeCredential(path, cred) {
     }
   }
 }
-async function readCredential(paths) {
-  const sys = await tryReadOne(paths.system);
-  if (sys.kind === "ok")
-    return { source: "system", credential: sys.cred };
-  if (sys.kind === "malformed")
-    return { source: "malformed-system", credential: null, reason: sys.reason };
-  const usr = await tryReadOne(paths.user);
-  if (usr.kind === "ok")
-    return { source: "user", credential: usr.cred };
-  if (usr.kind === "malformed")
-    return { source: "malformed-user", credential: null, reason: usr.reason };
-  return { source: "absent", credential: null };
-}
-async function tryReadOne(path) {
-  let raw;
-  try {
-    raw = await readFile(path, "utf8");
-  } catch (err) {
-    if (err.code === "ENOENT")
-      return { kind: "absent" };
-    return { kind: "malformed", reason: `read failed: ${err.message}` };
-  }
-  if (process.platform !== "win32") {
-    try {
-      const st = await stat(path);
-      const modeReason = permissiveModeReason(st.mode);
-      if (modeReason !== null)
-        return { kind: "malformed", reason: modeReason };
-    } catch (err) {
-      return { kind: "malformed", reason: `stat failed: ${err.message}` };
-    }
-  }
-  let parsed;
-  try {
-    parsed = JSON.parse(raw);
-  } catch (err) {
-    return { kind: "malformed", reason: `JSON parse failed: ${err.message}` };
-  }
-  const v = validateCredentialFile(parsed);
-  if (v.kind === "ok")
-    return { kind: "ok", cred: v.cred };
-  return { kind: "malformed", reason: v.reason };
-}
-function permissiveModeReason(mode) {
-  if ((mode & 63) === 0)
-    return null;
-  return `file mode ${(mode & 511).toString(8)} too permissive; must be 0600`;
-}
-function validateCredentialFile(v) {
-  if (typeof v !== "object" || v === null)
-    return { kind: "bad", reason: "not an object" };
-  const o = v;
-  if (o.schema_version !== 1)
-    return { kind: "bad", reason: `unknown schema_version: ${String(o.schema_version)}` };
-  if (typeof o.credential !== "string" || !o.credential)
-    return { kind: "bad", reason: "credential missing or empty" };
-  if (typeof o.issued_at !== "string")
-    return { kind: "bad", reason: "issued_at missing" };
-  const hint = validateIdentityHint(o.identity_hint);
-  if (hint.kind === "bad")
-    return hint;
-  const endpoint = typeof o.endpoint === "string" && o.endpoint ? o.endpoint : void 0;
-  const api_endpoint = typeof o.api_endpoint === "string" && o.api_endpoint ? o.api_endpoint : void 0;
-  const identity_type = o.identity_type === "full" || o.identity_type === "hash" ? o.identity_type : void 0;
-  const provenance = o.provenance === "marketplace_url" || o.provenance === "login" || o.provenance === "env_tenant_key" ? o.provenance : void 0;
-  return {
-    kind: "ok",
-    cred: {
-      schema_version: 1,
-      issued_at: o.issued_at,
-      credential: o.credential,
-      identity_hint: hint.value,
-      ...endpoint !== void 0 ? { endpoint } : {},
-      ...api_endpoint !== void 0 ? { api_endpoint } : {},
-      ...identity_type !== void 0 ? { identity_type } : {},
-      ...provenance !== void 0 ? { provenance } : {}
-    }
-  };
-}
-function validateIdentityHint(v) {
-  if (v === null)
-    return { kind: "ok", value: null };
-  if (typeof v !== "object")
-    return { kind: "bad", reason: "identity_hint must be null or object" };
-  const o = v;
-  if (o.source === "os_user")
-    return { kind: "ok", value: { source: "os_user" } };
-  if (o.source === "directory") {
-    if (typeof o.value !== "string" || !o.value)
-      return { kind: "bad", reason: "identity_hint.value required for source=directory" };
-    return { kind: "ok", value: { source: "directory", value: o.value } };
-  }
-  if (o.source === "mdm_file") {
-    const user_email = typeof o.user_email === "string" ? o.user_email : void 0;
-    const user_upn = typeof o.user_upn === "string" ? o.user_upn : void 0;
+async function resolveIdentityRecord({ dataDir, cwd, opts }) {
+  const hint = opts.identity_hint;
+  if (hint?.source === "mdm_file" && (hint.user_email || hint.user_upn)) {
     return {
-      kind: "ok",
-      value: {
-        source: "mdm_file",
-        ...user_email !== void 0 ? { user_email } : {},
-        ...user_upn !== void 0 ? { user_upn } : {}
-      }
+      source: "mdm_file",
+      ...hint.user_email ? { email: hint.user_email } : {},
+      ...hint.user_upn ? { upn: hint.user_upn } : {}
     };
   }
-  if (o.source === "plugin_login") {
-    const s = (k) => typeof o[k] === "string" && o[k] ? o[k] : void 0;
+  if (hint?.source === "plugin_login" && (hint.email || hint.account_id || hint.user_id || hint.org_id || hint.org_name || hint.plan)) {
     return {
-      kind: "ok",
-      value: {
-        source: "plugin_login",
-        ...s("email") ? { email: s("email") } : {},
-        ...s("account_id") ? { account_id: s("account_id") } : {},
-        ...s("user_id") ? { user_id: s("user_id") } : {},
-        ...s("org_id") ? { org_id: s("org_id") } : {},
-        ...s("org_name") ? { org_name: s("org_name") } : {},
-        ...s("plan") ? { plan: s("plan") } : {}
-      }
+      source: "plugin_login",
+      ...hint.email ? { email: hint.email } : {},
+      ...hint.account_id ? { account_id: hint.account_id } : {},
+      ...hint.user_id ? { user_id: hint.user_id } : {},
+      ...hint.org_id ? { org_id: hint.org_id } : {},
+      ...hint.org_name ? { org_name: hint.org_name } : {},
+      ...hint.plan ? { plan: hint.plan } : {}
     };
   }
-  return { kind: "bad", reason: `identity_hint.source unknown: ${String(o.source)}` };
-}
-
-// dist/shared/tenant-key-bootstrap.mjs
-var KEY_RE = /^fs_(live|test)_t_[A-Za-z0-9_-]{43}$/;
-function decide(existing, args) {
-  switch (existing.source) {
-    case "absent":
-      return { write: true };
-    case "system":
-      return { write: false, reason: "system (MDM) credential is authoritative" };
-    case "malformed-system":
-      return { write: false, reason: "system credential unreadable; not overwriting" };
-    case "malformed-user":
-      return { write: false, reason: "user credential unreadable; not overwriting" };
-    case "user": {
-      const c = existing.credential;
-      if (c.provenance !== args.ownProvenance) {
-        return { write: false, reason: "user credential not owned by this writer" };
-      }
-      const unchanged = c.credential === args.tenantKey && (c.identity_type ?? void 0) === args.identity;
-      return unchanged ? { write: false, reason: "unchanged" } : { write: true };
-    }
+  const now = opts.now ?? Date.now();
+  const hit = readIdentityCache({ dir: dataDir, now });
+  let cached;
+  if (hit.fresh) {
+    cached = hit.identity;
+  } else {
+    cached = await probeMachineScopedIdentity(opts);
+    writeIdentityCache({ dir: dataDir, now, identity: cached });
   }
+  if (cached)
+    return cached;
+  const git = await (opts.identitySources?.gitEmail ?? readGitConfigEmail)(cwd);
+  return git ? { source: "git_config", email: git.email, scope: git.scope } : null;
 }
-async function ensureAmbientTenantCredential(existing, paths, opts = {}) {
-  const env = opts.env ?? process.env;
-  const tenantKey = env.FANCYSAUCE_TENANT_KEY ?? "";
-  if (!KEY_RE.test(tenantKey))
-    return { result: existing, wrote: false };
-  const identity = env.FANCYSAUCE_IDENTITY_TYPE === "hash" ? "hash" : "full";
-  const d = decide(existing, { tenantKey, identity, ownProvenance: "env_tenant_key" });
-  if (!d.write)
-    return { result: existing, wrote: false };
-  const cred = {
-    schema_version: 1,
-    issued_at: (opts.now ?? (() => (/* @__PURE__ */ new Date()).toISOString()))(),
-    credential: tenantKey,
-    identity_hint: null,
-    provenance: "env_tenant_key",
-    identity_type: identity
-  };
-  try {
-    await writeCredential(paths.user, cred);
-    return { result: { source: "user", credential: cred }, wrote: true };
-  } catch (err) {
-    (opts.logger ?? ((m) => process.stderr.write(m + "\n")))(`fancysauce: ambient tenant-key write failed: ${err.message}`);
-    return { result: existing, wrote: false, inMemory: cred };
-  }
+async function probeMachineScopedIdentity(opts) {
+  const native = (opts.nativeReader ?? readNativeIdentity)(opts.agent);
+  if (native)
+    return native;
+  const dscl = await (opts.identitySources?.dsclEmail ?? readMacOsDsclEmail)();
+  if (dscl)
+    return { source: "dscl", email: dscl };
+  const upn = await (opts.identitySources?.winUpn ?? readWindowsUpn)();
+  if (upn)
+    return { source: "whoami_upn", upn, email: upn };
+  return null;
 }
-
-// dist/shared/config.mjs
-init_credential_paths();
-var INGEST_ENDPOINT = "https://ingest.preview.fancysauce.ai";
-var DEFAULT_LOGIN_STATE_DIR = join(homedir2(), ".config", "fancysauce");
-var KNOWN_FANCYSAUCE_VARS = /* @__PURE__ */ new Set([
-  "FANCYSAUCE_CREDENTIAL_PATHS",
-  "FANCYSAUCE_API_KEY",
-  "FANCYSAUCE_IDENTITY_TYPE",
-  "FANCYSAUCE_TENANT_KEY"
-]);
-function parseCredentialPathsEnv() {
-  if (process.env.VITEST !== "true")
-    return null;
-  const raw = process.env.FANCYSAUCE_CREDENTIAL_PATHS;
-  if (!raw)
-    return null;
-  let parsed;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
-    return null;
-  }
-  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed))
-    return null;
-  const o = parsed;
-  if (typeof o.system !== "string" || typeof o.user !== "string")
-    return null;
-  if (o.login_state_dir !== void 0 && typeof o.login_state_dir !== "string")
-    return null;
+function defaultGitAccess() {
   return {
-    system: o.system,
-    user: o.user,
-    ...typeof o.login_state_dir === "string" ? { login_state_dir: o.login_state_dir } : {}
+    gitRemoteUrl: (cwd) => gitRead(["-C", cwd, "remote", "get-url", "origin"])
   };
 }
-async function loadConfig(opts = {}) {
-  const onUnknown = opts.onUnknownEnvVar ?? defaultUnknownEnvVarHandler;
-  for (const [name, value] of Object.entries(process.env)) {
-    if (name.startsWith("FANCYSAUCE_") && !KNOWN_FANCYSAUCE_VARS.has(name)) {
-      onUnknown(name, value ?? "");
-    }
-  }
-  const parsed = parseCredentialPathsEnv();
-  const endpoint = opts.endpointOverride ?? INGEST_ENDPOINT;
-  const loginStateDir = parsed?.login_state_dir ?? DEFAULT_LOGIN_STATE_DIR;
-  const paths = opts.paths ?? (parsed ? { system: parsed.system, user: parsed.user } : credentialPaths());
-  const read = await readCredential(paths);
-  const ambient = await ensureAmbientTenantCredential(read, paths);
-  if (ambient.inMemory) {
-    return {
-      credential: ambient.inMemory.credential,
-      endpoint,
-      loginStateDir,
-      policy: defaultPolicy(),
-      identity_type: ambient.inMemory.identity_type ?? "full",
-      // Degraded fail-open for this single fire: skip the richer identity
-      // resolution the file-backed path performs; the durable write will retry
-      // and enrich on a later fire.
-      identity_hint: null
-    };
-  }
-  const result = ambient.result;
-  switch (result.source) {
-    case "absent": {
-      const apiKey = process.env.FANCYSAUCE_API_KEY;
-      if (!apiKey)
-        return null;
-      const envIdentityType = process.env.FANCYSAUCE_IDENTITY_TYPE === "hash" ? "hash" : "full";
-      return {
-        credential: apiKey,
-        endpoint: opts.endpointOverride ?? INGEST_ENDPOINT,
-        loginStateDir,
-        policy: defaultPolicy(),
-        identity_type: envIdentityType,
-        identity_hint: null
-      };
-    }
-    case "malformed-system":
-    case "malformed-user":
-      return {
-        credential: "",
-        endpoint,
-        loginStateDir,
-        policy: defaultPolicy(),
-        credentialError: {
-          source: result.source === "malformed-system" ? "system" : "user",
-          reason: result.reason
-        }
-      };
-    case "system":
-    case "user": {
-      const fileEndpoint = result.credential.endpoint ?? endpoint;
-      const fileIdentityType = result.credential.identity_type ?? void 0;
-      return {
-        credential: result.credential.credential,
-        endpoint: fileEndpoint,
-        loginStateDir,
-        policy: defaultPolicy(),
-        ...fileIdentityType !== void 0 ? { identity_type: fileIdentityType } : {},
-        identity_hint: result.credential.identity_hint
-      };
-    }
-  }
-}
-function defaultUnknownEnvVarHandler(_name, _value) {
-}
-
-// dist/shared/backfill/scan-then-drain.mjs
-init_credential_paths();
-
-// dist/shared/plugin-commands.mjs
-var LOGIN_COMMAND = "/fancysauce-savings:login";
-var UPLOAD_HISTORY_COMMAND = "/fancysauce-savings:upload-history";
-
-// dist/shared/backfill/scan-then-drain.mjs
-init_pid_guard();
-init_runner_spawn();
-
-// dist/shared/backfill/scan.mjs
-import { appendFile as appendFile2, mkdir as mkdir6, readdir as readdir2 } from "node:fs/promises";
-import { homedir as homedir4 } from "node:os";
-import { join as join8, relative as relative2 } from "node:path";
-
-// dist/agents/claude-code/transcript-tail.mjs
-var import_proper_lockfile2 = __toESM(require_proper_lockfile(), 1);
-import { mkdir as mkdir4, readFile as readFile4, readdir, writeFile as writeFile2, appendFile, rename as rename3, lstat as lstat2 } from "node:fs/promises";
-import { basename, dirname as dirname3, isAbsolute, join as join5, relative, sep } from "node:path";
-import { homedir as homedir3 } from "node:os";
-import { randomUUID as randomUUID2 } from "node:crypto";
-
-// dist/agents/claude-code/subagent-cursor.mjs
-import { readFile as readFile3, rename as rename2, writeFile } from "node:fs/promises";
-import { join as join4 } from "node:path";
-
-// dist/shared/locking.mjs
-var import_proper_lockfile = __toESM(require_proper_lockfile(), 1);
-import { mkdir as mkdir3 } from "node:fs/promises";
-var LOCK_OPTIONS = {
-  realpath: false,
-  retries: { retries: 100, minTimeout: 5, maxTimeout: 100, factor: 1.5 },
-  stale: 1e4
-};
-async function withDirLock(dir, fn) {
-  await mkdir3(dir, { recursive: true });
-  const release = await import_proper_lockfile.default.lock(dir, LOCK_OPTIONS);
-  try {
-    return await fn();
-  } finally {
-    await release();
-  }
-}
-
-// dist/agents/claude-code/subagent-cursor.mjs
-var SubagentCursor = class {
-  dir;
-  path;
-  tmpPath;
-  constructor(dir) {
-    this.dir = dir;
-    this.path = join4(dir, "transcript_cursor.json");
-    this.tmpPath = `${this.path}.tmp`;
-  }
-  async read() {
-    try {
-      const buf = await readFile3(this.path, "utf8");
-      const parsed = JSON.parse(buf);
-      return parsed.byte_offset ?? 0;
-    } catch (err) {
-      if (err.code === "ENOENT")
-        return 0;
-      throw err;
-    }
-  }
-  async advance(offset) {
-    await withDirLock(this.dir, async () => {
-      const current = await this.read();
-      if (offset < current) {
-        throw new Error(`SubagentCursor.advance monotonic violation: ${offset} < ${current}`);
-      }
-      await this.write(offset);
+function gitRead(args) {
+  return new Promise((resolve) => {
+    execFile2("git", args, { timeout: GIT_TIMEOUT_MS }, (err, stdout) => {
+      if (err)
+        return resolve(null);
+      const trimmed = stdout.toString().trim();
+      resolve(trimmed.length ? trimmed : null);
     });
-  }
-  // Force-write cursor to 0. Bypasses the monotonic guard. Used when the
-  // transcript file shrank below the recorded offset (CC compaction,
-  // manual prune, agent_id collision across sessions): without a reset,
-  // every subsequent tail would see `stat.size <= cursor` and emit
-  // nothing, permanently locking the agent's events out.
-  async reset() {
-    await withDirLock(this.dir, async () => {
-      await this.write(0);
-    });
-  }
-  async write(offset) {
-    const body = { byte_offset: offset };
-    await writeFile(this.tmpPath, JSON.stringify(body), "utf8");
-    await rename2(this.tmpPath, this.path);
-  }
-};
-
-// dist/agents/claude-code/subagent-meta.mjs
-import { open as open3, lstat, constants } from "node:fs/promises";
-function metaPathFromTranscript(transcriptPath) {
-  return transcriptPath.endsWith(".jsonl") ? `${transcriptPath.slice(0, -".jsonl".length)}.meta.json` : `${transcriptPath}.meta.json`;
-}
-var READ_WINDOW_BYTES = 256 * 1024;
-var SubagentMetaCache = class {
-  cache = /* @__PURE__ */ new Map();
-  async get(path) {
-    if (this.cache.has(path))
-      return this.cache.get(path) ?? null;
-    let meta = null;
-    let fh = null;
-    try {
-      if (!(await lstat(path)).isFile())
-        throw new Error("not a regular file");
-      const flags = typeof constants.O_NOFOLLOW === "number" ? constants.O_RDONLY | constants.O_NOFOLLOW : "r";
-      fh = await open3(path, flags);
-      if (!(await fh.stat()).isFile())
-        throw new Error("not a regular file");
-      const raw = await fh.readFile({ encoding: "utf8" });
-      const parsed = JSON.parse(raw);
-      if (typeof parsed.agentType === "string") {
-        meta = { agentType: parsed.agentType };
-      }
-    } catch {
-      meta = null;
-    } finally {
-      if (fh)
-        await fh.close();
-    }
-    this.cache.set(path, meta);
-    return meta;
-  }
-};
-
-// dist/shared/tail-engine.mjs
-import { open as open4, constants as constants2 } from "node:fs/promises";
-var DEFAULT_MAX_READ_BYTES = 4 * 1024 * 1024;
-async function readWindow(opts) {
-  const { path, startOffset, sequenceBase, maxReadBytes, parseWindow, state } = opts;
-  let fh = null;
-  try {
-    try {
-      const flags = opts.nofollow && typeof constants2.O_NOFOLLOW === "number" ? constants2.O_RDONLY | constants2.O_NOFOLLOW : "r";
-      fh = await open4(path, flags);
-    } catch (err) {
-      if (err.code === "ENOENT") {
-        return { events: [], endOffset: startOffset, truncated: false };
-      }
-      throw err;
-    }
-    const stat3 = await fh.stat();
-    const truncated = stat3.size < startOffset;
-    const effectiveStart = truncated ? 0 : startOffset;
-    if (stat3.size <= effectiveStart) {
-      return { events: [], endOffset: effectiveStart, truncated };
-    }
-    const toRead = Math.min(stat3.size - effectiveStart, maxReadBytes);
-    const buf = Buffer.alloc(toRead);
-    await fh.read(buf, 0, toRead, effectiveStart);
-    const lastNewline = buf.lastIndexOf("\n".charCodeAt(0));
-    if (lastNewline < 0)
-      return { events: [], endOffset: effectiveStart, truncated };
-    const usable = buf.slice(0, lastNewline + 1).toString("utf8");
-    const endOffset = effectiveStart + lastNewline + 1;
-    const lines = usable.split("\n").filter(Boolean);
-    const events = parseWindow(lines, sequenceBase, state);
-    return { events, endOffset, truncated };
-  } finally {
-    if (fh)
-      await fh.close();
-  }
-}
-
-// dist/shared/usage-limit.mjs
-import { randomUUID } from "node:crypto";
-function classifyLimitKind(text) {
-  if (/not your usage limit/i.test(text) || /temporarily limiting/i.test(text)) {
-    return "server_throttle";
-  }
-  if (/\b(?:org(?:anization)?|team|workspace)(?:['’]s)?\s+monthly spend limit/i.test(text))
-    return "org_spend_cap";
-  if (/individual spend limit/i.test(text))
-    return "individual_spend_cap";
-  if (/monthly spend limit/i.test(text))
-    return "individual_spend_cap";
-  if (/weekly limit/i.test(text))
-    return "weekly";
-  if (/hit your session limit/i.test(text) || /session limit/i.test(text))
-    return "session";
-  if (/reached your (?!weekly|session|usage|monthly|\d+-hour)\S.*? limit\b/i.test(text))
-    return "model_limit";
-  return "unknown";
-}
-function guessResetEpochSeconds(text, nowMs) {
-  const m = /resets\s+(\d{1,2}):(\d{2})\s*([ap]m)\b(?:\s*\(([^)]+)\))?/i.exec(text);
-  if (!m)
-    return void 0;
-  let hour = parseInt(m[1], 10) % 12;
-  if (/pm/i.test(m[3]))
-    hour += 12;
-  const minute = parseInt(m[2], 10);
-  const tz = m[4];
-  if (tz) {
-    const off = tzOffsetMs(tz, nowMs);
-    if (off === void 0)
-      return void 0;
-    const ymd = tzDateParts(tz, nowMs);
-    if (!ymd)
-      return void 0;
-    const candUtc = Date.UTC(ymd.y, ymd.mo - 1, ymd.d, hour, minute, 0);
-    let epoch2 = candUtc - off;
-    if (epoch2 <= nowMs)
-      epoch2 += 864e5;
-    return Math.floor(epoch2 / 1e3);
-  }
-  const now = new Date(nowMs);
-  const cand = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hour, minute, 0, 0);
-  let epoch = cand.getTime();
-  if (epoch <= nowMs)
-    epoch += 864e5;
-  return Math.floor(epoch / 1e3);
-}
-function tzParts(tz, atMs) {
-  try {
-    const dtf = new Intl.DateTimeFormat("en-US", {
-      timeZone: tz,
-      hour12: false,
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit"
-    });
-    const map = {};
-    for (const p of dtf.formatToParts(new Date(atMs)))
-      map[p.type] = p.value;
-    return map;
-  } catch {
-    return void 0;
-  }
-}
-function tzDateParts(tz, atMs) {
-  const m = tzParts(tz, atMs);
-  if (!m)
-    return void 0;
-  return { y: Number(m.year), mo: Number(m.month), d: Number(m.day) };
-}
-function tzOffsetMs(tz, atMs) {
-  const m = tzParts(tz, atMs);
-  if (!m)
-    return void 0;
-  const hour = m.hour === "24" ? 0 : Number(m.hour);
-  const asUtc = Date.UTC(Number(m.year), Number(m.month) - 1, Number(m.day), hour, Number(m.minute), Number(m.second));
-  return asUtc - atMs;
-}
-function firstText(content) {
-  if (!Array.isArray(content))
-    return "";
-  const first = content[0];
-  if (typeof first === "object" && first !== null) {
-    const t = first.text;
-    if (typeof t === "string")
-      return t;
-  }
-  return "";
-}
-function detectUsageLimit(rec, sessionId, sequence, nowMs) {
-  if (typeof rec !== "object" || rec === null)
-    return null;
-  const r = rec;
-  if (r.type !== "assistant")
-    return null;
-  if (r.isApiErrorMessage !== true)
-    return null;
-  if (r.apiErrorStatus !== 429)
-    return null;
-  if (typeof r.uuid !== "string")
-    return null;
-  if (typeof r.timestamp !== "string" || !Number.isFinite(Date.parse(r.timestamp)))
-    return null;
-  const msg = r.message;
-  if (typeof msg !== "object" || msg === null)
-    return null;
-  if (msg.model !== "<synthetic>")
-    return null;
-  const text = firstText(msg.content);
-  const requestId = typeof r.requestId === "string" ? r.requestId : typeof msg.id === "string" ? msg.id : "";
-  const attributes = {
-    limit_message: text,
-    limit_kind_guess: classifyLimitKind(text),
-    api_error_status: 429,
-    request_id: requestId,
-    transcript_message_uuid: r.uuid
-  };
-  const reset = guessResetEpochSeconds(text, nowMs);
-  if (reset !== void 0)
-    attributes.reset_at_guess = reset;
-  return {
-    event_uuid: randomUUID(),
-    event_type: "usage_limit.exceeded",
-    session_id: sessionId,
-    source: "transcript.tail",
-    sequence,
-    timestamp_ns: BigInt(Date.parse(r.timestamp)) * 1000000n,
-    attributes
-  };
-}
-
-// dist/agents/claude-code/transcript-tail.mjs
-var SESSION_ID_RE = /^[A-Za-z0-9_-]{16,128}$/;
-var AGENT_ID_RE = /^[A-Za-z0-9_-]{16,128}$/;
-var ERROR_KIND_RE = /^[a-z][a-z0-9_]{0,63}$/;
-function apiErrorKind(v) {
-  return typeof v === "string" && ERROR_KIND_RE.test(v) ? v : void 0;
-}
-function isHttpStatus(v) {
-  return typeof v === "number" && Number.isInteger(v) && v >= 100 && v <= 599;
-}
-var TranscriptTail = class {
-  stateDir;
-  maxReadBytes;
-  errorLogPath;
-  transcriptRoot;
-  constructor(stateDir, options = {}) {
-    this.stateDir = stateDir;
-    this.maxReadBytes = options.maxReadBytes ?? DEFAULT_MAX_READ_BYTES;
-    this.errorLogPath = options.errorLogPath;
-    const root = options.transcriptRoot ?? join5(homedir3(), ".claude", "projects");
-    this.transcriptRoot = root.endsWith(sep) ? root : root + sep;
-  }
-  // `persist` runs after all events are read but BEFORE any cursor is
-  // advanced. If it throws, every cursor stays at its previous offset and
-  // the next tail() re-reads the same window — at-least-once delivery.
-  // The parent cursor lock is held across read + persist + cursor writes,
-  // so concurrent hooks cannot double-emit the same window.
-  async tail(sessionId, transcriptPath, sequenceBase, persist) {
-    if (!isValidSessionId(sessionId) || !this.isValidTranscriptPath(transcriptPath)) {
-      await persist([]);
-      return { events: [], skipped: true, newCursor: 0 };
-    }
-    const cursorDir = this.cursorDir(sessionId);
-    await mkdir4(cursorDir, { recursive: true });
-    const cursorPath = join5(cursorDir, "transcript_cursor.json");
-    let release;
-    try {
-      release = await import_proper_lockfile2.default.lock(cursorPath, {
-        retries: 0,
-        realpath: false
-      });
-    } catch {
-      await persist([]);
-      return { events: [], skipped: true, newCursor: 0 };
-    }
-    try {
-      const startOffset = await this.readCursor(cursorPath);
-      const { events, endOffset, truncated } = await this.readSince(sessionId, transcriptPath, startOffset, sequenceBase, this.maxReadBytes);
-      const sessionDir = join5(dirname3(transcriptPath), basename(transcriptPath, ".jsonl"));
-      const subagentsRoot = join5(sessionDir, "subagents");
-      const subagentPaths = await discoverSubagentTranscripts(sessionDir, (dir, err) => this.logSubagentError(sessionId, relative(sessionDir, dir) || "subagents", err));
-      const metaCache = new SubagentMetaCache();
-      let seq = sequenceBase + events.length;
-      const subagentCommits = [];
-      for (const subagentPath of subagentPaths) {
-        const derived = deriveSubagentCursorDir(this.cursorDir(sessionId), subagentsRoot, subagentPath);
-        if (!derived.ok) {
-          await this.logSubagentError(sessionId, derived.agentId, new Error(derived.reason));
-          continue;
-        }
-        const { agentId, cursorDir: subCursorDir, errorLabel } = derived;
-        const metaPath = metaPathFromTranscript(subagentPath);
-        let read;
-        try {
-          read = await readSubagent({
-            sessionId,
-            agentId,
-            transcriptPath: subagentPath,
-            metaPath,
-            cursorDir: subCursorDir,
-            metaCache,
-            sequenceBase: seq,
-            maxReadBytes: this.maxReadBytes
-          });
-        } catch (err) {
-          await this.logSubagentError(sessionId, errorLabel, err);
-          continue;
-        }
-        events.push(...read.events);
-        seq += read.events.length;
-        subagentCommits.push(read.commit);
-      }
-      await persist(events);
-      if (truncated || endOffset > startOffset) {
-        await this.writeCursor(cursorPath, endOffset);
-      }
-      for (const commit of subagentCommits) {
-        await commit();
-      }
-      return { events, skipped: false, newCursor: endOffset };
-    } finally {
-      await release();
-    }
-  }
-  async acquireCursorLock(sessionId) {
-    if (!isValidSessionId(sessionId)) {
-      throw new Error(`acquireCursorLock: invalid sessionId`);
-    }
-    const cursorDir = this.cursorDir(sessionId);
-    await mkdir4(cursorDir, { recursive: true });
-    const cursorPath = join5(cursorDir, "transcript_cursor.json");
-    try {
-      await readFile4(cursorPath);
-    } catch {
-      await writeFile2(cursorPath, "{}", "utf8");
-    }
-    const release = await import_proper_lockfile2.default.lock(cursorPath, { retries: 0, realpath: false });
-    return { release: async () => {
-      await release();
-    } };
-  }
-  cursorDir(sessionId) {
-    return sessionCursorDir(this.stateDir, sessionId);
-  }
-  isValidTranscriptPath(p) {
-    if (typeof p !== "string" || p.length === 0)
-      return false;
-    if (!isAbsolute(p))
-      return false;
-    if (!p.endsWith(".jsonl"))
-      return false;
-    if (!p.startsWith(this.transcriptRoot))
-      return false;
-    return true;
-  }
-  async logSubagentError(sessionId, agentLabel, err) {
-    if (!this.errorLogPath)
-      return;
-    const msg = err instanceof Error ? `${err.message}` : String(err);
-    const line = `${(/* @__PURE__ */ new Date()).toISOString()} subagent-tail ${sessionId}/${agentLabel}: ${msg}`.replace(/[\p{Cc}\p{Cf}]+/gu, " ").slice(0, 2e3) + "\n";
-    try {
-      await appendFile(this.errorLogPath, line);
-    } catch {
-    }
-  }
-  async readCursor(cursorPath) {
-    try {
-      const buf = await readFile4(cursorPath, "utf8");
-      const parsed = JSON.parse(buf);
-      return parsed.byte_offset ?? 0;
-    } catch {
-      return 0;
-    }
-  }
-  async writeCursor(cursorPath, offset) {
-    const body = { byte_offset: offset };
-    const tmp = `${cursorPath}.tmp`;
-    await writeFile2(tmp, JSON.stringify(body), "utf8");
-    await rename3(tmp, cursorPath);
-  }
-  async readSince(sessionId, path, startOffset, sequenceBase, maxReadBytes) {
-    return readWindow({
-      path,
-      startOffset,
-      sequenceBase,
-      maxReadBytes,
-      state: {},
-      parseWindow: ccParseWindow((r, seq) => toApiRequestEvent(r, sessionId, seq), (rec, seq) => detectUsageLimit(rec, sessionId, seq, Date.now()))
-    });
-  }
-};
-function ccParseWindow(stamp, detectLimit) {
-  return (lines, sequenceBase) => {
-    const events = [];
-    let seq = sequenceBase;
-    for (const line of lines) {
-      if (!line)
-        continue;
-      let rec;
-      try {
-        rec = JSON.parse(line);
-      } catch {
-        continue;
-      }
-      if (detectLimit) {
-        const limitEv = detectLimit(rec, seq);
-        if (limitEv) {
-          events.push(limitEv);
-          seq++;
-        }
-      }
-      if (!isAssistantRecord(rec))
-        continue;
-      events.push(stamp(rec, seq));
-      seq++;
-    }
-    return events;
-  };
-}
-async function readSubagent(opts) {
-  const { sessionId, agentId, transcriptPath, metaPath, cursorDir, metaCache = new SubagentMetaCache(), sequenceBase = 0, maxReadBytes = DEFAULT_MAX_READ_BYTES } = opts;
-  await mkdir4(cursorDir, { recursive: true });
-  const cursor = new SubagentCursor(cursorDir);
-  const startOffset = await cursor.read();
-  const meta = await metaCache.get(metaPath);
-  let events;
-  let endOffset;
-  let truncated;
-  try {
-    ({ events, endOffset, truncated } = await readWindow({
-      path: transcriptPath,
-      startOffset,
-      sequenceBase,
-      maxReadBytes,
-      state: {},
-      nofollow: true,
-      parseWindow: ccParseWindow((record, seq) => {
-        const base = toApiRequestEvent(record, sessionId, seq);
-        const attributes = {
-          ...base.attributes,
-          // Bare agentId is safe even nested: flat and workflow ids share
-          // one session-scoped random namespace, so basenames don't collide.
-          subsession_id: agentId
-        };
-        if (meta)
-          attributes.agent_type = meta.agentType;
-        return { ...base, attributes };
-      })
-    }));
-  } catch (err) {
-    if (err?.code === "ENOENT") {
-      return { events: [], commit: async () => {
-      }, advanced: false };
-    }
-    throw err;
-  }
-  return {
-    events,
-    // Whether committing would actually move this agent's cursor forward.
-    // Mirrors tail()'s own "truncated || endOffset > startOffset" check on
-    // the parent cursor. Crucially this is NOT the same as `events.length >
-    // 0` — a window can consume real bytes (advance) while containing zero
-    // assistant records (all user/tool_result lines), and a caller that
-    // loops until `events.length === 0` would stop before ever committing
-    // that window, permanently stranding every record after it.
-    advanced: truncated || endOffset > startOffset,
-    commit: async () => {
-      if (truncated)
-        await cursor.reset();
-      const current = await cursor.read();
-      if (endOffset > current)
-        await cursor.advance(endOffset);
-    }
-  };
-}
-var MAX_SUBAGENT_DISCOVERY_DEPTH = 4;
-async function discoverSubagentTranscripts(sessionDir, onError) {
-  const root = join5(sessionDir, "subagents");
-  try {
-    if (!(await lstat2(root)).isDirectory())
-      return [];
-  } catch (err) {
-    const code = err?.code;
-    if (code !== "ENOENT" && code !== "ENOTDIR")
-      await onError?.(root, err);
-    return [];
-  }
-  return walkSubagentDir(root, MAX_SUBAGENT_DISCOVERY_DEPTH, onError);
-}
-async function walkSubagentDir(dir, depthRemaining, onError) {
-  let entries;
-  try {
-    entries = await readdir(dir, { withFileTypes: true });
-  } catch (err) {
-    const code = err?.code;
-    if (code !== "ENOENT" && code !== "ENOTDIR")
-      await onError?.(dir, err);
-    return [];
-  }
-  const found = await Promise.all(entries.map(async (entry) => {
-    const full = join5(dir, entry.name);
-    const kind = await classifyDirent(full, entry);
-    if (kind === "file" && entry.name.startsWith("agent-") && entry.name.endsWith(".jsonl")) {
-      return [full];
-    }
-    if (kind === "dir" && depthRemaining > 0) {
-      return walkSubagentDir(full, depthRemaining - 1, onError);
-    }
-    return [];
-  }));
-  return found.flat();
-}
-async function classifyDirent(fullPath, entry) {
-  if (entry.isFile())
-    return "file";
-  if (entry.isDirectory())
-    return "dir";
-  if (entry.isSymbolicLink() || entry.isBlockDevice() || entry.isCharacterDevice() || entry.isFIFO() || entry.isSocket())
-    return "other";
-  try {
-    const st = await lstat2(fullPath);
-    if (st.isFile())
-      return "file";
-    if (st.isDirectory())
-      return "dir";
-  } catch {
-  }
-  return "other";
-}
-function isValidSessionId(s) {
-  return typeof s === "string" && SESSION_ID_RE.test(s);
-}
-function sessionCursorDir(stateDir, sessionId) {
-  return join5(stateDir, "sessions", sessionId);
-}
-function deriveSubagentCursorDir(sessCursorDir, subagentsRoot, subagentPath) {
-  const agentId = basename(subagentPath, ".jsonl").slice("agent-".length);
-  if (!AGENT_ID_RE.test(agentId)) {
-    return { ok: false, agentId, reason: `unsafe agent id in transcript name: ${subagentPath}` };
-  }
-  const nestedDir = relative(subagentsRoot, dirname3(subagentPath));
-  if (nestedDir === ".." || nestedDir.startsWith(".." + sep)) {
-    return { ok: false, agentId, reason: `transcript outside subagents root: ${subagentPath}` };
-  }
-  const cursorDir = nestedDir === "" ? join5(sessCursorDir, "subagents", agentId) : join5(sessCursorDir, "subagents", nestedDir, agentId);
-  const errorLabel = nestedDir === "" ? agentId : join5(nestedDir, agentId);
-  return { ok: true, agentId, cursorDir, errorLabel };
-}
-function isAssistantRecord(r) {
-  if (typeof r !== "object" || r === null)
-    return false;
-  const rec = r;
-  if (rec.type !== "assistant")
-    return false;
-  if (typeof rec.uuid !== "string")
-    return false;
-  if (typeof rec.timestamp !== "string")
-    return false;
-  if (!Number.isFinite(Date.parse(rec.timestamp)))
-    return false;
-  if (typeof rec.message !== "object" || rec.message === null)
-    return false;
-  const msg = rec.message;
-  if (msg.role !== "assistant")
-    return false;
-  if (typeof msg.id !== "string")
-    return false;
-  if (typeof msg.model !== "string")
-    return false;
-  return true;
-}
-function toApiRequestEvent(r, sessionId, sequence) {
-  const usage = r.message.usage ?? {};
-  const cacheCreation = usage.cache_creation;
-  const attrs = {
-    cost_usd: r.costUSD ?? 0,
-    tokens_input: usage.input_tokens ?? 0,
-    tokens_output: usage.output_tokens ?? 0,
-    tokens_cache_read: usage.cache_read_input_tokens ?? 0,
-    tokens_cache_create: usage.cache_creation_input_tokens ?? 0,
-    tokens_cache_create_5m: cacheCreation?.ephemeral_5m_input_tokens ?? 0,
-    tokens_cache_create_1h: cacheCreation?.ephemeral_1h_input_tokens ?? 0,
-    model: r.message.model,
-    // Anthropic API request ID. Falls back to message.id for older
-    // transcripts (and existing test fixtures) that lack requestId.
-    request_id: r.requestId ?? r.message.id,
-    transcript_message_uuid: r.uuid
-  };
-  if (typeof r.message.stop_reason === "string" && r.message.stop_reason) {
-    attrs.stop_reason = r.message.stop_reason;
-  }
-  if (typeof usage.speed === "string" && usage.speed) {
-    attrs.speed = usage.speed;
-  }
-  if (typeof r.isApiErrorMessage === "boolean") {
-    attrs.api_error = r.isApiErrorMessage;
-  }
-  const kind = apiErrorKind(r.error);
-  if (kind !== void 0) {
-    attrs.api_error_kind = kind;
-  }
-  if (isHttpStatus(r.apiErrorStatus)) {
-    attrs.api_error_status = r.apiErrorStatus;
-  }
-  return {
-    event_uuid: randomUUID2(),
-    event_type: "api.request",
-    session_id: sessionId,
-    source: "transcript.tail",
-    sequence,
-    timestamp_ns: BigInt(Date.parse(r.timestamp)) * 1000000n,
-    attributes: attrs
-  };
+  });
 }
 
 // dist/shared/queue.mjs
-import { open as open5, stat as stat2 } from "node:fs/promises";
-import { join as join6 } from "node:path";
+import { open as open2, stat } from "node:fs/promises";
+import { join as join5 } from "node:path";
 var Queue = class {
   dir;
   path;
   capBytes;
   constructor(dir, capBytes) {
     this.dir = dir;
-    this.path = join6(dir, "queue.ndjson");
+    this.path = join5(dir, "queue.ndjson");
     this.capBytes = capBytes;
   }
   async size() {
     try {
-      const s = await stat2(this.path);
+      const s = await stat(this.path);
       return s.size;
     } catch (err) {
       if (err.code === "ENOENT")
@@ -2975,7 +2397,7 @@ var Queue = class {
       return { written: 0, dropped: 0, sizeAfter: await this.size() };
     }
     return withDirLock(this.dir, async () => {
-      const fh = await open5(this.path, "a", 384);
+      const fh = await open2(this.path, "a", 384);
       let written = 0;
       let dropped = 0;
       let currentSize = (await fh.stat()).size;
@@ -2998,14 +2420,14 @@ var Queue = class {
   }
 };
 
+// dist/shared/config.mjs
+import { join as join6 } from "node:path";
+import { homedir as homedir2 } from "node:os";
+init_credential_paths();
+var DEFAULT_LOGIN_STATE_DIR = join6(homedir2(), ".config", "fancysauce");
+
 // dist/shared/run-collect.mjs
 init_credential_paths();
-
-// dist/shared/hash.mjs
-import { createHash, createHmac } from "node:crypto";
-function sha256Hex(input) {
-  return createHash("sha256").update(input, "utf8").digest("hex");
-}
 
 // dist/shared/content-filter.mjs
 function buildRules(policy) {
@@ -3148,86 +2570,11 @@ function filterEvent(raw, policy) {
   return out;
 }
 
-// dist/shared/server-key.mjs
-var DEFAULT_TTL_MS = 24 * 60 * 60 * 1e3;
-
-// dist/shared/identity-cache.mjs
-var DEFAULT_TTL_MS2 = 12 * 60 * 60 * 1e3;
-var CACHED_IDENTITY_SOURCES = [
-  "native_claude",
-  "native_codex",
-  "dscl",
-  "whoami_upn"
-];
-var CACHED_SOURCE_SET = new Set(CACHED_IDENTITY_SOURCES);
-
 // dist/shared/health.mjs
-var import_proper_lockfile3 = __toESM(require_proper_lockfile(), 1);
-import { mkdir as mkdir5, readFile as readFile5, rename as rename4, writeFile as writeFile3 } from "node:fs/promises";
-import { join as join7 } from "node:path";
-var DEFAULT = { dropped_event_count: 0 };
-var LOCK_RETRIES = {
-  retries: 100,
-  factor: 1.5,
-  minTimeout: 5,
-  maxTimeout: 50
-};
-var HealthState = class {
-  dir;
-  path;
-  tmp;
-  constructor(dir) {
-    this.dir = dir;
-    this.path = join7(dir, "health.json");
-    this.tmp = `${this.path}.tmp`;
-  }
-  async read() {
-    try {
-      return { ...DEFAULT, ...JSON.parse(await readFile5(this.path, "utf8")) };
-    } catch {
-      return { ...DEFAULT };
-    }
-  }
-  async recordDrop(n) {
-    await this.update((h) => {
-      h.dropped_event_count += n;
-    });
-  }
-  async touch() {
-    await this.update((h) => {
-      h.last_hook_at = Date.now();
-    });
-  }
-  async recordFlush(result) {
-    await this.update((h) => {
-      h.last_flush_at = Date.now();
-      h.last_flush_result = result;
-    });
-  }
-  async update(mutate) {
-    await mkdir5(this.dir, { recursive: true });
-    try {
-      await readFile5(this.path);
-    } catch {
-      await writeFile3(this.path, "{}", "utf8");
-    }
-    const release = await import_proper_lockfile3.default.lock(this.path, {
-      retries: LOCK_RETRIES,
-      realpath: false
-    });
-    try {
-      const h = await this.read();
-      mutate(h);
-      await writeFile3(this.tmp, JSON.stringify(h), "utf8");
-      await rename4(this.tmp, this.path);
-    } finally {
-      await release();
-    }
-  }
-};
+var import_proper_lockfile2 = __toESM(require_proper_lockfile(), 1);
 
 // dist/shared/flusher.mjs
-var import_proper_lockfile4 = __toESM(require_proper_lockfile(), 1);
+var import_proper_lockfile3 = __toESM(require_proper_lockfile(), 1);
 
 // dist/shared/backoff-state.mjs
 var MAX_BACKOFF_MS = 5 * 60 * 1e3;
@@ -3237,6 +2584,12 @@ import { gzip } from "node:zlib";
 import { promisify } from "node:util";
 var gzipAsync = promisify(gzip);
 var MAX_RESPONSE_BYTES = 64 * 1024;
+
+// dist/shared/session-id.mjs
+var SESSION_ID_RE = /^[A-Za-z0-9_-]{1,128}$/;
+function isValidSessionId(s) {
+  return typeof s === "string" && SESSION_ID_RE.test(s);
+}
 
 // dist/shared/whoami/credential.mjs
 init_credential_paths();
@@ -3284,244 +2637,501 @@ async function enqueueEvents(queue, events) {
   return queue.append(events.map(serializeForQueue));
 }
 
-// dist/shared/backfill/scan.mjs
-var MAX_ITERATIONS_PER_TRANSCRIPT = 1e4;
-async function runBackfillScan(opts) {
-  const transcriptRoot = opts.transcriptRoot ?? join8(homedir4(), ".claude", "projects");
-  const stateDir = join8(opts.dataDir, "state");
-  const outboundDir = join8(opts.dataDir, "outbound");
-  await mkdir6(outboundDir, { recursive: true, mode: 448 });
-  const queue = new Queue(outboundDir, opts.queueCapBytes ?? QUEUE_CAP_BYTES);
-  const maxReadBytes = opts.maxReadBytes ?? DEFAULT_MAX_READ_BYTES;
-  const policy = defaultPolicy();
-  const summary = {
-    sessionsScanned: 0,
-    transcriptsTailed: 0,
-    transcriptsFailed: 0,
-    eventsEnqueued: 0,
-    skippedLocked: 0,
-    skippedFull: 0,
-    skippedFiltered: 0
-  };
-  const sessions = await discoverSessionDirs(transcriptRoot, opts.errorLogPath);
-  for (const { sessionId, sessionDir } of sessions) {
-    const tail = new TranscriptTail(stateDir, { transcriptRoot, errorLogPath: opts.errorLogPath });
-    let lock;
-    try {
-      lock = await tail.acquireCursorLock(sessionId);
-    } catch (err) {
-      if (err?.code !== "ELOCKED") {
-        await logScanError(opts.errorLogPath, sessionId, "cursor-lock", err);
-      }
-      summary.skippedLocked++;
-      continue;
-    }
-    summary.sessionsScanned++;
-    try {
-      const subagentsRoot = join8(sessionDir, "subagents");
-      const subagentPaths = await discoverSubagentTranscripts(sessionDir, (dir, err) => logScanError(opts.errorLogPath, sessionId, relative2(sessionDir, dir) || "subagents", err));
-      const metaCache = new SubagentMetaCache();
-      const sessCursorDir = sessionCursorDir(stateDir, sessionId);
-      for (const subagentPath of subagentPaths) {
-        const derived = deriveSubagentCursorDir(sessCursorDir, subagentsRoot, subagentPath);
-        if (!derived.ok) {
-          await logScanError(opts.errorLogPath, sessionId, derived.agentId, new Error(derived.reason));
-          summary.transcriptsFailed++;
-          continue;
-        }
-        const { agentId, cursorDir, errorLabel } = derived;
-        const drain = await drainSubagentTranscript({
-          sessionId,
-          agentId,
-          subagentPath,
-          metaPath: metaPathFromTranscript(subagentPath),
-          cursorDir,
-          metaCache,
-          maxReadBytes,
-          queue,
-          policy,
-          errorLogPath: opts.errorLogPath,
-          errorLabel
-        });
-        if (drain.failed)
-          summary.transcriptsFailed++;
-        else
-          summary.transcriptsTailed++;
-        summary.eventsEnqueued += drain.enqueued;
-        summary.skippedFull += drain.queueCapDropped;
-        summary.skippedFiltered += drain.filterDropped;
-      }
-    } finally {
-      await lock.release();
-    }
-  }
-  const totalDropped = summary.skippedFull + summary.skippedFiltered;
-  if (totalDropped > 0) {
-    const health = new HealthState(stateDir);
-    await health.touch();
-    await health.recordDrop(totalDropped);
-  }
-  return summary;
+// dist/shared/usage-probe/probe.mjs
+import { readFile as readFile3 } from "node:fs/promises";
+var CACHE_TTL_MS = 3e5;
+var WINDOW_ORDER = ["five_hour", "seven_day"];
+var WINDOW_MINUTES = Object.freeze({
+  five_hour: 300,
+  seven_day: 10080
+});
+function obj(v) {
+  return typeof v === "object" && v !== null ? v : void 0;
 }
-async function drainSubagentTranscript(params) {
-  const { sessionId, agentId, subagentPath, metaPath, cursorDir, metaCache, maxReadBytes, queue, policy, errorLogPath, errorLabel } = params;
-  let seq = 0;
-  let enqueued = 0;
-  let queueCapDropped = 0;
-  let filterDropped = 0;
-  for (let i = 0; i < MAX_ITERATIONS_PER_TRANSCRIPT; i++) {
-    let read;
-    try {
-      read = await readSubagent({
-        sessionId,
-        agentId,
-        transcriptPath: subagentPath,
-        metaPath,
-        cursorDir,
-        metaCache,
-        sequenceBase: seq,
-        maxReadBytes
-      });
-    } catch (err) {
-      await logScanError(errorLogPath, sessionId, errorLabel, err);
-      return { enqueued, queueCapDropped, filterDropped, failed: true };
-    }
-    try {
-      if (read.events.length > 0) {
-        const { filtered, dropped } = filterEvents(read.events, policy);
-        filterDropped += dropped;
-        if (filtered.length > 0) {
-          const result = await enqueueEvents(queue, filtered);
-          enqueued += result.written;
-          queueCapDropped += result.dropped;
-        }
-      }
-      await read.commit();
-    } catch (err) {
-      await logScanError(errorLogPath, sessionId, errorLabel, err);
-      return { enqueued, queueCapDropped, filterDropped, failed: true };
-    }
-    seq += read.events.length;
-    if (!read.advanced)
-      break;
-  }
-  return { enqueued, queueCapDropped, filterDropped, failed: false };
+function num(v) {
+  return typeof v === "number" && Number.isFinite(v) ? v : void 0;
 }
-async function logScanError(errorLogPath, sessionId, errorLabel, err) {
-  if (!errorLogPath)
-    return;
-  const msg = err instanceof Error ? err.message : String(err);
-  const line = `${(/* @__PURE__ */ new Date()).toISOString()} backfill-scan ${sessionId}/${errorLabel}: ${msg}`.replace(/[\p{Cc}\p{Cf}]+/gu, " ").slice(0, 2e3) + "\n";
+function str2(v) {
+  return typeof v === "string" && v.length > 0 ? v : void 0;
+}
+function bool2(v) {
+  return typeof v === "boolean" ? v : void 0;
+}
+function windowReading(v) {
+  const o = obj(v);
+  if (!o)
+    return void 0;
+  const out = {};
+  const util = num(o.utilization);
+  if (util !== void 0)
+    out.utilization = util;
+  const resets = str2(o.resets_at);
+  if (resets !== void 0)
+    out.resets_at = resets;
+  return out.utilization === void 0 && out.resets_at === void 0 ? void 0 : out;
+}
+async function readUsageCache(path) {
+  let doc;
   try {
-    await appendFile2(errorLogPath, line);
+    doc = JSON.parse(await readFile3(path, "utf8"));
+  } catch {
+    return null;
+  }
+  const root = obj(doc);
+  const cached = obj(root?.cachedUsageUtilization);
+  if (!cached)
+    return null;
+  const rawFetchedAtMs = num(cached.fetchedAtMs);
+  if (rawFetchedAtMs === void 0)
+    return null;
+  const fetchedAtMs = Math.trunc(rawFetchedAtMs);
+  const u = obj(cached.utilization) ?? {};
+  const utilization = {};
+  const fiveHour = windowReading(u.five_hour);
+  if (fiveHour)
+    utilization.five_hour = fiveHour;
+  const sevenDay = windowReading(u.seven_day);
+  if (sevenDay)
+    utilization.seven_day = sevenDay;
+  const extra = obj(u.extra_usage);
+  if (extra) {
+    const e = {};
+    const isEnabled = bool2(extra.is_enabled);
+    if (isEnabled !== void 0)
+      e.is_enabled = isEnabled;
+    const monthlyLimit = num(extra.monthly_limit) ?? str2(extra.monthly_limit);
+    if (monthlyLimit !== void 0)
+      e.monthly_limit = monthlyLimit;
+    const usedCredits = num(extra.used_credits) ?? str2(extra.used_credits);
+    if (usedCredits !== void 0)
+      e.used_credits = usedCredits;
+    const util = num(extra.utilization);
+    if (util !== void 0)
+      e.utilization = util;
+    const reason = str2(extra.disabled_reason);
+    if (reason !== void 0)
+      e.disabled_reason = reason;
+    const reached = bool2(extra.spend_limit_reached);
+    if (reached !== void 0)
+      e.spend_limit_reached = reached;
+    const everEnabled = bool2(extra.credits_ever_enabled);
+    if (everEnabled !== void 0)
+      e.credits_ever_enabled = everEnabled;
+    utilization.extra_usage = e;
+  }
+  const spend = obj(u.spend);
+  if (spend) {
+    const s = {};
+    const used = obj(spend.used);
+    if (used) {
+      s.used = {};
+      const minor = num(used.amount_minor);
+      if (minor !== void 0)
+        s.used.amount_minor = minor;
+      const currency = str2(used.currency);
+      if (currency !== void 0)
+        s.used.currency = currency;
+    }
+    const limit = num(spend.limit);
+    if (limit !== void 0)
+      s.limit = limit;
+    const percent = num(spend.percent);
+    if (percent !== void 0)
+      s.percent = percent;
+    const enabled = bool2(spend.enabled);
+    if (enabled !== void 0)
+      s.enabled = enabled;
+    const reason = str2(spend.disabled_reason);
+    if (reason !== void 0)
+      s.disabled_reason = reason;
+    utilization.spend = s;
+  }
+  return { fetchedAtMs, utilization };
+}
+var SNAPSHOT_MIN_DELTA_PCT = 1;
+var WINDOW_PREFIX = Object.freeze({
+  five_hour: "primary",
+  seven_day: "secondary"
+});
+function fetchedAtNs(fetchedAtMs) {
+  return BigInt(Math.trunc(fetchedAtMs)) * 1000000n;
+}
+function probeEventUuid(installId, fetchedAtMs, scope) {
+  return deterministicUuid([installId, String(Math.trunc(fetchedAtMs)), scope]);
+}
+function resetsAtEpochSeconds(iso) {
+  if (iso === void 0)
+    return void 0;
+  const ms = Date.parse(iso);
+  return Number.isFinite(ms) ? Math.floor(ms / 1e3) : void 0;
+}
+function postureSnapshot(posture) {
+  const out = {};
+  if (posture?.plan_type !== void 0)
+    out.plan_type = posture.plan_type;
+  if (posture?.seat_tier !== void 0)
+    out.seat_tier = posture.seat_tier;
+  return out;
+}
+function windowSnapshotEvent(input) {
+  const { cache, posture, sessionId, installId, sequence } = input;
+  const attributes = {};
+  const nextWindows = { ...input.windows };
+  let anyPresent = false;
+  let anyMoved = false;
+  for (const name of WINDOW_ORDER) {
+    const reading = cache.utilization[name];
+    if (!reading)
+      continue;
+    const usedPercent = reading.utilization;
+    if (typeof usedPercent !== "number" || !Number.isFinite(usedPercent))
+      continue;
+    anyPresent = true;
+    const resetsAt = resetsAtEpochSeconds(reading.resets_at);
+    const prefix = WINDOW_PREFIX[name];
+    attributes[`${prefix}_used_percent`] = usedPercent;
+    if (resetsAt !== void 0)
+      attributes[`${prefix}_resets_at`] = resetsAt;
+    attributes[`${prefix}_window_minutes`] = WINDOW_MINUTES[name];
+    const watermark = input.windows[name];
+    const resetsChanged = resetsAt !== void 0 && resetsAt !== watermark?.resets_at;
+    if (!watermark || resetsChanged || Math.abs(usedPercent - watermark.used_percent) >= SNAPSHOT_MIN_DELTA_PCT) {
+      anyMoved = true;
+    }
+    nextWindows[name] = resetsAt !== void 0 ? { used_percent: usedPercent, resets_at: resetsAt } : { used_percent: usedPercent };
+  }
+  if (!anyPresent || !anyMoved)
+    return { event: null, windows: input.windows };
+  Object.assign(attributes, postureSnapshot(posture));
+  return {
+    event: {
+      event_uuid: probeEventUuid(installId, cache.fetchedAtMs, "windows"),
+      event_type: "usage_limit.snapshot",
+      session_id: sessionId,
+      source: "usage.probe",
+      sequence,
+      timestamp_ns: fetchedAtNs(cache.fetchedAtMs),
+      attributes
+    },
+    windows: nextWindows
+  };
+}
+var SPEND_HEARTBEAT_MS = 36e5;
+function rawString(v) {
+  if (typeof v === "string")
+    return v.length > 0 ? v : void 0;
+  if (typeof v === "number" && Number.isFinite(v))
+    return String(v);
+  return void 0;
+}
+function intAttr(v) {
+  return typeof v === "number" && Number.isFinite(v) ? Math.trunc(v) : void 0;
+}
+function doubleAttr(v) {
+  return typeof v === "number" && Number.isFinite(v) ? v : void 0;
+}
+function spendAttributes(cache, posture) {
+  const attrs = {};
+  const spend = cache.utilization.spend;
+  const extra = cache.utilization.extra_usage;
+  const usedMinor = intAttr(spend?.used?.amount_minor);
+  if (usedMinor !== void 0)
+    attrs.spend_used_minor = usedMinor;
+  if (spend?.used?.currency !== void 0)
+    attrs.spend_currency = spend.used.currency;
+  const limitMinor = intAttr(spend?.limit);
+  if (limitMinor !== void 0)
+    attrs.spend_limit_minor = limitMinor;
+  const percent = doubleAttr(spend?.percent);
+  if (percent !== void 0)
+    attrs.spend_percent = percent;
+  if (spend?.enabled !== void 0)
+    attrs.spend_enabled = spend.enabled;
+  if (spend?.disabled_reason !== void 0)
+    attrs.spend_disabled_reason = spend.disabled_reason;
+  if (extra?.spend_limit_reached !== void 0)
+    attrs.spend_limit_reached = extra.spend_limit_reached;
+  if (extra?.is_enabled !== void 0)
+    attrs.extra_usage_enabled = extra.is_enabled;
+  if (extra?.disabled_reason !== void 0)
+    attrs.extra_usage_disabled_reason = extra.disabled_reason;
+  const monthlyLimit = rawString(extra?.monthly_limit);
+  if (monthlyLimit !== void 0)
+    attrs.extra_usage_monthly_limit = monthlyLimit;
+  const usedCredits = rawString(extra?.used_credits);
+  if (usedCredits !== void 0)
+    attrs.extra_usage_used_credits = usedCredits;
+  const extraUtilization = doubleAttr(extra?.utilization);
+  if (extraUtilization !== void 0)
+    attrs.extra_usage_utilization = extraUtilization;
+  if (extra?.credits_ever_enabled !== void 0)
+    attrs.credits_ever_enabled = extra.credits_ever_enabled;
+  if (Object.keys(attrs).length === 0)
+    return attrs;
+  Object.assign(attrs, postureSnapshot(posture));
+  return attrs;
+}
+function spendHash(attrs) {
+  const entries = Object.entries(attrs).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0).map(([k, v]) => `${k}=${String(v)}`);
+  return sha256Hex(entries.join("|"));
+}
+function usageProbeEvents(input) {
+  const { cache, posture, sessionId, installId, nowMs, state } = input;
+  const windowResult = windowSnapshotEvent({
+    cache,
+    posture,
+    sessionId,
+    installId,
+    sequence: 0,
+    windows: state?.windows ?? {}
+  });
+  const events = windowResult.event ? [windowResult.event] : [];
+  const attrs = spendAttributes(cache, posture);
+  const hasSpend = attrs.spend_used_minor !== void 0;
+  const hash = hasSpend ? spendHash(attrs) : "";
+  const heartbeatDue = state !== null && nowMs - state.spend_emitted_at_ms >= SPEND_HEARTBEAT_MS;
+  const spendChanged = state === null || hash !== state.spend_hash;
+  const emitSpend = hasSpend && (spendChanged || heartbeatDue);
+  if (emitSpend) {
+    events.push({
+      event_uuid: probeEventUuid(installId, cache.fetchedAtMs, "spend"),
+      event_type: "usage_spend.snapshot",
+      session_id: sessionId,
+      source: "usage.probe",
+      sequence: events.length,
+      timestamp_ns: fetchedAtNs(cache.fetchedAtMs),
+      attributes: attrs
+    });
+  }
+  return {
+    events,
+    state: {
+      last_fetched_at_ms: cache.fetchedAtMs,
+      last_attempt_ms: nowMs,
+      windows: windowResult.windows,
+      spend_hash: hasSpend ? hash : state?.spend_hash ?? "",
+      // Stamped from nowMs, the same clock the heartbeat gate compares it to.
+      spend_emitted_at_ms: emitSpend ? nowMs : state?.spend_emitted_at_ms ?? 0
+    }
+  };
+}
+
+// dist/shared/usage-probe/state.mjs
+import { mkdir as mkdir2, readFile as readFile4, rename as rename2, unlink as unlink2, writeFile } from "node:fs/promises";
+import { join as join7 } from "node:path";
+function usageProbeStatePath(stateDir) {
+  return join7(stateDir, "usage-probe.json");
+}
+async function readUsageProbeState(stateDir) {
+  let parsed;
+  try {
+    parsed = JSON.parse(await readFile4(usageProbeStatePath(stateDir), "utf8"));
+  } catch {
+    return null;
+  }
+  if (typeof parsed.last_fetched_at_ms !== "number" || typeof parsed.last_attempt_ms !== "number") {
+    return null;
+  }
+  const windows = {};
+  if (typeof parsed.windows === "object" && parsed.windows !== null) {
+    for (const [name, raw] of Object.entries(parsed.windows)) {
+      if (typeof raw !== "object" || raw === null)
+        continue;
+      const w = raw;
+      if (typeof w.used_percent !== "number" || !Number.isFinite(w.used_percent))
+        continue;
+      windows[name] = typeof w.resets_at === "number" && Number.isFinite(w.resets_at) ? { used_percent: w.used_percent, resets_at: w.resets_at } : { used_percent: w.used_percent };
+    }
+  }
+  return {
+    last_fetched_at_ms: parsed.last_fetched_at_ms,
+    last_attempt_ms: parsed.last_attempt_ms,
+    windows,
+    spend_hash: typeof parsed.spend_hash === "string" ? parsed.spend_hash : "",
+    spend_emitted_at_ms: typeof parsed.spend_emitted_at_ms === "number" ? parsed.spend_emitted_at_ms : 0
+  };
+}
+async function writeUsageProbeState(stateDir, state) {
+  const path = usageProbeStatePath(stateDir);
+  const tmp = `${path}.${process.pid}.tmp`;
+  try {
+    await mkdir2(stateDir, { recursive: true, mode: 448 });
+    await writeFile(tmp, JSON.stringify(state), { encoding: "utf8", mode: 384 });
+    await rename2(tmp, path);
+  } catch {
+    await unlink2(tmp).catch(() => {
+    });
+  }
+}
+
+// dist/shared/usage-probe/lease.mjs
+import { join as join8 } from "node:path";
+
+// dist/shared/lease.mjs
+import { closeSync, ftruncateSync, openSync, readFileSync as readFileSync4, rmSync, statSync, writeSync } from "node:fs";
+function releaseLease(path) {
+  try {
+    rmSync(path, { force: true });
   } catch {
   }
 }
-async function discoverSessionDirs(transcriptRoot, errorLogPath) {
-  const logDirError = async (label, err) => {
-    const code = err?.code;
-    if (code !== "ENOENT" && code !== "ENOTDIR") {
-      await logScanError(errorLogPath, "-", label, err);
-    }
-  };
-  let projectEntries;
-  try {
-    projectEntries = await readdir2(transcriptRoot, { withFileTypes: true });
-  } catch (err) {
-    await logDirError("transcript-root", err);
-    return [];
-  }
-  const found = [];
-  for (const proj of projectEntries) {
-    const projDir = join8(transcriptRoot, proj.name);
-    if (await classifyDirent(projDir, proj) !== "dir")
-      continue;
-    let sessionEntries;
-    try {
-      sessionEntries = await readdir2(projDir, { withFileTypes: true });
-    } catch (err) {
-      await logDirError(proj.name, err);
-      continue;
-    }
-    for (const entry of sessionEntries) {
-      if (!isValidSessionId(entry.name))
-        continue;
-      const sessionDir = join8(projDir, entry.name);
-      if (await classifyDirent(sessionDir, entry) !== "dir")
-        continue;
-      found.push({ sessionId: entry.name, sessionDir });
-    }
-  }
-  return found;
+
+// dist/shared/usage-probe/lease.mjs
+function usageProbeLeasePath(stateDir) {
+  return join8(stateDir, "usage-probe.lock");
+}
+function releaseProbeLease(stateDir) {
+  releaseLease(usageProbeLeasePath(stateDir));
 }
 
-// dist/shared/backfill/scan-then-drain.mjs
-async function spawnRunner(args) {
-  const cfg = await loadConfig();
-  if (!cfg || !cfg.credential) {
-    const systemPath = credentialPaths().system;
-    if (cfg?.credentialError) {
-      args.err(cfg.credentialError.source === "system" ? `fancysauce: managed credential at ${systemPath} is malformed (${cfg.credentialError.reason}); contact administrator.
-` : `fancysauce: user credential is malformed (${cfg.credentialError.reason}). Run ${LOGIN_COMMAND} to recreate it.
-`);
-    } else {
-      args.err(`fancysauce: no credential file. Run ${LOGIN_COMMAND} first, or have your administrator install a managed credential at ${systemPath}.
-`);
-    }
-    return 1;
-  }
-  const active = await isBackfillActive(args.stateDir);
-  if (active !== null) {
-    args.out(`Backfill already running (pid ${active}). Check ${UPLOAD_HISTORY_COMMAND} --status.
-`);
-    return 0;
-  }
-  const result = await spawnBackfillRunner({
-    dataDir: args.dataDir,
-    credentialPath: args.credPath,
-    spawner: args.spawner
-  });
-  if (result.kind === "spawned") {
-    args.out(`Backfill started in background (pid ${result.pid}). Run ${UPLOAD_HISTORY_COMMAND} --status for progress.
-`);
-    return 0;
-  }
-  args.err(`failed to spawn backfill runner: ${result.reason}
-`);
-  return 1;
+// dist/shared/usage-probe/run.mjs
+var CLAUDE_USAGE_ARGS = [
+  "-p",
+  "/usage",
+  "--no-session-persistence",
+  "--strict-mcp-config",
+  "--settings",
+  '{"disableAllHooks":true}',
+  "--output-format",
+  "json"
+];
+var PROBE_RUN_TIMEOUT_MS = 3e4;
+function resolveClaudeBinary(env) {
+  const exec = env.CLAUDE_CODE_EXECPATH;
+  return exec && exec.length > 0 ? exec : "claude";
 }
-async function scanThenDrain(args) {
-  const summary = await runBackfillScan({
-    dataDir: args.dataDir,
-    transcriptRoot: args.transcriptRoot,
-    // Same crash/error log the live tail path writes to (run-collect.mts),
-    // so a broken subagent transcript during a scan is recorded somewhere
-    // rather than silently contained into nothing. Without this, scan.mts's
-    // per-transcript containment had nowhere to write in production — only
-    // tests (which pass errorLogPath directly) ever exercised it.
-    errorLogPath: join9(args.dataDir, "collect-error.log")
-  });
-  args.out(`Scan complete: ${summary.sessionsScanned} sessions scanned, ${summary.transcriptsTailed} transcripts tailed, ${summary.transcriptsFailed} failed (see collect-error.log), ${summary.eventsEnqueued} events enqueued, ${summary.skippedLocked} skipped (locked), ${summary.skippedFull + summary.skippedFiltered} dropped (queue full / filtered).
-`);
-  const queue = new Queue(join9(args.dataDir, "outbound"), QUEUE_CAP_BYTES);
-  if (await queue.size() === 0) {
-    args.out("Queue is empty; nothing to upload.\n");
-    return 0;
+async function runUsageProbe(opts) {
+  const stateDir = join9(opts.dataDir, "state");
+  const nowMs = (opts.now ?? Date.now)();
+  const run = opts.claudeRunner ?? defaultClaudeRunner;
+  const prior = await readUsageProbeState(stateDir);
+  try {
+    if (!isAbsolute(opts.configPath)) {
+      await recordAttempt(stateDir, prior, nowMs);
+      return { kind: "bad-config" };
+    }
+    const refresh = await refreshUsageCache(opts, run, nowMs);
+    if (refresh.kind !== "refreshed") {
+      await recordAttempt(stateDir, prior, nowMs);
+      return refresh.kind === "run-failed" ? { kind: "run-failed" } : { kind: "no-cache" };
+    }
+    const after = refresh.after;
+    if (classifyReadingAdvancement(prior, refresh.ranPast, after) !== "advanced") {
+      await recordAttempt(stateDir, prior, nowMs);
+      return { kind: "no-change" };
+    }
+    const posture = await readPosture(opts.configPath);
+    const identity = await new IdentityResolver(opts.dataDir).resolve(opts.dataDir);
+    const { events, state } = usageProbeEvents({
+      cache: after,
+      posture,
+      sessionId: opts.sessionId,
+      installId: identity.install_id,
+      nowMs,
+      state: prior
+    });
+    const { filtered, dropped: filteredOut } = filterEvents(events, defaultPolicy());
+    const survived = new Set(filtered.map((ev) => ev.event_type));
+    const persisted = {
+      ...state,
+      ...survived.has("usage_limit.snapshot") ? {} : { windows: prior?.windows ?? {} },
+      ...survived.has("usage_spend.snapshot") ? {} : {
+        spend_hash: prior?.spend_hash ?? "",
+        spend_emitted_at_ms: prior?.spend_emitted_at_ms ?? 0
+      }
+    };
+    if (filtered.length === 0) {
+      await writeUsageProbeState(stateDir, persisted);
+      return { kind: "no-change", filteredOut };
+    }
+    const outboundDir = join9(opts.dataDir, "outbound");
+    const queue = new Queue(outboundDir, opts.queueCapBytes ?? QUEUE_CAP_BYTES);
+    const append = await enqueueEvents(queue, filtered);
+    if (append.dropped > 0) {
+      await recordAttempt(stateDir, prior, nowMs);
+      return { kind: "queue-full" };
+    }
+    await writeUsageProbeState(stateDir, persisted);
+    return { kind: "emitted", enqueued: append.written, filteredOut };
+  } catch (err) {
+    await recordAttempt(stateDir, prior, nowMs);
+    return { kind: "run-failed", error: err };
+  } finally {
+    releaseProbeLease(stateDir);
   }
-  return spawnRunner(args);
+}
+async function refreshUsageCache(opts, run, nowMs) {
+  const before = await readUsageCache(opts.configPath);
+  const ran = before === null || nowMs - before.fetchedAtMs >= CACHE_TTL_MS;
+  if (ran) {
+    const result = await run({
+      binary: resolveClaudeBinary(opts.env),
+      args: CLAUDE_USAGE_ARGS,
+      cwd: opts.dataDir,
+      timeoutMs: PROBE_RUN_TIMEOUT_MS,
+      env: opts.env
+    });
+    if (!result.ok)
+      return { kind: "run-failed" };
+  }
+  const after = await readUsageCache(opts.configPath);
+  if (after === null)
+    return { kind: "no-cache" };
+  return { kind: "refreshed", ranPast: ran ? before : null, after };
+}
+function classifyReadingAdvancement(prior, ranPast, after) {
+  if (ranPast !== null && after.fetchedAtMs <= ranPast.fetchedAtMs) {
+    return "unchanged-after-refresh";
+  }
+  if (prior !== null && after.fetchedAtMs <= prior.last_fetched_at_ms) {
+    return "already-processed";
+  }
+  return "advanced";
+}
+async function recordAttempt(stateDir, prior, nowMs) {
+  await writeUsageProbeState(stateDir, {
+    last_fetched_at_ms: prior?.last_fetched_at_ms ?? 0,
+    last_attempt_ms: nowMs,
+    windows: prior?.windows ?? {},
+    spend_hash: prior?.spend_hash ?? "",
+    spend_emitted_at_ms: prior?.spend_emitted_at_ms ?? 0
+  });
+}
+function defaultClaudeRunner(opts) {
+  return new Promise((resolve) => {
+    let settled = false;
+    const done = (ok) => {
+      if (settled)
+        return;
+      settled = true;
+      resolve({ ok });
+    };
+    try {
+      const child = spawn(opts.binary, [...opts.args], {
+        cwd: opts.cwd,
+        stdio: "ignore",
+        env: opts.env,
+        timeout: opts.timeoutMs
+      });
+      child.once("error", () => done(false));
+      child.once("close", (code) => done(code === 0));
+    } catch {
+      done(false);
+    }
+  });
 }
 
 // dist/shared/is-main-module.mjs
-import { fileURLToPath as fileURLToPath2 } from "node:url";
-import { posix as posix2, win32 as win322 } from "node:path";
+import { fileURLToPath } from "node:url";
+import { posix, win32 } from "node:path";
 import { realpathSync } from "node:fs";
 function isMainModule(importMetaUrl, argv1, platform = process.platform) {
   if (typeof argv1 !== "string" || argv1.length === 0)
     return false;
   const windows = platform === "win32";
   try {
-    const modulePath = real(fileURLToPath2(importMetaUrl, { windows }));
-    const scriptPath = real((windows ? win322 : posix2).resolve(argv1));
+    const modulePath = real(fileURLToPath(importMetaUrl, { windows }));
+    const scriptPath = real((windows ? win32 : posix).resolve(argv1));
     return windows ? modulePath.toLowerCase() === scriptPath.toLowerCase() : modulePath === scriptPath;
   } catch {
     return false;
@@ -3535,62 +3145,59 @@ function real(p) {
   }
 }
 
-// dist/shared/bin/auto-scan.mjs
-var AUTO_SCAN_JITTER_MAX_MS = 12e4;
-async function runAutoScan(opts) {
-  const sleep = opts.sleep ?? defaultSleep;
-  const jitterMs = opts.jitterMs ?? Math.floor(Math.random() * AUTO_SCAN_JITTER_MAX_MS);
-  await sleep(jitterMs);
-  const stateDir = join10(opts.dataDir, "state");
-  const auditLogPath = join10(opts.dataDir, "auto-scan.log");
-  const audit = (s) => {
-    const line = `${(/* @__PURE__ */ new Date()).toISOString()} ${s.replace(/[\p{Cc}\p{Cf}]+/gu, " ").trim()}`.slice(0, 2e3) + "\n";
-    try {
-      appendFileSync(auditLogPath, line, { mode: 384 });
-    } catch {
-    }
-  };
-  const out = opts.stdout ?? audit;
-  const err = opts.stderr ?? audit;
-  return scanThenDrain({
-    dataDir: opts.dataDir,
-    credPath: opts.credentialUserPath,
-    stateDir,
-    out,
-    err,
-    spawner: opts.spawner,
-    transcriptRoot: opts.transcriptRoot
-  });
-}
-function defaultSleep(ms) {
-  return new Promise((resolve) => {
-    setTimeout(resolve, ms);
-  });
-}
+// dist/shared/bin/usage-probe.mjs
 var isMain = isMainModule(import.meta.url, process.argv[1]);
 if (isMain) {
-  const args = process.argv.slice(2);
-  const getArg = (name) => {
-    const i = args.indexOf(name);
-    return i >= 0 ? args[i + 1] : void 0;
-  };
-  const dataDir = getArg("--data-dir");
-  const credPath = getArg("--credential-path");
-  if (!dataDir || !credPath) {
-    process.stderr.write("auto-scan requires --data-dir and --credential-path\n");
-    process.exit(2);
+  const sessionId = process.argv[2];
+  const configPath = process.argv[3];
+  const dataDir = process.argv[4];
+  const validSessionId = (
+    // spawnUsageProbe only ever sends the CC session-id shape; a value
+    // outside it means this process was invoked by something other than
+    // the hook, and there is no session to safely attribute events to.
+    typeof sessionId === "string" && isValidSessionId(sessionId)
+  );
+  const validConfigPath = (
+    // The child's cwd is dataDir, not the hook's — a relative configPath
+    // would resolve against the wrong directory (run.mts checks this again
+    // before spending a run on it, but failing here skips the spawn's
+    // whole cost instead).
+    typeof configPath === "string" && isAbsolute2(configPath)
+  );
+  const validDataDir = (
+    // state/, outbound/ and collect-error.log below are all joined onto
+    // dataDir; a relative value would resolve against whatever cwd this
+    // detached process happens to inherit rather than the plugin's data dir.
+    typeof dataDir === "string" && isAbsolute2(dataDir)
+  );
+  if (!validSessionId || !validConfigPath || !validDataDir) {
+    if (validDataDir)
+      releaseProbeLease(join10(dataDir, "state"));
+    process.exit(0);
+  } else {
+    void runUsageProbe({ sessionId, configPath, dataDir, env: process.env }).then((outcome) => logProbeOutcome(dataDir, outcome)).then(() => process.exit(0)).catch(() => process.exit(1));
   }
-  void runAutoScan({ dataDir, credentialUserPath: credPath }).then((code) => process.exit(code)).catch(async (err) => {
+}
+async function logProbeOutcome(dataDir, outcome) {
+  const lines = [];
+  const filteredOut = "filteredOut" in outcome ? outcome.filteredOut ?? 0 : 0;
+  if (filteredOut > 0) {
+    lines.push(`usage-probe: ${filteredOut} event(s) over the ${defaultPolicy().maxSerializedBytes}-byte cap`);
+  }
+  if (outcome.kind === "run-failed" && outcome.error !== void 0) {
+    const err = outcome.error;
     const msg = err instanceof Error ? err.stack ?? err.message : String(err);
-    try {
-      await appendFile3(join10(dataDir, "collect-error.log"), `${(/* @__PURE__ */ new Date()).toISOString()} auto-scan: ${msg}
-`);
-    } catch {
-    }
-    process.exit(1);
-  });
+    lines.push(`usage-probe: run failed: ${msg}`);
+  }
+  if (lines.length === 0)
+    return;
+  const at = (/* @__PURE__ */ new Date()).toISOString();
+  try {
+    await appendFile(join10(dataDir, "collect-error.log"), lines.map((line) => `${at} ${line}
+`).join(""));
+  } catch {
+  }
 }
 export {
-  AUTO_SCAN_JITTER_MAX_MS,
-  runAutoScan
+  logProbeOutcome
 };

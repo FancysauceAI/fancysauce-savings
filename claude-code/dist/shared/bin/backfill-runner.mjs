@@ -1666,13 +1666,21 @@ function defaultPolicy() {
     ]),
     "stop": Object.freeze([]),
     "permission.request": Object.freeze([]),
-    "notification": Object.freeze(["notification_type"]),
+    // No `reason`: the mapper fills it from input.reason on every non-tool
+    // hook, so it is the one attribute here that can carry unbounded prose.
+    "notification": Object.freeze([
+      "notification_type",
+      "quota_type",
+      "reset_time",
+      "original_reset_time"
+    ]),
     "task.completed": Object.freeze(["task_id"]),
     "compaction.before": Object.freeze([]),
     "compaction.after": Object.freeze([]),
     "config.changed": Object.freeze([]),
     "usage_config.changed": Object.freeze([
       "plan_type",
+      "seat_tier",
       "rate_limit_tier",
       "billing_type",
       "extra_usage_enabled",
@@ -1696,10 +1704,13 @@ function defaultPolicy() {
       "limit_message",
       "limit_kind_guess",
       "reset_at_guess",
+      "error_type",
+      "retry_after_seconds",
       "api_error_status",
       "request_id",
       "transcript_message_uuid",
       "plan_type",
+      "seat_tier",
       "rate_limit_tier",
       "billing_type",
       "extra_usage_enabled",
@@ -1711,6 +1722,7 @@ function defaultPolicy() {
       "reached_type",
       "limit_source",
       "last_reached_type",
+      "limit_id",
       "credits_has",
       "credits_unlimited",
       "credits_balance",
@@ -1722,13 +1734,44 @@ function defaultPolicy() {
       "config_service_tier",
       "cli_version"
     ]),
+    // Two flavours share this type. Codex emits one record per window
+    // (window/used_percent/resets_at/window_minutes); the Claude usage probe
+    // emits one record carrying both windows under the primary_*/secondary_*
+    // names, because the backend carry keeps one reading per group and a
+    // per-window row would let a fresh five-hour reading erase a still-
+    // saturated weekly one.
     "usage_limit.snapshot": Object.freeze([
       "window",
       "used_percent",
       "resets_at",
       "window_minutes",
+      "primary_used_percent",
+      "primary_resets_at",
+      "primary_window_minutes",
+      "secondary_used_percent",
+      "secondary_resets_at",
+      "secondary_window_minutes",
       "plan_type",
-      "model"
+      "seat_tier",
+      "model",
+      "limit_id"
+    ]),
+    "usage_spend.snapshot": Object.freeze([
+      "spend_used_minor",
+      "spend_currency",
+      "spend_limit_minor",
+      "spend_percent",
+      "spend_enabled",
+      "spend_disabled_reason",
+      "spend_limit_reached",
+      "extra_usage_enabled",
+      "extra_usage_disabled_reason",
+      "extra_usage_monthly_limit",
+      "extra_usage_used_credits",
+      "extra_usage_utilization",
+      "credits_ever_enabled",
+      "plan_type",
+      "seat_tier"
     ]),
     "api.request": Object.freeze([
       "cost_usd",
@@ -1763,7 +1806,8 @@ function defaultPolicy() {
       "spend_control_remaining_percent",
       "spend_control_resets_at",
       "service_tier_requested",
-      "service_tier_observed"
+      "service_tier_observed",
+      "limit_id"
     ])
   };
   return Object.freeze({
@@ -2538,6 +2582,9 @@ var ATTR_TYPE = {
   api_error_status: "int",
   // notification
   notification_type: "string",
+  quota_type: "string",
+  reset_time: "string",
+  original_reset_time: "string",
   // task.completed
   task_id: "string",
   // subagent capture: subsession_id stamped on tool_call/api.request when
@@ -2550,6 +2597,7 @@ var ATTR_TYPE = {
   last_assistant_message_hash: "string",
   // usage_config.changed
   plan_type: "string",
+  seat_tier: "string",
   rate_limit_tier: "string",
   billing_type: "string",
   extra_usage_enabled: "bool",
@@ -2560,6 +2608,8 @@ var ATTR_TYPE = {
   limit_message: "string",
   limit_kind_guess: "string",
   reset_at_guess: "int",
+  error_type: "string",
+  retry_after_seconds: "int",
   // request_id, transcript_message_uuid + api_error_status already typed above (api.request).
   // usage_limit.snapshot + Codex rate-limit lens
   window: "string",
@@ -2568,6 +2618,7 @@ var ATTR_TYPE = {
   window_minutes: "int",
   reached_type: "string",
   limit_source: "string",
+  limit_id: "string",
   credits_has: "bool",
   credits_unlimited: "bool",
   credits_balance: "string",
@@ -2596,7 +2647,23 @@ var ATTR_TYPE = {
   fast_available: "bool",
   fast_default: "bool",
   config_service_tier: "string",
-  cli_version: "string"
+  cli_version: "string",
+  // usage_spend.snapshot (the /usage cache's spend + extra-usage payload).
+  // Every string is an open enum forwarded raw. monthly_limit and
+  // used_credits are stringified because their upstream type is unconfirmed.
+  // extra_usage_enabled, extra_usage_disabled_reason, plan_type and seat_tier
+  // are already registered by the usage_config.changed block above.
+  spend_used_minor: "int",
+  spend_currency: "string",
+  spend_limit_minor: "int",
+  spend_percent: "double",
+  spend_enabled: "bool",
+  spend_disabled_reason: "string",
+  spend_limit_reached: "bool",
+  extra_usage_monthly_limit: "string",
+  extra_usage_used_credits: "string",
+  extra_usage_utilization: "double",
+  credits_ever_enabled: "bool"
 };
 function encodeOtlp(events, resource, observedTimeUnixNano) {
   const observed = observedTimeUnixNano ?? BigInt(Date.now()) * 1000000n;
@@ -2622,6 +2689,8 @@ function encodeResourceAttributes(r) {
     "fancysauce.schema_version",
     "fancysauce.install_id",
     "fancysauce.agent",
+    "os.type",
+    "fancysauce.harness_entrypoint",
     "fancysauce.user.identity_source",
     "fancysauce.secure_envelope"
   ];
@@ -3416,14 +3485,25 @@ async function writeInstallFile(path, body) {
     }
   }
 }
+var OTEL_OS_TYPE = {
+  win32: "windows",
+  sunos: "solaris"
+};
+var HARNESS_ENTRYPOINT_MAX_LEN = 32;
 function toResourceAttributes(id, opts) {
+  const rawOsType = opts.osType ?? process.platform;
   const attrs = {
     "service.name": "fancysauce",
     "service.version": opts.pluginVersion,
     "fancysauce.schema_version": opts.schemaVersion,
     "fancysauce.install_id": id.install_id,
-    "fancysauce.agent": opts.agent
+    "fancysauce.agent": opts.agent,
+    "os.type": OTEL_OS_TYPE[rawOsType] ?? rawOsType
   };
+  const entrypoint = opts.harnessEntrypoint ?? process.env.CLAUDE_CODE_ENTRYPOINT;
+  if (entrypoint) {
+    attrs["fancysauce.harness_entrypoint"] = entrypoint.slice(0, HARNESS_ENTRYPOINT_MAX_LEN);
+  }
   if (id.identity_source)
     attrs["fancysauce.user.identity_source"] = id.identity_source;
   if (id.secure_envelope)
@@ -3493,7 +3573,7 @@ function gitRead(args) {
 }
 
 // dist/shared/schema-version.mjs
-var SCHEMA_VERSION = "1.1.0";
+var SCHEMA_VERSION = "1.2.0";
 
 // dist/shared/is-main-module.mjs
 import { fileURLToPath } from "node:url";

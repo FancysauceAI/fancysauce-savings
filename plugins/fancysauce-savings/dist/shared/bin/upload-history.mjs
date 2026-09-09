@@ -128,6 +128,7 @@ var init_runner_env = __esm({
       "TERM",
       "VITEST",
       "CLAUDE_PLUGIN_DATA",
+      "CLAUDE_CODE_EXECPATH",
       "FANCYSAUCE_CREDENTIAL_PATHS",
       "FANCYSAUCE_API_KEY",
       "FANCYSAUCE_TENANT_KEY"
@@ -1979,13 +1980,21 @@ function defaultPolicy() {
     ]),
     "stop": Object.freeze([]),
     "permission.request": Object.freeze([]),
-    "notification": Object.freeze(["notification_type"]),
+    // No `reason`: the mapper fills it from input.reason on every non-tool
+    // hook, so it is the one attribute here that can carry unbounded prose.
+    "notification": Object.freeze([
+      "notification_type",
+      "quota_type",
+      "reset_time",
+      "original_reset_time"
+    ]),
     "task.completed": Object.freeze(["task_id"]),
     "compaction.before": Object.freeze([]),
     "compaction.after": Object.freeze([]),
     "config.changed": Object.freeze([]),
     "usage_config.changed": Object.freeze([
       "plan_type",
+      "seat_tier",
       "rate_limit_tier",
       "billing_type",
       "extra_usage_enabled",
@@ -2009,10 +2018,13 @@ function defaultPolicy() {
       "limit_message",
       "limit_kind_guess",
       "reset_at_guess",
+      "error_type",
+      "retry_after_seconds",
       "api_error_status",
       "request_id",
       "transcript_message_uuid",
       "plan_type",
+      "seat_tier",
       "rate_limit_tier",
       "billing_type",
       "extra_usage_enabled",
@@ -2024,6 +2036,7 @@ function defaultPolicy() {
       "reached_type",
       "limit_source",
       "last_reached_type",
+      "limit_id",
       "credits_has",
       "credits_unlimited",
       "credits_balance",
@@ -2035,13 +2048,44 @@ function defaultPolicy() {
       "config_service_tier",
       "cli_version"
     ]),
+    // Two flavours share this type. Codex emits one record per window
+    // (window/used_percent/resets_at/window_minutes); the Claude usage probe
+    // emits one record carrying both windows under the primary_*/secondary_*
+    // names, because the backend carry keeps one reading per group and a
+    // per-window row would let a fresh five-hour reading erase a still-
+    // saturated weekly one.
     "usage_limit.snapshot": Object.freeze([
       "window",
       "used_percent",
       "resets_at",
       "window_minutes",
+      "primary_used_percent",
+      "primary_resets_at",
+      "primary_window_minutes",
+      "secondary_used_percent",
+      "secondary_resets_at",
+      "secondary_window_minutes",
       "plan_type",
-      "model"
+      "seat_tier",
+      "model",
+      "limit_id"
+    ]),
+    "usage_spend.snapshot": Object.freeze([
+      "spend_used_minor",
+      "spend_currency",
+      "spend_limit_minor",
+      "spend_percent",
+      "spend_enabled",
+      "spend_disabled_reason",
+      "spend_limit_reached",
+      "extra_usage_enabled",
+      "extra_usage_disabled_reason",
+      "extra_usage_monthly_limit",
+      "extra_usage_used_credits",
+      "extra_usage_utilization",
+      "credits_ever_enabled",
+      "plan_type",
+      "seat_tier"
     ]),
     "api.request": Object.freeze([
       "cost_usd",
@@ -2076,7 +2120,8 @@ function defaultPolicy() {
       "spend_control_remaining_percent",
       "spend_control_resets_at",
       "service_tier_requested",
-      "service_tier_observed"
+      "service_tier_observed",
+      "limit_id"
     ])
   };
   return Object.freeze({
@@ -2561,12 +2606,18 @@ function classifyLimitKind(text) {
   if (/not your usage limit/i.test(text) || /temporarily limiting/i.test(text)) {
     return "server_throttle";
   }
-  if (/monthly spend limit/i.test(text))
+  if (/\b(?:org(?:anization)?|team|workspace)(?:['’]s)?\s+monthly spend limit/i.test(text))
     return "org_spend_cap";
+  if (/individual spend limit/i.test(text))
+    return "individual_spend_cap";
+  if (/monthly spend limit/i.test(text))
+    return "individual_spend_cap";
   if (/weekly limit/i.test(text))
     return "weekly";
   if (/hit your session limit/i.test(text) || /session limit/i.test(text))
     return "session";
+  if (/reached your (?!weekly|session|usage|monthly|\d+-hour)\S.*? limit\b/i.test(text))
+    return "model_limit";
   return "unknown";
 }
 function guessResetEpochSeconds(text, nowMs) {
@@ -3151,6 +3202,7 @@ function buildRules(policy) {
     "usage_config.changed": k("usage_config.changed"),
     "usage_limit.exceeded": k("usage_limit.exceeded"),
     "usage_limit.snapshot": k("usage_limit.snapshot"),
+    "usage_spend.snapshot": k("usage_spend.snapshot"),
     "api.request": k("api.request")
   };
 }

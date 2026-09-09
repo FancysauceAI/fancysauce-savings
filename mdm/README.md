@@ -328,7 +328,7 @@ Measured on Claude Code 2.1.235, checking which `SessionStart` hook actually ran
 | + that plist carrying its own hook | the plist's hook only |
 
 Row 3 is the trap: `cleanupPeriodDays` is ordinary retention hygiene, it says
-nothing about hooks, and it silently deleted all 15 of ours. Our files stayed on
+nothing about hooks, and it silently deleted all 16 of ours. Our files stayed on
 disk and correct, and the Kandji run reported success.
 
 `deploy.sh` checks both paths on every run and prints a warning naming the file
@@ -389,13 +389,13 @@ script deletes that file outright — the name is exclusively ours.
 `/etc/fancysauce/claude-code.pin` is one line, root-owned, mode `0644`:
 
 ```
-v0.16.2 c39a7c77b9d3f962696186f9f5fbd225440b9e19
+v0.17.0 c5ff8de67006b4f6e056fd9291d73d03788f89e8
 ```
 
 Resolve the sha for a tag with:
 
 ```sh
-git ls-remote https://github.com/FancysauceAI/fancysauce-savings.git 'refs/tags/v0.16.2^{}'
+git ls-remote https://github.com/FancysauceAI/fancysauce-savings.git 'refs/tags/v0.17.0^{}'
 ```
 
 The wrapper validates both fields on every read (`vX.Y.Z` tag, 40 hex sha). A

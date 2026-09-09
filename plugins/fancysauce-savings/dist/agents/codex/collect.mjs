@@ -1730,6 +1730,7 @@ var init_runner_env = __esm({
       "TERM",
       "VITEST",
       "CLAUDE_PLUGIN_DATA",
+      "CLAUDE_CODE_EXECPATH",
       "FANCYSAUCE_CREDENTIAL_PATHS",
       "FANCYSAUCE_API_KEY",
       "FANCYSAUCE_TENANT_KEY"
@@ -1938,13 +1939,21 @@ function defaultPolicy() {
     ]),
     "stop": Object.freeze([]),
     "permission.request": Object.freeze([]),
-    "notification": Object.freeze(["notification_type"]),
+    // No `reason`: the mapper fills it from input.reason on every non-tool
+    // hook, so it is the one attribute here that can carry unbounded prose.
+    "notification": Object.freeze([
+      "notification_type",
+      "quota_type",
+      "reset_time",
+      "original_reset_time"
+    ]),
     "task.completed": Object.freeze(["task_id"]),
     "compaction.before": Object.freeze([]),
     "compaction.after": Object.freeze([]),
     "config.changed": Object.freeze([]),
     "usage_config.changed": Object.freeze([
       "plan_type",
+      "seat_tier",
       "rate_limit_tier",
       "billing_type",
       "extra_usage_enabled",
@@ -1968,10 +1977,13 @@ function defaultPolicy() {
       "limit_message",
       "limit_kind_guess",
       "reset_at_guess",
+      "error_type",
+      "retry_after_seconds",
       "api_error_status",
       "request_id",
       "transcript_message_uuid",
       "plan_type",
+      "seat_tier",
       "rate_limit_tier",
       "billing_type",
       "extra_usage_enabled",
@@ -1983,6 +1995,7 @@ function defaultPolicy() {
       "reached_type",
       "limit_source",
       "last_reached_type",
+      "limit_id",
       "credits_has",
       "credits_unlimited",
       "credits_balance",
@@ -1994,13 +2007,44 @@ function defaultPolicy() {
       "config_service_tier",
       "cli_version"
     ]),
+    // Two flavours share this type. Codex emits one record per window
+    // (window/used_percent/resets_at/window_minutes); the Claude usage probe
+    // emits one record carrying both windows under the primary_*/secondary_*
+    // names, because the backend carry keeps one reading per group and a
+    // per-window row would let a fresh five-hour reading erase a still-
+    // saturated weekly one.
     "usage_limit.snapshot": Object.freeze([
       "window",
       "used_percent",
       "resets_at",
       "window_minutes",
+      "primary_used_percent",
+      "primary_resets_at",
+      "primary_window_minutes",
+      "secondary_used_percent",
+      "secondary_resets_at",
+      "secondary_window_minutes",
       "plan_type",
-      "model"
+      "seat_tier",
+      "model",
+      "limit_id"
+    ]),
+    "usage_spend.snapshot": Object.freeze([
+      "spend_used_minor",
+      "spend_currency",
+      "spend_limit_minor",
+      "spend_percent",
+      "spend_enabled",
+      "spend_disabled_reason",
+      "spend_limit_reached",
+      "extra_usage_enabled",
+      "extra_usage_disabled_reason",
+      "extra_usage_monthly_limit",
+      "extra_usage_used_credits",
+      "extra_usage_utilization",
+      "credits_ever_enabled",
+      "plan_type",
+      "seat_tier"
     ]),
     "api.request": Object.freeze([
       "cost_usd",
@@ -2035,7 +2079,8 @@ function defaultPolicy() {
       "spend_control_remaining_percent",
       "spend_control_resets_at",
       "service_tier_requested",
-      "service_tier_observed"
+      "service_tier_observed",
+      "limit_id"
     ])
   };
   return Object.freeze({
@@ -2525,6 +2570,10 @@ import { createHash, createHmac } from "node:crypto";
 function sha256Hex(input) {
   return createHash("sha256").update(input, "utf8").digest("hex");
 }
+function deterministicUuid(parts) {
+  const h = sha256Hex(parts.join("|"));
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20, 32)}`;
+}
 
 // dist/shared/content-filter.mjs
 function buildRules(policy) {
@@ -2548,6 +2597,7 @@ function buildRules(policy) {
     "usage_config.changed": k("usage_config.changed"),
     "usage_limit.exceeded": k("usage_limit.exceeded"),
     "usage_limit.snapshot": k("usage_limit.snapshot"),
+    "usage_spend.snapshot": k("usage_spend.snapshot"),
     "api.request": k("api.request")
   };
 }
@@ -3076,14 +3126,25 @@ async function writeInstallFile(path, body) {
     }
   }
 }
+var OTEL_OS_TYPE = {
+  win32: "windows",
+  sunos: "solaris"
+};
+var HARNESS_ENTRYPOINT_MAX_LEN = 32;
 function toResourceAttributes(id, opts) {
+  const rawOsType = opts.osType ?? process.platform;
   const attrs = {
     "service.name": "fancysauce",
     "service.version": opts.pluginVersion,
     "fancysauce.schema_version": opts.schemaVersion,
     "fancysauce.install_id": id.install_id,
-    "fancysauce.agent": opts.agent
+    "fancysauce.agent": opts.agent,
+    "os.type": OTEL_OS_TYPE[rawOsType] ?? rawOsType
   };
+  const entrypoint = opts.harnessEntrypoint ?? process.env.CLAUDE_CODE_ENTRYPOINT;
+  if (entrypoint) {
+    attrs["fancysauce.harness_entrypoint"] = entrypoint.slice(0, HARNESS_ENTRYPOINT_MAX_LEN);
+  }
   if (id.identity_source)
     attrs["fancysauce.user.identity_source"] = id.identity_source;
   if (id.secure_envelope)
@@ -3622,6 +3683,9 @@ var ATTR_TYPE = {
   api_error_status: "int",
   // notification
   notification_type: "string",
+  quota_type: "string",
+  reset_time: "string",
+  original_reset_time: "string",
   // task.completed
   task_id: "string",
   // subagent capture: subsession_id stamped on tool_call/api.request when
@@ -3634,6 +3698,7 @@ var ATTR_TYPE = {
   last_assistant_message_hash: "string",
   // usage_config.changed
   plan_type: "string",
+  seat_tier: "string",
   rate_limit_tier: "string",
   billing_type: "string",
   extra_usage_enabled: "bool",
@@ -3644,6 +3709,8 @@ var ATTR_TYPE = {
   limit_message: "string",
   limit_kind_guess: "string",
   reset_at_guess: "int",
+  error_type: "string",
+  retry_after_seconds: "int",
   // request_id, transcript_message_uuid + api_error_status already typed above (api.request).
   // usage_limit.snapshot + Codex rate-limit lens
   window: "string",
@@ -3652,6 +3719,7 @@ var ATTR_TYPE = {
   window_minutes: "int",
   reached_type: "string",
   limit_source: "string",
+  limit_id: "string",
   credits_has: "bool",
   credits_unlimited: "bool",
   credits_balance: "string",
@@ -3680,7 +3748,23 @@ var ATTR_TYPE = {
   fast_available: "bool",
   fast_default: "bool",
   config_service_tier: "string",
-  cli_version: "string"
+  cli_version: "string",
+  // usage_spend.snapshot (the /usage cache's spend + extra-usage payload).
+  // Every string is an open enum forwarded raw. monthly_limit and
+  // used_credits are stringified because their upstream type is unconfirmed.
+  // extra_usage_enabled, extra_usage_disabled_reason, plan_type and seat_tier
+  // are already registered by the usage_config.changed block above.
+  spend_used_minor: "int",
+  spend_currency: "string",
+  spend_limit_minor: "int",
+  spend_percent: "double",
+  spend_enabled: "bool",
+  spend_disabled_reason: "string",
+  spend_limit_reached: "bool",
+  extra_usage_monthly_limit: "string",
+  extra_usage_used_credits: "string",
+  extra_usage_utilization: "double",
+  credits_ever_enabled: "bool"
 };
 function encodeOtlp(events, resource, observedTimeUnixNano) {
   const observed = observedTimeUnixNano ?? BigInt(Date.now()) * 1000000n;
@@ -3706,6 +3790,8 @@ function encodeResourceAttributes(r) {
     "fancysauce.schema_version",
     "fancysauce.install_id",
     "fancysauce.agent",
+    "os.type",
+    "fancysauce.harness_entrypoint",
     "fancysauce.user.identity_source",
     "fancysauce.secure_envelope"
   ];
@@ -4356,7 +4442,7 @@ function sessionIndexSink(opts = {}) {
 }
 
 // dist/shared/schema-version.mjs
-var SCHEMA_VERSION = "1.1.0";
+var SCHEMA_VERSION = "1.2.0";
 
 // dist/shared/whoami/credential.mjs
 init_credential_paths();
@@ -4424,7 +4510,7 @@ function readOneSync(path) {
 }
 
 // dist/shared/whoami/cache.mjs
-import { closeSync, ftruncateSync, mkdirSync, openSync, readFileSync as readFileSync6, readdirSync, renameSync, rmSync, statSync as statSync2, writeSync } from "node:fs";
+import { closeSync, mkdirSync, openSync, readFileSync as readFileSync6, readdirSync, renameSync, rmSync, statSync as statSync2, writeSync } from "node:fs";
 var WHOAMI_SCHEMA_VERSION = 1;
 var SUCCESS_TTL_MS = 6 * 60 * 60 * 1e3;
 var ERROR_TTL_MS = 15 * 60 * 1e3;
@@ -5085,10 +5171,16 @@ function resolveRequestedTier(sp, model) {
 }
 
 // dist/agents/codex/rollout-parser.mjs
-function deterministicUuid(sessionId, scope, totalTokens, delta) {
-  const scopeSeg = scope ? `${scope}|` : "";
-  const h = sha256Hex(`codex|${sessionId}|${scopeSeg}${totalTokens}|${delta.input}|${delta.output}|${delta.cached}`);
-  return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20, 32)}`;
+function turnEventUuid(sessionId, scope, totalTokens, delta) {
+  return deterministicUuid([
+    "codex",
+    sessionId,
+    ...scope ? [scope] : [],
+    String(totalTokens),
+    String(delta.input),
+    String(delta.output),
+    String(delta.cached)
+  ]);
 }
 var WINDOW_ORDER = ["primary", "secondary"];
 function attachLimitState(attrs, rateLimits) {
@@ -5105,6 +5197,8 @@ function attachLimitState(attrs, rateLimits) {
     if (isFiniteNumber(w.window_minutes))
       attrs[`${windowName}_window_minutes`] = w.window_minutes;
   }
+  if (typeof rateLimits.limit_id === "string" && rateLimits.limit_id.length > 0)
+    attrs.limit_id = rateLimits.limit_id;
   if (typeof rateLimits.rate_limit_reached_type === "string")
     attrs.reached_type = rateLimits.rate_limit_reached_type;
   if (typeof rateLimits.plan_type === "string")
@@ -5209,7 +5303,7 @@ function parseRolloutWindow(lines, sessionId, sequenceBase, state, scope = "", t
       attrs.service_tier_observed = state.observedServiceTier;
     attachLimitState(attrs, payload.rate_limits);
     events.push({
-      event_uuid: deterministicUuid(sessionId, scope, total, { input, output, cached }),
+      event_uuid: turnEventUuid(sessionId, scope, total, { input, output, cached }),
       event_type: "api.request",
       session_id: sessionId,
       source: "transcript.tail",
@@ -5337,10 +5431,6 @@ function postureAttributes(p) {
     attrs.cli_version = p.cli_version;
   return attrs;
 }
-function deterministicUuid2(parts) {
-  const h = sha256Hex(parts.join("|"));
-  return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20, 32)}`;
-}
 function quantizePercent(usedPercent) {
   return (Math.round(usedPercent * 10) / 10).toFixed(1);
 }
@@ -5354,6 +5444,7 @@ function lensEvents(rateLimits, opts) {
   if (!Number.isFinite(timestampMs))
     return { events, state };
   const posture = codexPosture(rateLimits, void 0, { speed, cliVersion });
+  const limitId = typeof rateLimits?.limit_id === "string" && rateLimits.limit_id.length > 0 ? rateLimits.limit_id : void 0;
   const timestampNs = BigInt(timestampMs) * 1000000n;
   for (const windowName of WINDOW_ORDER2) {
     const w = rateLimits?.[windowName];
@@ -5376,11 +5467,13 @@ function lensEvents(rateLimits, opts) {
         attrs.window_minutes = windowMinutes;
       if (model !== void 0)
         attrs.model = model;
+      if (limitId !== void 0)
+        attrs.limit_id = limitId;
       if (posture?.plan_type !== void 0)
         attrs.plan_type = posture.plan_type;
       const snapshotGeneration = resetsAt !== void 0 ? String(resetsAt) : `w${watermark?.emitted_at_ms ?? ""}`;
       events.push({
-        event_uuid: deterministicUuid2([
+        event_uuid: deterministicUuid([
           uuidScope ?? "",
           sessionId,
           "snapshot",
@@ -5419,6 +5512,8 @@ function lensEvents(rateLimits, opts) {
           attrs.resets_at = resetsAt;
         if (windowMinutes !== void 0)
           attrs.window_minutes = windowMinutes;
+        if (limitId !== void 0)
+          attrs.limit_id = limitId;
         if (typeof rateLimits?.rate_limit_reached_type === "string") {
           attrs.reached_type = rateLimits.rate_limit_reached_type;
         }
@@ -5426,7 +5521,7 @@ function lensEvents(rateLimits, opts) {
           Object.assign(attrs, postureAttributes(posture));
         const exceededGeneration = resetsAt !== void 0 ? String(resetsAt) : `x${lastExceededAt ?? ""}`;
         events.push({
-          event_uuid: deterministicUuid2([
+          event_uuid: deterministicUuid([
             uuidScope ?? "",
             sessionId,
             "exceeded",
@@ -5456,6 +5551,8 @@ function lensEvents(rateLimits, opts) {
     const withinReasonFloor = lastReasonAt !== void 0 && timestampMs - lastReasonAt < EXCEEDED_MIN_INTERVAL_MS;
     if (!(nextExceeded ?? state.exceeded)?.[reasonKey] && !withinReasonFloor) {
       const attrs = { limit_source: "reached_type", reached_type: reason };
+      if (limitId !== void 0)
+        attrs.limit_id = limitId;
       if (posture)
         Object.assign(attrs, postureAttributes(posture));
       const sc = rateLimits?.spend_control_reached;
@@ -5468,7 +5565,7 @@ function lensEvents(rateLimits, opts) {
           attrs.spend_control_resets_at = sc.resets_at;
       }
       events.push({
-        event_uuid: deterministicUuid2([uuidScope ?? "", sessionId, "exceeded", "reason", reason, String(lastReasonAt ?? "")]),
+        event_uuid: deterministicUuid([uuidScope ?? "", sessionId, "exceeded", "reason", reason, String(lastReasonAt ?? "")]),
         event_type: "usage_limit.exceeded",
         session_id: sessionId,
         source: "transcript.tail",
@@ -5771,8 +5868,7 @@ function stageRateLimitLens(ctx, sessionId, speed) {
 }
 function postureEventUuid(sessionId, hash, timestampMs) {
   const stamp = Number.isFinite(timestampMs) ? String(timestampMs) : "";
-  const h = sha256Hex(["codex", sessionId, "usage_config", hash, stamp].join("|"));
-  return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20, 32)}`;
+  return deterministicUuid(["codex", sessionId, "usage_config", hash, stamp]);
 }
 async function readSource(source, sessionId, sequenceBase, errorLogPath, tierResolve) {
   const release = await lockCursorFile(source.cursorPath);
