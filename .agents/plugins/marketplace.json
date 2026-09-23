@@ -5,7 +5,7 @@
   },
   "metadata": {
     "description": "FancysauceAI plugin for OpenAI Codex CLI",
-    "version": "0.18.0"
+    "version": "0.18.1"
   },
   "plugins": [
     {
@@ -18,8 +18,8 @@
         "installation": "AVAILABLE",
         "authentication": "ON_INSTALL"
       },
-      "description": "Cost and usage observability for OpenAI Codex CLI",
-      "version": "0.18.0",
+      "description": "Usage analytics for OpenAI Codex CLI",
+      "version": "0.18.1",
       "interface": {
         "displayName": "FancySauce Savings"
       },
@@ -29,7 +29,7 @@
       "keywords": [
         "observability",
         "cost",
-        "telemetry",
+        "analytics",
         "otel",
         "codex"
       ],

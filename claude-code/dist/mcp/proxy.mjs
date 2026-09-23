@@ -11,6 +11,10 @@ import { homedir as homedir2 } from "node:os";
 
 // dist/shared/credential-file.mjs
 import { mkdir, rename, open, chmod, unlink, readFile, stat } from "node:fs/promises";
+import { dirname, win32 } from "node:path";
+var SYSTEM32 = win32.join(process.env.SystemRoot ?? "C:\\Windows", "System32");
+var ICACLS_EXE = win32.join(SYSTEM32, "icacls.exe");
+var WHOAMI_EXE = win32.join(SYSTEM32, "whoami.exe");
 async function readCredential(paths) {
   const sys = await tryReadOne(paths.system);
   if (sys.kind === "ok")
@@ -134,18 +138,18 @@ function validateIdentityHint(v) {
 }
 
 // dist/shared/tenant-key-bootstrap.mjs
-var KEY_RE = /^fs_(live|test)_t_[A-Za-z0-9_-]{43}$/;
+var KEY_RE = /^fs_(?:ingest(?:_test)?|(?:live|test)_t)_[A-Za-z0-9_-]{43}$/;
 
 // dist/shared/credential-paths.mjs
 import { homedir } from "node:os";
-import { posix, win32 } from "node:path";
+import { posix, win32 as win322 } from "node:path";
 function credentialPaths() {
   if (process.platform === "win32") {
     const programData = process.env.PROGRAMDATA ?? "C:\\ProgramData";
-    const appData = process.env.APPDATA ?? win32.join(homedir(), "AppData", "Roaming");
+    const appData = process.env.APPDATA ?? win322.join(homedir(), "AppData", "Roaming");
     return {
-      system: win32.join(programData, "fancysauce", "credentials.json"),
-      user: win32.join(appData, "fancysauce", "credentials.json")
+      system: win322.join(programData, "fancysauce", "credentials.json"),
+      user: win322.join(appData, "fancysauce", "credentials.json")
     };
   }
   return {
@@ -170,10 +174,16 @@ function endpointUrl(endpoint, route) {
   return new URL(route, base);
 }
 
+// dist/shared/plugin-commands.mjs
+var COMMAND_PREFIX = "/fancysauce-savings:";
+var LOGIN_COMMAND = `${COMMAND_PREFIX}login`;
+var RESET_COMMAND = `${COMMAND_PREFIX}reset`;
+var UPLOAD_HISTORY_COMMAND = `${COMMAND_PREFIX}upload-history`;
+
 // dist/mcp/breaker.mjs
 import { mkdir as mkdir2, readFile as readFile2, rename as rename2, writeFile } from "node:fs/promises";
 import { randomBytes } from "node:crypto";
-import { dirname, join as join2 } from "node:path";
+import { dirname as dirname2, join as join2 } from "node:path";
 
 // dist/shared/hash.mjs
 import { createHash, createHmac } from "node:crypto";
@@ -192,7 +202,7 @@ var McpBreaker = class {
   /** Takes the *user* credential path. The system path (/etc) is not writable,
    *  and the trip is per-machine-user either way. */
   constructor(userCredentialPath) {
-    this.dir = dirname(userCredentialPath);
+    this.dir = dirname2(userCredentialPath);
     this.path = join2(this.dir, "mcp-breaker.json");
     this.tmpPath = `${this.path}.${process.pid}.${randomBytes(4).toString("hex")}.tmp`;
   }
@@ -276,7 +286,7 @@ var PROTOCOL_VERSION = "2025-06-18";
 var REQUEST_TIMEOUT_MS = 15e3;
 var MAX_RESPONSE_BYTES = 1e6;
 var LOGIN_POLL_INTERVAL_MS = 3e3;
-var LOGGED_OUT_MESSAGE = "Not logged in \u2014 run /fancysauce-savings:login";
+var LOGGED_OUT_MESSAGE = `Not logged in \u2014 run ${LOGIN_COMMAND}`;
 var REJECTED_MESSAGE = "The fancysauce MCP server refused this credential \u2014 ask your workspace admin to enable it";
 var NO_TRIP = { blocked: false, message: null, needsClear: false };
 var SERVER_INFO = { name: "fancysauce", version: "0.0.0" };

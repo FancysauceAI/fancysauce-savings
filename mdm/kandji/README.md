@@ -3,23 +3,23 @@
 ## What this deploys
 
 A single Kandji **Custom Script** library item writes everything fancysauce
-telemetry needs on a managed Mac — for both tools:
+usage-analytics needs on a managed Mac — for both tools:
 
 | Artifact | Path | Scope | Purpose |
 |---|---|---|---|
 | `50-fancysauce.json` (`CC_MODE="managed-hooks"`, the default) | `/Library/Application Support/ClaudeCode/managed-settings.d/50-fancysauce.json` | System-wide | Wires every Claude Code hook event to the fancysauce wrapper, and disables the plugin so one session is not collected twice. A drop-in fragment — your own `managed-settings.json` is never created or edited. Identical across all tenants — contains no secrets. Needs Claude Code 2.1.83+. |
-| `fancysauce.sh` (`managed-hooks` only) | `/etc/fancysauce/hooks/fancysauce.sh` | System-wide | The same wrapper the Codex hooks use, invoked with `--tool claude-code`. Fetches the pinned release into `~/.cache/fancysauce/claude-code/` and runs telemetry from there. |
-| `claude-code.pin` (`managed-hooks` only) | `/etc/fancysauce/claude-code.pin` | System-wide | One line, `<tag> <sha>`. Names the plugin release Claude Code telemetry runs. Change it to move the fleet. |
+| `fancysauce.sh` (`managed-hooks` only) | `/etc/fancysauce/hooks/fancysauce.sh` | System-wide | The same wrapper the Codex hooks use, invoked with `--tool claude-code`. Fetches the pinned release into `~/.cache/fancysauce/claude-code/` and runs the usage analytics from there. |
+| `claude-code.pin` (`managed-hooks` only) | `/etc/fancysauce/claude-code.pin` | System-wide | One line, `<tag> <sha>`. Names the plugin release Claude Code usage analytics runs. Change it to move the fleet. |
 | `managed-settings.json` (`CC_MODE="plugin"`) | `/Library/Application Support/ClaudeCode/managed-settings.json` | System-wide | The alternative arm: registers the fancysauce marketplace and enables the plugin, which the user then installs once. This is what the standalone `managed-settings.json` beside this README carries. |
-| `requirements.toml` | `/etc/codex/requirements.toml` | System-wide | Enforces the fancysauce telemetry hook for every Codex lifecycle event. Enforced hooks are **auto-trusted** — no user prompt, telemetry runs zero-step. |
-| `fancysauce.sh` | `/etc/codex/hooks/fancysauce.sh` | System-wide | The Codex hook wrapper `requirements.toml` invokes. Fail-open (never breaks a session); fetches the pinned plugin release into `~/.cache/fancysauce/codex/` and runs telemetry from there. |
-| `credentials.json` | `~/.config/fancysauce/credentials.json` | Per-user | Carries the tenant API key and the assigned user's email. Read by **both** tools. |
+| `requirements.toml` | `/etc/codex/requirements.toml` | System-wide | Enforces the fancysauce usage-analytics hook for every Codex lifecycle event. Enforced hooks are **auto-trusted** — no user prompt, analytics run zero-step. |
+| `fancysauce.sh` | `/etc/codex/hooks/fancysauce.sh` | System-wide | The Codex hook wrapper `requirements.toml` invokes. Fail-open (never breaks a session); fetches the pinned plugin release into `~/.cache/fancysauce/codex/` and runs the usage analytics from there. |
+| `credentials.json` | `~/.config/fancysauce/credentials.json` | Per-user | Carries the ingest token and the assigned user's email. Read by **both** tools. |
 
-Both Claude Code arms and Codex fetch from the same public GitHub dist repo,
+Both Claude Code arms and Codex fetch from the same GitHub dist repo,
 `FancysauceAI/fancysauce-savings`. Nothing is bundled here.
 
 `CC_MODE` at the top of `deploy.sh` picks the Claude Code arm. `managed-hooks`
-(the default) is telemetry-only and runs the release named in
+(the default) is analytics-only and runs the release named in
 `/etc/fancysauce/claude-code.pin`. `plugin` writes the marketplace settings
 instead; on that arm managed settings enable the plugin but do not install it, so
 the user runs `claude plugin install fancysauce-savings@fancysauce` once. Read
@@ -45,7 +45,7 @@ of never-installed machines across check-in windows.
 
 The standalone `managed-settings.json` in this folder is the **`plugin`**-arm
 artifact. Do not deploy it alongside a `managed-hooks` `deploy.sh`: the two
-describe different ways of running the same telemetry, and a machine that gets
+describe different ways of running the same usage analytics, and a machine that gets
 both collects every session twice.
 
 ### Why one script does it all (Kandji is simpler than Jamf here)
@@ -62,12 +62,12 @@ payloads, which forces a three-artifact dance — see `../jamf/README.md`.)
 ## Prerequisites
 
 - Kandji with permission to add Custom Script library items.
-- A tenant API key from your fancysauce dashboard. Keys have the prefix `fs_live_t_`.
+- An ingest token from your fancysauce dashboard. Tokens have the prefix `fs_ingest_`. It is write-only: it can append usage events to your workspace and nothing else.
 - A **directory integration** (SCIM/IdP) or ADE assignment so Kandji's `$EMAIL`
   resolves to the device's **assigned user**. `$EMAIL` is per-device-assigned-user,
   so this assumes a 1:1 user↔Mac assignment.
 - Target Macs running macOS 12 or later.
-- For Claude Code telemetry: Claude Code **2.1.141+** covers both arms. The
+- For Claude Code usage analytics: Claude Code **2.1.141+** covers both arms. The
   default `managed-hooks` arm alone needs only **2.1.83+** (the release that added
   `managed-settings.d/`); the `plugin` arm needs 2.1.141+ for reliable
   `extraKnownMarketplaces`. Target the higher one if you may switch arms.
@@ -75,27 +75,27 @@ payloads, which forces a three-artifact dance — see `../jamf/README.md`.)
   outranks every file this script writes and disables the hooks silently — see
   [`../README.md`](../README.md#a-configuration-profile-outranks-all-of-this).
   `deploy.sh` warns when it finds one, but cannot override it.
-- For Codex telemetry: Codex 0.142+ with `git` and `node` on the Mac (standard
+- For Codex usage analytics: Codex 0.142+ with `git` and `node` on the Mac (standard
   on developer machines). Macs without Codex are fine — the files are inert
-  until Codex is installed, then telemetry starts automatically.
+  until Codex is installed, then usage analytics start automatically.
 
 ## Step 1: Edit the script
 
 Open `deploy.sh` and set the configuration values at the top:
 
 ```sh
-TENANT_KEY="fs_live_t_REPLACE_ME"   # replace with your tenant key
+INGEST_TOKEN="fs_ingest_REPLACE_ME" # replace with your ingest token
 IDENTITY_TYPE="full"
-CODEX_TAG="v0.17.0"                 # pinned plugin release for Codex telemetry
-CODEX_SHA="c5ff8de67006b4f6e056fd9291d73d03788f89e8"   # commit sha of CODEX_TAG
+CODEX_TAG="v0.18.0"                 # pinned plugin release for Codex usage analytics
+CODEX_SHA="c7eb31773c818649a3aa8331d295cf69a11c06d2"   # commit sha of CODEX_TAG
 CC_MODE="managed-hooks"             # plugin | managed-hooks
-CC_TAG="v0.17.0"                    # pinned plugin release for Claude Code telemetry
-CC_SHA="c5ff8de67006b4f6e056fd9291d73d03788f89e8"   # commit sha of CC_TAG
+CC_TAG="v0.18.0"                    # pinned plugin release for Claude Code usage analytics
+CC_SHA="c7eb31773c818649a3aa8331d295cf69a11c06d2"   # commit sha of CC_TAG
 CC_SESSION_END_TIMEOUT="5"          # seconds, 2-60; raises the shared SessionEnd budget
 ```
 
 `CC_MODE` picks the Claude Code arm. `managed-hooks` writes the hooks block, the
-wrapper and the pin, and is telemetry-only. `plugin` writes the marketplace
+wrapper and the pin, and is analytics-only. `plugin` writes the marketplace
 settings and nothing else, and each user then runs `claude plugin install
 fancysauce-savings@fancysauce` once. `CC_TAG`/`CC_SHA` are read only in
 `managed-hooks` mode. A value of `CC_MODE` that is neither word, or a
@@ -103,7 +103,7 @@ fancysauce-savings@fancysauce` once. `CC_TAG`/`CC_SHA` are read only in
 stops the script before it writes anything.
 
 `CODEX_TAG`/`CODEX_SHA` and `CC_TAG`/`CC_SHA` pin exactly which fancysauce
-release each tool's telemetry runs — the deployed script is your audit record.
+release each tool's usage analytics run — the deployed script is your audit record.
 The shipped values are current; to pin a different release, resolve the tag's
 commit sha:
 
@@ -157,7 +157,7 @@ Both markers must stay below `exit 0`. Referencing a Kandji variable anywhere
 above it — including in a comment or a log line — is command execution as root
 on every managed Mac.
 
-Do not commit the edited script (it contains the tenant key) to source control.
+Do not commit the edited script (it contains the ingest token) to source control.
 Paste it into Kandji or pull it from a secrets manager at upload time.
 
 ## Step 2: Create the Custom Script library item
@@ -225,7 +225,7 @@ Expected: a stanza per lifecycle event, each command carrying your
 ```sh
 cat ~/.config/fancysauce/credentials.json
 ```
-Expected: valid JSON with `credential` set to your tenant key,
+Expected: valid JSON with `credential` set to your ingest token,
 `identity_hint.user_email` set to the assigned user's email (not the literal
 `$EMAIL`, not empty), and a recent `issued_at`.
 
@@ -241,15 +241,15 @@ In the Kandji web app, open the library item's status on the test device and
 confirm the last run's stdout ends with
 `fancysauce: managed-settings + codex hooks + credentials written for <user>`.
 
-**Check 6 — telemetry in the dashboard:**
+**Check 6 — usage analytics in the dashboard:**
 Run a few prompts in Claude Code and a short Codex session. Confirm events from
 both tools are tagged with the user's hashed email (`handle_email`) or OS
 handle (`handle_os`). Codex needs no plugin install and shows **no trust
 prompt** — enforced hooks are auto-trusted.
 
-## Key rotation and release upgrades
+## Ingest token rotation and release upgrades
 
-1. Update `TENANT_KEY` (rotation), `CODEX_TAG` + `CODEX_SHA` (pin a new release
+1. Update `INGEST_TOKEN` (rotation), `CODEX_TAG` + `CODEX_SHA` (pin a new release
    for Codex) or `CC_TAG` + `CC_SHA` (pin a new release for Claude Code, on the
    `managed-hooks` arm) in the Custom Script.
 2. Save the library item.
@@ -286,7 +286,7 @@ not a warning about the email. Save the script with Unix (LF) line endings.
 
 The charset check is byte-exact and locale-independent, so an apostrophe
 (`o'brien@…`) or any non-ASCII character (`josé@…`) is always dropped. In every
-row above the install is otherwise healthy — telemetry still flows, but that
+row above the install is otherwise healthy — usage analytics still flow, but that
 machine is attributed by fallback rather than by email.
 
 **No fallback is guaranteed.** When the email hint is dropped, attribution falls
@@ -311,7 +311,7 @@ On the default `managed-hooks` arm the plugin is **meant** not to load: that arm
 sets `enabledPlugins` to `false` on purpose, because the plugin and the managed
 hooks on one Mac collect the same session twice. Do not "fix" it there.
 
-**No Claude Code telemetry in the dashboard (`CC_MODE="managed-hooks"`):**
+**No Claude Code usage analytics in the dashboard (`CC_MODE="managed-hooks"`):**
 Confirm, in this order:
 
 1. **No `com.anthropic.claudecode` configuration profile is installed.** Check
@@ -339,7 +339,7 @@ Confirm, in this order:
 The wrapper is fail-open, so none of these surface an error in the Claude Code
 session.
 
-**No Codex telemetry in the dashboard:**
+**No Codex usage analytics in the dashboard:**
 Confirm `git` and `node` are on PATH for the user's shell, the wrapper is
 executable (`ls -l /etc/codex/hooks/fancysauce.sh`), and the cache populated
 after a session (`ls ~/.cache/fancysauce/codex/`). The wrapper is fail-open —
@@ -347,7 +347,7 @@ it never surfaces errors in the Codex session, so an empty cache after a
 session means the fetch failed (network/proxy) or the pinned sha doesn't match
 the tag.
 
-**Codex telemetry silently stopped after an org config change:**
+**Codex usage analytics silently stopped after an org config change:**
 If another MDM payload delivers the profile key
 `com.openai.codex:requirements_toml_base64`, it **overrides**
 `/etc/codex/requirements.toml`. Fold the fancysauce hooks into that profile

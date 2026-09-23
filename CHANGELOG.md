@@ -2,6 +2,51 @@
 
 All public releases of `fancysauce-savings`. Most recent first.
 
+## v0.18.1 — 2026-09-23
+
+### Highlights
+
+- **No more phantom Claude Code sessions.** The plugin no longer runs Claude Code headlessly to refresh usage; it reads Claude Code's own cached usage instead. Every Claude Code process registers in the live-session list while it runs, so the old refresh showed up in the desktop app as a short session named after the plugin's data directory. Usage snapshots now arrive when Claude Code refreshes its cache (for example after `/usage`). (FAN-1234, #185)
+- **Windows credential files are protected from Codex's sandbox.** Codex's Windows sandbox grants its sandbox group an inheritable read ACE across the user profile. The Go collector now repairs a user credential file that inherited such an ACE (owner-only, read-only foreign grants) instead of silently refusing to upload, and the Node plugin protects the file's DACL before writing it. (FAN-1202 #178, FAN-1203 #179)
+- **Go collector.** The hook path is available as a single static binary per platform (macOS, Linux, Windows) with byte-for-byte parity against the Node collector, shipped in `bin/` and used by the internal and preview channels. (FAN-997 series, #148–#169)
+- **Customer preview channel.** A hooks-only build can be published to a separate marketplace, either gated behind a per-tenant flag or explicitly ungated for tenants that have agreed to report. (FAN-1187 #173, FAN-1188 #172, FAN-1222 #182)
+- **Tests can no longer reach production.** Package-level guards in the Go test suites close every credential tier before any test runs. (FAN-1235, #184)
+
+### Features
+
+- feat(publish): explicitly ungated hooks-only preview build (FAN-1222) (#182)
+- feat(publish): hooks-only Go build for the customer preview channel `fancy` (FAN-1187) (#173)
+- feat(go): tenant-flag upload gate and historical-scan switch for preview channels (FAN-1188) (#172)
+- feat(publish): the Codex bundle ships the Go collector and its hooks point at the launcher (FAN-1180) (#169)
+- feat(publish): --plugin-name publishes the internal channel under its own plugin name (FAN-1177) (#167)
+- feat(go): Codex adapter and the MCP proxy subcommand (FAN-1005) (#162)
+- feat(publish): --hooks-runtime go renders the Claude Code hooks to the launcher for the internal channel (FAN-1159) (#166)
+- feat(wire): stamp the collector runtime and host.arch on the OTLP resource (FAN-1157) (#165)
+- feat(publish): internal-channel alias and endpoint passthrough for publish-dist (#163)
+- feat(dist): cross-compile the Go collector into the plugin artifact, launcher, checksums and signing hooks (FAN-1004) (#161)
+- feat(go): whoami refresh, backfill, usage probe subcommands and the replay harness (FAN-1003) (#153)
+- feat(go): subagent tails, local sinks, account posture and usage-config watermark (FAN-1002) (#152)
+- feat(go): OTLP wire path, flush, backoff and secure envelope (FAN-1001) (#151)
+- feat(go): identity resolver, native account readers and identity tiers (FAN-1000) (#150)
+- feat(go): config, data-dir resolution, credential file and bootstrap (FAN-999) (#149)
+- feat(go): land the Go collector foundation, adapter layout, e2e seam and CI (FAN-998) (#148)
+- feat(ingest-token): position the workspace key as a write-only ingest token (#147)
+- feat(mdm): Jamf managed-hooks arm for Claude Code (#142)
+- feat(posture): capture the person's own rate-limit tier (user_rate_limit_tier) (#146)
+
+### Fixes
+
+- fix(usage): read Claude Code's cached usage instead of spawning a headless /usage run (FAN-1234) (#185)
+- fix(credential): protect the Windows credential DACL from the Node writer (FAN-1203) (#179)
+- fix(credential): repair a Windows credential file that inherits a foreign ACE (FAN-1202) (#178)
+- fix(go): reconcile the collector with the ingest-token key shape and the posture oracle (#164)
+- test(go): close the credential tiers in every collector test so go test cannot reach production (FAN-1235) (#184)
+
+### Documentation
+
+- docs: allow the unsigned Windows collector to run (FAN-1006) (#171)
+- docs(plan): ingest token — position the workspace key as a write-only analytics token (#144)
+
 ## v0.18.0 — 2026-09-09
 
 ### Features

@@ -1,7 +1,7 @@
 {
   "name": "fancysauce-savings",
-  "description": "Cost and usage observability for OpenAI Codex CLI",
-  "version": "0.18.0",
+  "description": "Usage analytics for OpenAI Codex CLI",
+  "version": "0.18.1",
   "author": {
     "name": "FancysauceAI"
   },
@@ -12,7 +12,7 @@
   "keywords": [
     "observability",
     "cost",
-    "telemetry",
+    "analytics",
     "otel",
     "codex"
   ]

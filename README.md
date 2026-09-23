@@ -1,8 +1,8 @@
 # FancySauce Savings
 
-Cost and usage observability for Claude Code and OpenAI Codex CLI.
+Usage analytics for Claude Code and OpenAI Codex CLI.
 
-**Version:** 0.18.0
+**Version:** 0.18.1
 
 This repo is the canonical distribution for both the Claude Code plugin and the
 OpenAI Codex plugin. Each tool installs only its own plugin.
@@ -13,7 +13,7 @@ OpenAI Codex plugin. Each tool installs only its own plugin.
 hook event. Claude Code's own installers don't require Node, so a machine can
 have a working Claude Code and no Node runtime — on that machine the plugin
 installs, loads, and captures nothing. Check with `node --version` before
-reporting missing telemetry.
+reporting missing usage analytics.
 
 ## Claude Code
 To install and setup the plugin in Claude Code:
@@ -51,9 +51,12 @@ path for Codex, and the per-user credential file both tools read.
 
 ## Privacy
 
-The plugin forwards usage metadata (session, tool-call, and request telemetry)
+The plugin forwards usage metadata (session, tool-call, and request analytics)
 to your Fancysauce dashboard. It does not transmit the contents of your prompts,
-files, or model responses.
+files, or model responses. Every field that can leave a machine is listed in
+[docs/data-contract.md](docs/data-contract.md), generated from the plugin's own
+content filter; [docs/ingest-token.md](docs/ingest-token.md) describes the
+write-only token the plugin authenticates with.
 
 To attribute that usage to a person, the plugin resolves one identifier for the
 developer. It prefers an identifier you supplied — the account you signed in

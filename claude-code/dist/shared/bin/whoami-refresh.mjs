@@ -6,6 +6,10 @@ import { join } from "node:path";
 import { homedir as homedir2 } from "node:os";
 
 // dist/shared/credential-file.mjs
+import { dirname, win32 } from "node:path";
+var SYSTEM32 = win32.join(process.env.SystemRoot ?? "C:\\Windows", "System32");
+var ICACLS_EXE = win32.join(SYSTEM32, "icacls.exe");
+var WHOAMI_EXE = win32.join(SYSTEM32, "whoami.exe");
 function permissiveModeReason(mode) {
   if ((mode & 63) === 0)
     return null;
@@ -86,18 +90,21 @@ function validateIdentityHint(v) {
 }
 
 // dist/shared/tenant-key-bootstrap.mjs
-var KEY_RE = /^fs_(live|test)_t_[A-Za-z0-9_-]{43}$/;
+var KEY_RE = /^fs_(?:ingest(?:_test)?|(?:live|test)_t)_[A-Za-z0-9_-]{43}$/;
+function ingestTokenFromEnv(env) {
+  return env.FANCYSAUCE_INGEST_TOKEN || env.FANCYSAUCE_TENANT_KEY || "";
+}
 
 // dist/shared/credential-paths.mjs
 import { homedir } from "node:os";
-import { posix, win32 } from "node:path";
+import { posix, win32 as win322 } from "node:path";
 function credentialPaths() {
   if (process.platform === "win32") {
     const programData = process.env.PROGRAMDATA ?? "C:\\ProgramData";
-    const appData = process.env.APPDATA ?? win32.join(homedir(), "AppData", "Roaming");
+    const appData = process.env.APPDATA ?? win322.join(homedir(), "AppData", "Roaming");
     return {
-      system: win32.join(programData, "fancysauce", "credentials.json"),
-      user: win32.join(appData, "fancysauce", "credentials.json")
+      system: win322.join(programData, "fancysauce", "credentials.json"),
+      user: win322.join(appData, "fancysauce", "credentials.json")
     };
   }
   return {
@@ -149,7 +156,7 @@ function endpointUrl(endpoint, route) {
 
 // dist/shared/whoami/credential.mjs
 import { readFileSync, statSync } from "node:fs";
-import { posix as posix2, win32 as win322 } from "node:path";
+import { posix as posix2, win32 as win323 } from "node:path";
 
 // dist/shared/hash.mjs
 import { createHash, createHmac } from "node:crypto";
@@ -164,7 +171,7 @@ function whoamiCredentialPaths() {
   return parsed ? { system: parsed.system, user: parsed.user } : credentialPaths();
 }
 function pathFlavor() {
-  return process.platform === "win32" ? win322 : posix2;
+  return process.platform === "win32" ? win323 : posix2;
 }
 function resolveCredentialSync(opts = {}) {
   const paths = opts.paths ?? whoamiCredentialPaths();
@@ -179,7 +186,7 @@ function resolveCredentialSync(opts = {}) {
     return withFingerprint("user", usr.token, usr.apiEndpoint);
   if (usr.kind === "malformed")
     return null;
-  const tenantKey = env.FANCYSAUCE_TENANT_KEY ?? "";
+  const tenantKey = ingestTokenFromEnv(env);
   if (KEY_RE.test(tenantKey))
     return withFingerprint("env_tenant_key", tenantKey, null);
   const apiKey = env.FANCYSAUCE_API_KEY;
@@ -522,7 +529,7 @@ function errorForStatus(status) {
 
 // dist/shared/is-main-module.mjs
 import { fileURLToPath } from "node:url";
-import { posix as posix3, win32 as win323 } from "node:path";
+import { posix as posix3, win32 as win324 } from "node:path";
 import { realpathSync } from "node:fs";
 function isMainModule(importMetaUrl, argv1, platform = process.platform) {
   if (typeof argv1 !== "string" || argv1.length === 0)
@@ -530,7 +537,7 @@ function isMainModule(importMetaUrl, argv1, platform = process.platform) {
   const windows = platform === "win32";
   try {
     const modulePath = real(fileURLToPath(importMetaUrl, { windows }));
-    const scriptPath = real((windows ? win323 : posix3).resolve(argv1));
+    const scriptPath = real((windows ? win324 : posix3).resolve(argv1));
     return windows ? modulePath.toLowerCase() === scriptPath.toLowerCase() : modulePath === scriptPath;
   } catch {
     return false;

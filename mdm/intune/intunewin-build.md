@@ -12,7 +12,7 @@ The `.intunewin` delivers the per-user credentials mechanism. `managed-settings.
   `https://github.com/microsoft/Microsoft-Win32-Content-Prep-Tool/releases`
   No installation required; it's a standalone executable.
 - Windows machine or VM to run the tool.
-- Your edited `credentials.json.tmpl` with `fs_live_t_REPLACE_ME` replaced by the real tenant key.
+- Your edited `credentials.json.tmpl` with `fs_ingest_REPLACE_ME` replaced by the real ingest token.
 
 ## Step 1: Assemble the source folder
 
@@ -20,7 +20,7 @@ Create a folder named `fancysauce-mdm/` and copy the following files into it:
 
 ```
 fancysauce-mdm/
-  credentials.json.tmpl   ← with tenant key filled in
+  credentials.json.tmpl   ← with ingest token filled in
   deploy-credentials.ps1
 ```
 
@@ -66,9 +66,9 @@ The tool produces `dist\deploy-credentials.intunewin`.
 
 Scope the assignment to your developer Entra group. Assign as **Available** for voluntary install or **Required** for automatic deployment. User-context assignment is required (device-context cannot reach `%APPDATA%`).
 
-## Rebuilding after key rotation
+## Rebuilding after an ingest token rotation
 
-1. Edit `credentials.json.tmpl` with the new tenant key.
+1. Edit `credentials.json.tmpl` with the new ingest token.
 2. Re-run IntuneWinAppUtil to produce a new `.intunewin`.
 3. Upload the new package in Intune and supersede or replace the existing app.
    Intune re-runs the install on targeted devices at next check-in.

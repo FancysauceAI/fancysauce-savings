@@ -85,14 +85,31 @@ test -f ~/.claude/settings.json && jq '.statusLine // empty' ~/.claude/settings.
 test -f .claude/settings.json       && jq '.statusLine // empty' .claude/settings.json       2>/dev/null
 test -f .claude/settings.local.json && jq '.statusLine // empty' .claude/settings.local.json 2>/dev/null
 
-# Plugin install path — needed to know where to copy the binary FROM
-jq '.plugins | to_entries[] | select(.key | startswith("fancysauce-savings@")) | {key, scope: .value[0].scope, installPath: .value[0].installPath, version: .value[0].version}' ~/.claude/plugins/installed_plugins.json 2>/dev/null
+# Plugin install path — needed to know where to copy the binary FROM.
+# The registry key is <plugin>@<alias> and BOTH halves vary by channel: the
+# internal one is `fancysauce-savings-go@fancysauce-internal`. Match the family
+# prefix, not one literal id, and read the plugin id back off whatever `key`
+# comes out. `to_entries | map(select(...))` — `to_entries[] | map(...)` applies
+# map to each entry OBJECT and errors with "Cannot index string".
+jq '.plugins | to_entries | map(select(.key | startswith("fancysauce-savings"))) | .[] | {key, scope: .value[0].scope, installPath: .value[0].installPath, version: .value[0].version}' ~/.claude/plugins/installed_plugins.json 2>/dev/null
 
-# Check the stable copy path (existence + mtime) for both candidate marketplaces
-for MP in fancysauce fancysauce-staging; do
-  STABLE=~/.claude/plugins/data/fancysauce-savings-$MP/bin/statusline.mjs
-  echo "stable $MP: $(test -f "$STABLE" && stat -f '%Sm %z' "$STABLE" 2>/dev/null || echo 'absent')"
+# Nothing above? Then find the install by what it SHIPS rather than what it is
+# called — the cache layout is cache/<marketplace>/<plugin>/<version>/.
+ls -d ~/.claude/plugins/cache/*/*/*/dist/statusline/statusline.mjs 2>/dev/null
+
+# Check the stable copy path (existence + mtime) for every data dir that has one.
+# The directory is <plugin>-<marketplace alias>, and BOTH halves vary by channel,
+# so this globs rather than naming them. "absent" is an answer the classification
+# step below needs, so the no-match case says so instead of printing nothing; the
+# trailing `:` keeps the block's exit status 0 either way.
+FOUND=0
+for STABLE in ~/.claude/plugins/data/*/bin/statusline.mjs; do
+  [ -f "$STABLE" ] || continue
+  FOUND=1
+  echo "stable $(basename "$(dirname "$(dirname "$STABLE")")"): $(stat -f '%Sm %z' "$STABLE" 2>/dev/null)"
 done
+[ "$FOUND" = 1 ] || echo "stable: absent (no ~/.claude/plugins/data/*/bin/statusline.mjs)"
+:
 ```
 
 If `jq` is missing, fall back to the Read tool.
@@ -104,13 +121,19 @@ After tool results return, classify what you found into one of these:
 - **Winning command:** the string in that layer's `statusLine.command`,
   or "(none)".
 - **Is winning command the fancysauce stable path?** True if the
-  command contains `/.claude/plugins/data/fancysauce-savings-*/bin/statusline.mjs`.
-- **Plugin install path:** the `installPath` from `installed_plugins.json`
-  for any enabled `fancysauce-savings@*` entry. If multiple, prefer the
-  one matching the marketplace alias suffix the user is on (you can
-  usually just take the first; ask if ambiguous).
+  command contains `/.claude/plugins/data/<plugin>-<alias>/bin/statusline.mjs`
+  for the plugin and alias found below.
+- **Plugin id and install path:** the `key` and `installPath` from
+  `installed_plugins.json` for the enabled fancysauce entry. The key is
+  `<plugin>@<alias>`; **read the plugin id off it rather than assuming
+  `fancysauce-savings`** — the internal channel publishes as
+  `fancysauce-savings-go`, and a machine can have both installed. If multiple,
+  ask which one the user means rather than guessing. If the first command
+  printed nothing, take the id and version from the cache path the second one
+  listed (`cache/<marketplace>/<plugin>/<version>/`).
 - **Marketplace alias** (from the `@<alias>` suffix in the
-  installed_plugins key) — needed to build the stable data path.
+  installed_plugins key) — needed, with the plugin id, to build the stable
+  data path.
 - **Stable copy state:** present or absent; if present, the mtime.
 - **Cache binary state:** check `<installPath>/dist/statusline/statusline.mjs`
   — exists / mtime.
@@ -226,7 +249,7 @@ fresh install:
 > Got it. I'm going to:
 >
 > 1. Copy the plugin's `statusline.mjs` from its versioned cache path
->    to `~/.claude/plugins/data/fancysauce-savings-<marketplace>/bin/statusline.mjs`.
+>    to `~/.claude/plugins/data/<plugin>-<marketplace>/bin/statusline.mjs`.
 >    That stable path doesn't change when the plugin updates, so your
 >    settings stay valid.
 > 2. Back up `~/.claude/settings.json` → `~/.claude/settings.json.bak.<timestamp>`.
@@ -239,7 +262,7 @@ Adjust to whichever scope the user picked. Then execute:
 
 1. **Compute paths.** Marketplace alias comes from the `@<alias>`
    suffix in installed_plugins.json. Set:
-   - `STABLE_DIR=~/.claude/plugins/data/fancysauce-savings-<alias>/bin`
+   - `STABLE_DIR=~/.claude/plugins/data/<plugin>-<alias>/bin`
    - `STABLE_BIN=$STABLE_DIR/statusline.mjs`
    - `CACHE_BIN=<installPath>/dist/statusline/statusline.mjs`
 
@@ -294,13 +317,13 @@ print the path and a one-line composition example:
 
 ```
 The fancysauce statusline binary is at:
-  ~/.claude/plugins/data/fancysauce-savings-<alias>/bin/statusline.mjs
+  ~/.claude/plugins/data/<plugin>-<alias>/bin/statusline.mjs
 
 CC passes session JSON on stdin; the binary writes the rendered
 statusline (with ANSI colors) to stdout. From inside your existing
 statusline script, you can invoke it like:
 
-  cat | node ~/.claude/plugins/data/fancysauce-savings-<alias>/bin/statusline.mjs
+  cat | node ~/.claude/plugins/data/<plugin>-<alias>/bin/statusline.mjs
 
 …then concatenate or interleave its output with your own segments.
 ```
@@ -347,7 +370,7 @@ If they want to tweak segment toggles or color thresholds for the
 parent statusline, point them at the config file:
 
 ```bash
-cat ~/.claude/plugins/data/fancysauce-savings-<alias>/config.json 2>/dev/null
+cat ~/.claude/plugins/data/<plugin>-<alias>/config.json 2>/dev/null
 ```
 
 To edit, write the relevant `status_line` block:

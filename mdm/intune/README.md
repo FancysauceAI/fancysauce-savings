@@ -7,16 +7,16 @@ Two distinct artifacts land on each managed Windows machine:
 | Artifact | Path | Scope | Purpose |
 |---|---|---|---|
 | `managed-settings.json` | System-wide ClaudeCode path (see V2 note below) | System-wide | Registers the fancysauce marketplace and enables the plugin for every Claude Code user on the machine. Identical across all tenants — contains no secrets. Intune deploys the **plugin** arm; the managed-hooks arm described in [`../README.md`](../README.md) is macOS-only today. |
-| `credentials.json` | `%APPDATA%\fancysauce\credentials.json` | Per-user | Carries the tenant API key and the user's directory email so the plugin can tag usage events. Written at Intune deployment time by a Win32 user-context app. |
+| `credentials.json` | `%APPDATA%\fancysauce\credentials.json` | Per-user | Carries the ingest token and the user's directory email so the plugin can tag usage events. Written at Intune deployment time by a Win32 user-context app. |
 
-The plugin (`fancysauce-savings`) comes from the public GitHub dist repo `FancysauceAI/fancysauce-savings`; it is not bundled in this package. Managed settings register the marketplace and enable the plugin, but do not install it — each user runs `claude plugin install fancysauce-savings@fancysauce` once.
+The plugin (`fancysauce-savings`) comes from the GitHub dist repo `FancysauceAI/fancysauce-savings`; it is not bundled in this package. Managed settings register the marketplace and enable the plugin, but do not install it — each user runs `claude plugin install fancysauce-savings@fancysauce` once.
 
-> **Codex on Windows: not yet available.** Codex telemetry uses an enforced
+> **Codex on Windows: not yet available.** Codex usage analytics use an enforced
 > managed hook whose wrapper is POSIX `sh`, so it currently runs on macOS and
 > Linux only. When Windows support ships, the managed path will be
 > `%ProgramData%\OpenAI\Codex\requirements.toml` plus a PowerShell wrapper. For
 > macOS fleets, the [Kandji](../kandji/README.md) and [Jamf](../jamf/README.md)
-> guides both deploy Codex telemetry today. This Intune guide covers Claude Code
+> guides both deploy Codex usage analytics today. This Intune guide covers Claude Code
 > only.
 
 ### V2 verification gap — Windows managed-settings path
@@ -31,19 +31,19 @@ There is ambiguity about the exact system-wide path Claude Code reads on Windows
 ## Prerequisites
 
 - Microsoft Intune with Win32 app deployment rights.
-- A tenant API key from your fancysauce dashboard. Keys have the prefix `fs_live_t_`.
+- An ingest token from your fancysauce dashboard. Tokens have the prefix `fs_ingest_`. It is write-only: it can append usage events to your workspace and nothing else.
 - Entra ID / Azure AD user attributes for `UserEmail` and `UserPrincipalName` populated and available for Intune variable substitution. These are standard Intune device-configuration variables; they are active by default for user-targeted policies when the device is Entra-joined or hybrid-joined.
 - Target machines running Windows 10 1903+ or Windows 11, with Claude Code installed.
 - **IntuneWinAppUtil.exe** for packaging (see `intunewin-build.md`).
 
-## Step 1: Replace the tenant key
+## Step 1: Replace the ingest token
 
-Open `credentials.json.tmpl` and replace the placeholder with your actual tenant API key:
+Open `credentials.json.tmpl` and replace the placeholder with your actual ingest token:
 
 ```
-"credential": "fs_live_t_REPLACE_ME"
+"credential": "fs_ingest_REPLACE_ME"
               ^^^^^^^^^^^^^^^^^^^^
-              replace with your key, e.g. fs_live_t_abc123xyz
+              replace with your token, e.g. fs_ingest_abc123xyz
 ```
 
 Do not commit the key to source control. Store the modified template in a secrets manager and retrieve it during `.intunewin` build.
@@ -92,7 +92,7 @@ Expected: the JSON from `managed-settings.json` in this template set.
 ```powershell
 Get-Content "$env:APPDATA\fancysauce\credentials.json"
 ```
-Expected: valid JSON with `credential` set to your tenant key, `identity_hint.user_email` set to the user's Entra email, and `issued_at` showing a recent UTC timestamp.
+Expected: valid JSON with `credential` set to your ingest token, `identity_hint.user_email` set to the user's Entra email, and `issued_at` showing a recent UTC timestamp.
 
 **Check 3 — file ACL restricted to current user:**
 ```powershell
@@ -109,9 +109,9 @@ Expected: log lines ending with `deploy-credentials.ps1 completed successfully`.
 **Check 5 — plugin activity in the dashboard:**
 Start Claude Code on the test machine and run a few prompts. Open your fancysauce dashboard and confirm events are tagged with the user's hashed email (`handle_email`) or OS handle (`handle_os`).
 
-## Key rotation
+## Ingest token rotation
 
-When the tenant API key expires or is rotated:
+When the ingest token expires or is rotated:
 
 1. Update `credentials.json.tmpl` with the new key.
 2. Rebuild the `.intunewin` (see `intunewin-build.md`).
@@ -129,7 +129,7 @@ Check the deployment log:
 ```powershell
 Get-Content "$env:LOCALAPPDATA\fancysauce\deploy.log"
 ```
-Common causes: app was deployed in device context instead of user context; Intune policy has not yet synced (trigger a manual sync from the Company Portal or Settings → Accounts → Access work or school → Info → Sync); or the `.intunewin` was built without the edited template (credential placeholder still `fs_live_t_REPLACE_ME`).
+Common causes: app was deployed in device context instead of user context; Intune policy has not yet synced (trigger a manual sync from the Company Portal or Settings → Accounts → Access work or school → Info → Sync); or the `.intunewin` was built without the edited template (credential placeholder still `fs_ingest_REPLACE_ME`).
 
 **PowerShell ExecutionPolicy blocking the script:**
 The install command passes `-ExecutionPolicy Bypass` explicitly, which overrides machine policy for this invocation. If a third-party endpoint-security product is blocking PowerShell execution, whitelist the Intune Management Extension process (`IntuneManagementExtension.exe`) or request an exception from your security team.

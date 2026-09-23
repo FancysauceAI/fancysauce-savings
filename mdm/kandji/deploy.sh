@@ -19,7 +19,7 @@
 #      managed settings are left alone. The fragment lands LAST: it is what makes
 #      Claude Code call the wrapper, so the wrapper and the pin must be there
 #      first. No secrets.
-#   3. Per-user ~/.config/fancysauce/credentials.json carrying the tenant key
+#   3. Per-user ~/.config/fancysauce/credentials.json carrying the ingest token
 #      and the assigned user's email (read by both tools).
 #
 # Kandji Custom Scripts run as root and substitute its global variables (the
@@ -40,13 +40,13 @@
 set -eo pipefail
 
 # --- configuration (edit before uploading to Kandji) ----------------------
-TENANT_KEY="fs_live_t_REPLACE_ME"   # from your fancysauce dashboard
+INGEST_TOKEN="fs_ingest_REPLACE_ME" # from your fancysauce dashboard
 IDENTITY_TYPE="full"
-CODEX_TAG="v0.17.0"                 # pinned plugin release for Codex telemetry
-CODEX_SHA="c5ff8de67006b4f6e056fd9291d73d03788f89e8"   # commit sha of CODEX_TAG
+CODEX_TAG="v0.18.0"                 # pinned plugin release for Codex telemetry
+CODEX_SHA="c7eb31773c818649a3aa8331d295cf69a11c06d2"   # commit sha of CODEX_TAG
 CC_MODE="managed-hooks"             # plugin | managed-hooks
-CC_TAG="v0.17.0"                    # pinned plugin release for Claude Code telemetry
-CC_SHA="c5ff8de67006b4f6e056fd9291d73d03788f89e8"   # commit sha of CC_TAG
+CC_TAG="v0.18.0"                    # pinned plugin release for Claude Code telemetry
+CC_SHA="c7eb31773c818649a3aa8331d295cf69a11c06d2"   # commit sha of CC_TAG
 # SessionEnd hooks share a 1.5s budget, which the collector's own 1800ms
 # self-budget already overruns. Claude Code raises the shared budget to the
 # longest per-hook timeout, so this one field is what keeps the end-of-session
@@ -718,7 +718,7 @@ credentialJson="$(/bin/cat <<EOF
 {
   "schema_version": 1,
   "issued_at": "$issuedAt",
-  "credential": "$TENANT_KEY",
+  "credential": "$INGEST_TOKEN",
   "identity_hint": {
     "source": "mdm_file",
     "user_email": "$USER_EMAIL",
@@ -730,7 +730,7 @@ EOF
 )"
 
 if [ "$(/usr/bin/id -u)" = "0" ]; then
-  # bash's builtin printf: /usr/bin/printf would place the live tenant key in a
+  # bash's builtin printf: /usr/bin/printf would place the live ingest token in a
   # root process's argv, which macOS exposes to every local uid via ps.
   printf '%s\n' "$credentialJson" \
     | FS_DEST_DIR="$destDir" /usr/bin/su -m "$consoleUser" -c "/bin/sh '$credentialWriter/write-credential.sh'"

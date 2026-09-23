@@ -27,6 +27,14 @@ function credentialPaths() {
 // dist/shared/config.mjs
 import { join } from "node:path";
 import { homedir as homedir2 } from "node:os";
+
+// dist/shared/credential-file.mjs
+import { dirname, win32 as win322 } from "node:path";
+var SYSTEM32 = win322.join(process.env.SystemRoot ?? "C:\\Windows", "System32");
+var ICACLS_EXE = win322.join(SYSTEM32, "icacls.exe");
+var WHOAMI_EXE = win322.join(SYSTEM32, "whoami.exe");
+
+// dist/shared/config.mjs
 var DEFAULT_LOGIN_STATE_DIR = join(homedir2(), ".config", "fancysauce");
 function parseCredentialPathsEnv() {
   if (process.env.VITEST !== "true")
@@ -56,7 +64,7 @@ function parseCredentialPathsEnv() {
 
 // dist/shared/data-dir.mjs
 import { readFileSync } from "node:fs";
-import { basename, join as join2, dirname, relative, isAbsolute, sep } from "node:path";
+import { basename, join as join2, dirname as dirname2, relative, isAbsolute, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { homedir as homedir3 } from "node:os";
 function resolveDataDir(opts = {}) {
@@ -81,7 +89,7 @@ function resolveDataDir(opts = {}) {
   return join2(home, ".claude-plugin-data");
 }
 function defaultPluginRoot() {
-  const here = dirname(fileURLToPath(import.meta.url));
+  const here = dirname2(fileURLToPath(import.meta.url));
   return join2(here, "..", "..", "..");
 }
 function trimTrailingSlash(p) {
@@ -211,7 +219,7 @@ function parseTomlKey(key) {
 
 // dist/shared/is-main-module.mjs
 import { fileURLToPath as fileURLToPath2 } from "node:url";
-import { posix as posix2, win32 as win322 } from "node:path";
+import { posix as posix2, win32 as win323 } from "node:path";
 import { realpathSync } from "node:fs";
 function isMainModule(importMetaUrl, argv1, platform = process.platform) {
   if (typeof argv1 !== "string" || argv1.length === 0)
@@ -219,7 +227,7 @@ function isMainModule(importMetaUrl, argv1, platform = process.platform) {
   const windows = platform === "win32";
   try {
     const modulePath = real(fileURLToPath2(importMetaUrl, { windows }));
-    const scriptPath = real((windows ? win322 : posix2).resolve(argv1));
+    const scriptPath = real((windows ? win323 : posix2).resolve(argv1));
     return windows ? modulePath.toLowerCase() === scriptPath.toLowerCase() : modulePath === scriptPath;
   } catch {
     return false;

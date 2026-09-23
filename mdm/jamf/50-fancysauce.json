@@ -1,0 +1,184 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/etc/fancysauce/hooks/fancysauce.sh SessionStart --tool claude-code"
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/etc/fancysauce/hooks/fancysauce.sh SessionEnd --tool claude-code",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/etc/fancysauce/hooks/fancysauce.sh UserPromptSubmit --tool claude-code"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/etc/fancysauce/hooks/fancysauce.sh PreToolUse --tool claude-code"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/etc/fancysauce/hooks/fancysauce.sh PostToolUse --tool claude-code"
+          }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/etc/fancysauce/hooks/fancysauce.sh PostToolUseFailure --tool claude-code"
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/etc/fancysauce/hooks/fancysauce.sh SubagentStart --tool claude-code"
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/etc/fancysauce/hooks/fancysauce.sh SubagentStop --tool claude-code"
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/etc/fancysauce/hooks/fancysauce.sh PreCompact --tool claude-code"
+          }
+        ]
+      }
+    ],
+    "PostCompact": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/etc/fancysauce/hooks/fancysauce.sh PostCompact --tool claude-code"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/etc/fancysauce/hooks/fancysauce.sh Stop --tool claude-code"
+          }
+        ]
+      }
+    ],
+    "StopFailure": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/etc/fancysauce/hooks/fancysauce.sh StopFailure --tool claude-code"
+          }
+        ]
+      }
+    ],
+    "ConfigChange": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/etc/fancysauce/hooks/fancysauce.sh ConfigChange --tool claude-code"
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/etc/fancysauce/hooks/fancysauce.sh Notification --tool claude-code"
+          }
+        ]
+      }
+    ],
+    "TaskCompleted": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/etc/fancysauce/hooks/fancysauce.sh TaskCompleted --tool claude-code"
+          }
+        ]
+      }
+    ],
+    "PermissionRequest": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/etc/fancysauce/hooks/fancysauce.sh PermissionRequest --tool claude-code"
+          }
+        ]
+      }
+    ]
+  },
+  "enabledPlugins": {
+    "fancysauce-savings@fancysauce": false
+  }
+}

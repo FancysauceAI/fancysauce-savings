@@ -45,14 +45,14 @@ __export(credential_paths_exports, {
   credentialPaths: () => credentialPaths
 });
 import { homedir } from "node:os";
-import { posix, win32 } from "node:path";
+import { posix, win32 as win322 } from "node:path";
 function credentialPaths() {
   if (process.platform === "win32") {
     const programData = process.env.PROGRAMDATA ?? "C:\\ProgramData";
-    const appData = process.env.APPDATA ?? win32.join(homedir(), "AppData", "Roaming");
+    const appData = process.env.APPDATA ?? win322.join(homedir(), "AppData", "Roaming");
     return {
-      system: win32.join(programData, "fancysauce", "credentials.json"),
-      user: win32.join(appData, "fancysauce", "credentials.json")
+      system: win322.join(programData, "fancysauce", "credentials.json"),
+      user: win322.join(appData, "fancysauce", "credentials.json")
     };
   }
   return {
@@ -593,8 +593,8 @@ var require_graceful_fs = __commonJS({
       }
       var fs$appendFile = fs2.appendFile;
       if (fs$appendFile)
-        fs2.appendFile = appendFile5;
-      function appendFile5(path, data, options, cb) {
+        fs2.appendFile = appendFile6;
+      function appendFile6(path, data, options, cb) {
         if (typeof options === "function")
           cb = options, options = null;
         return go$appendFile(path, data, options, cb);
@@ -1730,9 +1730,9 @@ var init_runner_env = __esm({
       "TERM",
       "VITEST",
       "CLAUDE_PLUGIN_DATA",
-      "CLAUDE_CODE_EXECPATH",
       "FANCYSAUCE_CREDENTIAL_PATHS",
       "FANCYSAUCE_API_KEY",
+      "FANCYSAUCE_INGEST_TOKEN",
       "FANCYSAUCE_TENANT_KEY"
     ]);
   }
@@ -1880,7 +1880,7 @@ var init_status = __esm({
 // dist/agents/claude-code/collect.mjs
 import { readFileSync as readFileSync9 } from "node:fs";
 import { homedir as homedir7 } from "node:os";
-import { dirname as dirname9, isAbsolute as isAbsolute3, join as join32 } from "node:path";
+import { dirname as dirname8, join as join32 } from "node:path";
 import { fileURLToPath as fileURLToPath4 } from "node:url";
 
 // dist/shared/run-collect.mjs
@@ -2094,20 +2094,41 @@ function defaultPolicy() {
 
 // dist/shared/credential-file.mjs
 import { mkdir, rename, open, chmod, unlink, readFile, stat } from "node:fs/promises";
-import { dirname } from "node:path";
+import { dirname, win32 } from "node:path";
 import { randomBytes } from "node:crypto";
-async function writeCredential(path, cred) {
+import { userInfo } from "node:os";
+
+// dist/shared/run-command.mjs
+import { execFile } from "node:child_process";
+function runCommand(cmd, args, timeoutMs, opts = {}) {
+  return new Promise((resolve, reject) => {
+    execFile(cmd, args, { timeout: timeoutMs, ...opts }, (err, stdout) => {
+      if (err)
+        return reject(err);
+      resolve(stdout.toString());
+    });
+  });
+}
+
+// dist/shared/credential-file.mjs
+async function writeCredential(path, cred, deps = {}) {
+  const platform = deps.platform ?? process.platform;
   const parent = dirname(path);
   await mkdir(parent, { recursive: true, mode: 448 });
-  if (process.platform !== "win32") {
+  if (platform !== "win32") {
     await chmod(parent, 448).catch(() => {
     });
   }
+  const protect = platform === "win32" ? windowsAclProtector(deps) : void 0;
+  if (protect)
+    await protect(parent, "dir");
   const tmp = `${path}.${process.pid}.${randomBytes(4).toString("hex")}.tmp`;
   let renamed = false;
   try {
     const fh = await open(tmp, "wx", 384);
     try {
+      if (protect)
+        await protect(tmp, "file");
       await fh.writeFile(JSON.stringify(cred));
       await fh.sync();
     } finally {
@@ -2123,6 +2144,72 @@ async function writeCredential(path, cred) {
       }
     }
   }
+}
+var SYSTEM32 = win32.join(process.env.SystemRoot ?? "C:\\Windows", "System32");
+var ICACLS_EXE = win32.join(SYSTEM32, "icacls.exe");
+var WHOAMI_EXE = win32.join(SYSTEM32, "whoami.exe");
+var SYSTEM_SID = "*S-1-5-18";
+var ADMINISTRATORS_SID = "*S-1-5-32-544";
+var PROTECT_BUDGET_MS = 2e3;
+var WHOAMI_MAX_MS = 1e3;
+var SPAWN_FLOOR_MS = 250;
+var CredentialProtectionError = class extends Error {
+  reason;
+  remedy;
+  constructor(reason, remedy) {
+    super(`could not protect it (${reason}). Protect the folder by hand, then try again: ${remedy}`);
+    this.reason = reason;
+    this.remedy = remedy;
+    this.name = "CredentialProtectionError";
+  }
+};
+function icaclsArgs(target, trustee, kind) {
+  const rights = kind === "dir" ? "(OI)(CI)(F)" : "(F)";
+  return [
+    target,
+    "/inheritance:r",
+    "/grant:r",
+    `${trustee}:${rights}`,
+    "/grant:r",
+    `${SYSTEM_SID}:${rights}`,
+    "/grant:r",
+    `${ADMINISTRATORS_SID}:${rights}`
+  ];
+}
+function windowsAclProtector(deps) {
+  const runner = deps.runner ?? ((cmd, args, timeoutMs) => runCommand(cmd, args, timeoutMs, { windowsHide: true }));
+  const env = deps.env ?? process.env;
+  const now = deps.now ?? Date.now;
+  const deadline = now() + (deps.budgetMs ?? PROTECT_BUDGET_MS);
+  const left = () => {
+    const ms = deadline - now();
+    if (ms < SPAWN_FLOOR_MS)
+      throw new Error(`timed out with ${ms} ms of the budget left`);
+    return ms;
+  };
+  let trustee;
+  return async (target, kind) => {
+    try {
+      trustee ??= await windowsTrustee(runner, env, Math.min(WHOAMI_MAX_MS, left()));
+      await runner(ICACLS_EXE, icaclsArgs(target, trustee, kind), left());
+    } catch (err) {
+      const dir = kind === "dir" ? target : dirname(target);
+      const args = icaclsArgs(dir, trustee ?? "%USERDOMAIN%\\%USERNAME%", "dir");
+      const remedy = `icacls ${args.map((a) => `"${a}"`).join(" ")}`;
+      throw new CredentialProtectionError(err.message, remedy);
+    }
+  };
+}
+async function windowsTrustee(runner, env, timeoutMs) {
+  try {
+    const out = await runner(WHOAMI_EXE, ["/user", "/fo", "csv", "/nh"], timeoutMs);
+    const sid = /\bS-1-[0-9-]+\b/.exec(out);
+    if (sid)
+      return `*${sid[0]}`;
+  } catch {
+  }
+  const { username } = userInfo();
+  return env.USERDOMAIN ? `${env.USERDOMAIN}\\${username}` : username;
 }
 async function readCredential(paths) {
   const sys = await tryReadOne(paths.system);
@@ -2247,7 +2334,10 @@ function validateIdentityHint(v) {
 }
 
 // dist/shared/tenant-key-bootstrap.mjs
-var KEY_RE = /^fs_(live|test)_t_[A-Za-z0-9_-]{43}$/;
+var KEY_RE = /^fs_(?:ingest(?:_test)?|(?:live|test)_t)_[A-Za-z0-9_-]{43}$/;
+function ingestTokenFromEnv(env) {
+  return env.FANCYSAUCE_INGEST_TOKEN || env.FANCYSAUCE_TENANT_KEY || "";
+}
 function decide(existing, args) {
   switch (existing.source) {
     case "absent":
@@ -2270,7 +2360,7 @@ function decide(existing, args) {
 }
 async function ensureAmbientTenantCredential(existing, paths, opts = {}) {
   const env = opts.env ?? process.env;
-  const tenantKey = env.FANCYSAUCE_TENANT_KEY ?? "";
+  const tenantKey = ingestTokenFromEnv(env);
   if (!KEY_RE.test(tenantKey))
     return { result: existing, wrote: false };
   const identity = env.FANCYSAUCE_IDENTITY_TYPE === "hash" ? "hash" : "full";
@@ -2286,7 +2376,7 @@ async function ensureAmbientTenantCredential(existing, paths, opts = {}) {
     identity_type: identity
   };
   try {
-    await writeCredential(paths.user, cred);
+    await writeCredential(paths.user, cred, opts.writeDeps);
     return { result: { source: "user", credential: cred }, wrote: true };
   } catch (err) {
     (opts.logger ?? ((m) => process.stderr.write(m + "\n")))(`fancysauce: ambient tenant-key write failed: ${err.message}`);
@@ -2302,6 +2392,7 @@ var KNOWN_FANCYSAUCE_VARS = /* @__PURE__ */ new Set([
   "FANCYSAUCE_CREDENTIAL_PATHS",
   "FANCYSAUCE_API_KEY",
   "FANCYSAUCE_IDENTITY_TYPE",
+  "FANCYSAUCE_INGEST_TOKEN",
   "FANCYSAUCE_TENANT_KEY"
 ]);
 function parseCredentialPathsEnv() {
@@ -2566,12 +2657,19 @@ function parseTomlKey(key) {
 init_credential_paths();
 
 // dist/shared/plugin-commands.mjs
-var LOGIN_COMMAND = "/fancysauce-savings:login";
+var COMMAND_PREFIX = "/fancysauce-savings:";
+var LOGIN_COMMAND = `${COMMAND_PREFIX}login`;
+var RESET_COMMAND = `${COMMAND_PREFIX}reset`;
+var UPLOAD_HISTORY_COMMAND = `${COMMAND_PREFIX}upload-history`;
 
 // dist/shared/hash.mjs
 import { createHash, createHmac } from "node:crypto";
 function sha256Hex(input) {
   return createHash("sha256").update(input, "utf8").digest("hex");
+}
+function deterministicUuid(parts) {
+  const h = sha256Hex(parts.join("|"));
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20, 32)}`;
 }
 
 // dist/shared/content-filter.mjs
@@ -2741,7 +2839,6 @@ async function withDirLock(dir, fn) {
 }
 
 // dist/shared/identity-sources.mjs
-import { execFile } from "node:child_process";
 var TIMEOUT_MS = 200;
 var MAX_EMAIL_LENGTH = 320;
 function plausibleEmail(value) {
@@ -2757,18 +2854,9 @@ function plausibleEmail(value) {
     return null;
   return trimmed;
 }
-function defaultRunner(cmd, args, timeoutMs) {
-  return new Promise((resolve, reject) => {
-    execFile(cmd, args, { timeout: timeoutMs }, (err, stdout) => {
-      if (err)
-        return reject(err);
-      resolve(stdout.toString());
-    });
-  });
-}
 var GIT_SCOPES = /* @__PURE__ */ new Set(["local", "worktree", "global", "system", "command"]);
 async function readGitConfigEmail(cwd, deps = {}) {
-  const runner = deps.runner ?? defaultRunner;
+  const runner = deps.runner ?? runCommand;
   try {
     const out = await runner("git", ["-C", cwd, "config", "--show-scope", "--get", "user.email"], TIMEOUT_MS);
     const tab = out.indexOf("	");
@@ -2793,7 +2881,7 @@ async function readMacOsDsclEmail(deps = {}) {
   const platform = deps.platform ?? process.platform;
   if (platform !== "darwin")
     return null;
-  const runner = deps.runner ?? defaultRunner;
+  const runner = deps.runner ?? runCommand;
   const user = deps.username ?? process.env.USER ?? process.env.LOGNAME;
   if (!user)
     return null;
@@ -2809,7 +2897,7 @@ async function readWindowsUpn(deps = {}) {
   const platform = deps.platform ?? process.platform;
   if (platform !== "win32")
     return null;
-  const runner = deps.runner ?? defaultRunner;
+  const runner = deps.runner ?? runCommand;
   try {
     const out = await runner("whoami", ["/upn"], TIMEOUT_MS);
     return plausibleEmail(out);
@@ -2844,7 +2932,7 @@ import { join as join3 } from "node:path";
 var BAKED_SERVER_KEY = {
   keyid: "env-production-1",
   alg: "RSA-OAEP-256+A256GCM",
-  publicKeyPem: "-----BEGIN PUBLIC KEY-----\nMIIBojANBgkqhkiG9w0BAQEFAAOCAY8AMIIBigKCAYEA4Dh42p0kvReuiL194qp3\n8j0BSjOmwW9WU9NUUSlBSA1Kn0WPdfMKywsD+DPrlt/KyOKdNLoUXsXrriM212Si\nMgabz4e4pK8ItqgqCg1wPFArY8SEoy8MioMj8iZVz/UPeR3/7Rng8LT50HiaB/kc\nwkBjjLnSU2xYQkKROKMGuTlKDZ4BCpP/uVCFTrZ5BUFEn3r2WyAl3Z6NBjO9hTPB\njKx1AH+CitIZeWVmn39EUwrzUW+LiXbEe1Y+0SXkpTgdqvVMzMjytlEp5Ojisvs1\n/GqoHRoN/NcESILK2s4Rabe3PTquCmZItYbw2sBpFe/6xhHPn/LA2TVjEjx5d+GJ\ndxQnhUWlNPInWul8TCePBAhz6MGThrcVWj6b+V3K4CrjetFIlvF7R2dk/SlWLCUZ\nozfDPZnQfvSZInVSrSRiCqA3OXArmptmFzeZii1RDQsJnNA+Vc2lTvuf2ScepvgG\nWJPZewNj7dknrCLAyj79ZZrQH31cIjgPt3XpT7SHnkaLAgMBAAE=\n-----END PUBLIC KEY-----\n"
+  publicKeyPem: "-----BEGIN PUBLIC KEY-----\nMIIBojANBgkqhkiG9w0BAQEFAAOCAY8AMIIBigKCAYEA4Dh42p0kvReuiL194qp3\n8j0BSjOmwW9WU9NUUSlBSA1Kn0WPdfMKywsD+DPrlt/KyOKdNLoUXsXrriM212Si\nMgabz4e4pK8ItqgqCg1wPFArY8SEoy8MioMj8iZVz/UPeR3/7Rng8LT50HiaB/kc\nwkBjjLnSU2xYQkKROKMGuTlKDZ4BCpP/uVCFTrZ5BUFEn3r2WyAl3Z6NBjO9hTPB\njKx1AH+CitIZeWVmn39EUwrzUW+LiXbEe1Y+0SXkpTgdqvVMzMjytlEp5Ojisvs1\n/GqoHRoN/NcESILK2s4Rabe3PTquCmZItYbw2sBpFe/6xhHPn/LA2TVjEjx5d+GJ\ndxQnhUWlNPInWul8TCePBAhz6MGThrcVWj6b+V3K4CrjetFIlvF7R2dk/SlWLCUZ\nozfDPZnQfvSZInVSrSRiCqA3OXArmptmFzeZii1RDQsJnNA+Vc2lTvuf2ScepvgG\nWJPZewNj7dknrCLAyj79ZZrQH31cIjgPt3XpT7SHnkaLAgMBAAE=\n-----END PUBLIC KEY-----\n\n"
 };
 var CACHE_FILE = "server-key.json";
 var DEFAULT_TTL_MS = 24 * 60 * 60 * 1e3;
@@ -3129,17 +3217,34 @@ var OTEL_OS_TYPE = {
   win32: "windows",
   sunos: "solaris"
 };
+var OTEL_HOST_ARCH = {
+  amd64: "amd64",
+  x64: "amd64",
+  arm: "arm32",
+  arm64: "arm64",
+  "386": "x86",
+  ia32: "x86",
+  ppc: "ppc32",
+  ppc64: "ppc64",
+  ppc64le: "ppc64",
+  s390x: "s390x"
+};
 var HARNESS_ENTRYPOINT_MAX_LEN = 32;
 function toResourceAttributes(id, opts) {
   const rawOsType = opts.osType ?? process.platform;
+  const rawHostArch = opts.hostArch ?? process.arch;
   const attrs = {
     "service.name": "fancysauce",
     "service.version": opts.pluginVersion,
     "fancysauce.schema_version": opts.schemaVersion,
     "fancysauce.install_id": id.install_id,
     "fancysauce.agent": opts.agent,
+    "fancysauce.runtime": "node",
     "os.type": OTEL_OS_TYPE[rawOsType] ?? rawOsType
   };
+  const hostArch = OTEL_HOST_ARCH[rawHostArch];
+  if (hostArch)
+    attrs["host.arch"] = hostArch;
   const entrypoint = opts.harnessEntrypoint ?? process.env.CLAUDE_CODE_ENTRYPOINT;
   if (entrypoint) {
     attrs["fancysauce.harness_entrypoint"] = entrypoint.slice(0, HARNESS_ENTRYPOINT_MAX_LEN);
@@ -3699,6 +3804,7 @@ var ATTR_TYPE = {
   plan_type: "string",
   seat_tier: "string",
   rate_limit_tier: "string",
+  user_rate_limit_tier: "string",
   billing_type: "string",
   extra_usage_enabled: "bool",
   extra_usage_disabled_reason: "string",
@@ -3765,6 +3871,19 @@ var ATTR_TYPE = {
   extra_usage_utilization: "double",
   credits_ever_enabled: "bool"
 };
+var RESOURCE_ATTRIBUTE_KEYS = [
+  "service.name",
+  "service.version",
+  "fancysauce.schema_version",
+  "fancysauce.install_id",
+  "fancysauce.agent",
+  "fancysauce.runtime",
+  "os.type",
+  "host.arch",
+  "fancysauce.harness_entrypoint",
+  "fancysauce.user.identity_source",
+  "fancysauce.secure_envelope"
+];
 function encodeOtlp(events, resource, observedTimeUnixNano) {
   const observed = observedTimeUnixNano ?? BigInt(Date.now()) * 1000000n;
   return {
@@ -3783,18 +3902,7 @@ function encodeOtlp(events, resource, observedTimeUnixNano) {
 }
 function encodeResourceAttributes(r) {
   const out = [];
-  const order = [
-    "service.name",
-    "service.version",
-    "fancysauce.schema_version",
-    "fancysauce.install_id",
-    "fancysauce.agent",
-    "os.type",
-    "fancysauce.harness_entrypoint",
-    "fancysauce.user.identity_source",
-    "fancysauce.secure_envelope"
-  ];
-  for (const key of order) {
+  for (const key of RESOURCE_ATTRIBUTE_KEYS) {
     const v = r[key];
     if (v === void 0)
       continue;
@@ -4446,14 +4554,14 @@ var SCHEMA_VERSION = "1.2.0";
 // dist/shared/whoami/credential.mjs
 init_credential_paths();
 import { readFileSync as readFileSync5, statSync } from "node:fs";
-import { posix as posix2, win32 as win322 } from "node:path";
+import { posix as posix2, win32 as win323 } from "node:path";
 var FINGERPRINT_HEX_CHARS = 12;
 function whoamiCredentialPaths() {
   const parsed = parseCredentialPathsEnv();
   return parsed ? { system: parsed.system, user: parsed.user } : credentialPaths();
 }
 function pathFlavor() {
-  return process.platform === "win32" ? win322 : posix2;
+  return process.platform === "win32" ? win323 : posix2;
 }
 function resolveCredentialSync(opts = {}) {
   const paths = opts.paths ?? whoamiCredentialPaths();
@@ -4468,7 +4576,7 @@ function resolveCredentialSync(opts = {}) {
     return withFingerprint("user", usr.token, usr.apiEndpoint);
   if (usr.kind === "malformed")
     return null;
-  const tenantKey = env.FANCYSAUCE_TENANT_KEY ?? "";
+  const tenantKey = ingestTokenFromEnv(env);
   if (KEY_RE.test(tenantKey))
     return withFingerprint("env_tenant_key", tenantKey, null);
   const apiKey = env.FANCYSAUCE_API_KEY;
@@ -5937,6 +6045,9 @@ async function readPosture(path) {
   const tier = str(oauth.organizationRateLimitTier);
   if (tier)
     posture.rate_limit_tier = tier;
+  const userTier = str(oauth.userRateLimitTier);
+  if (userTier)
+    posture.user_rate_limit_tier = userTier;
   const billing = str(oauth.billingType);
   if (billing)
     posture.billing_type = billing;
@@ -6338,7 +6449,7 @@ function pruneWhoamiNoticeMarkers(opts = {}) {
 
 // dist/shared/is-main-module.mjs
 import { fileURLToPath as fileURLToPath3 } from "node:url";
-import { posix as posix3, win32 as win323 } from "node:path";
+import { posix as posix3, win32 as win324 } from "node:path";
 import { realpathSync } from "node:fs";
 function isMainModule(importMetaUrl, argv1, platform = process.platform) {
   if (typeof argv1 !== "string" || argv1.length === 0)
@@ -6346,7 +6457,7 @@ function isMainModule(importMetaUrl, argv1, platform = process.platform) {
   const windows = platform === "win32";
   try {
     const modulePath = real(fileURLToPath3(importMetaUrl, { windows }));
-    const scriptPath = real((windows ? win323 : posix3).resolve(argv1));
+    const scriptPath = real((windows ? win324 : posix3).resolve(argv1));
     return windows ? modulePath.toLowerCase() === scriptPath.toLowerCase() : modulePath === scriptPath;
   } catch {
     return false;
@@ -6384,8 +6495,8 @@ async function recordHeartbeat(dataDir2, now = /* @__PURE__ */ new Date()) {
 
 // dist/shared/usage-probe/probe.mjs
 import { readFile as readFile17 } from "node:fs/promises";
-var CACHE_TTL_MS = 3e5;
 var PROBE_MIN_INTERVAL_MS = 3e5;
+var WINDOW_ORDER = ["five_hour", "seven_day"];
 var WINDOW_MINUTES = Object.freeze({
   five_hour: 300,
   seven_day: 10080
@@ -6493,24 +6604,175 @@ async function readUsageCache(path) {
   }
   return { fetchedAtMs, utilization };
 }
-function decideProbe(input) {
-  const { nowMs, cacheFetchedAtMs, state } = input;
-  if (state && nowMs - state.last_attempt_ms < PROBE_MIN_INTERVAL_MS) {
-    return { kind: "skip", reason: "recent-attempt" };
-  }
-  if (cacheFetchedAtMs === null)
-    return { kind: "spawn", reason: "no-cache" };
-  if (state === null || cacheFetchedAtMs > state.last_fetched_at_ms) {
-    return { kind: "spawn", reason: "new-reading" };
-  }
-  if (nowMs - cacheFetchedAtMs >= CACHE_TTL_MS)
-    return { kind: "spawn", reason: "stale-cache" };
-  return { kind: "skip", reason: "fresh-and-emitted" };
-}
+var SNAPSHOT_MIN_DELTA_PCT = 1;
 var WINDOW_PREFIX = Object.freeze({
   five_hour: "primary",
   seven_day: "secondary"
 });
+function fetchedAtNs(fetchedAtMs) {
+  return BigInt(Math.trunc(fetchedAtMs)) * 1000000n;
+}
+function probeEventUuid(installId, fetchedAtMs, scope) {
+  return deterministicUuid([installId, String(Math.trunc(fetchedAtMs)), scope]);
+}
+function resetsAtEpochSeconds(iso) {
+  if (iso === void 0)
+    return void 0;
+  const ms = Date.parse(iso);
+  return Number.isFinite(ms) ? Math.floor(ms / 1e3) : void 0;
+}
+function postureSnapshot(posture) {
+  const out = {};
+  if (posture?.plan_type !== void 0)
+    out.plan_type = posture.plan_type;
+  if (posture?.seat_tier !== void 0)
+    out.seat_tier = posture.seat_tier;
+  if (posture?.user_rate_limit_tier !== void 0)
+    out.user_rate_limit_tier = posture.user_rate_limit_tier;
+  return out;
+}
+function windowSnapshotEvent(input) {
+  const { cache, posture, sessionId, installId, sequence } = input;
+  const attributes = {};
+  const nextWindows = { ...input.windows };
+  let anyPresent = false;
+  let anyMoved = false;
+  for (const name of WINDOW_ORDER) {
+    const reading = cache.utilization[name];
+    if (!reading)
+      continue;
+    const usedPercent = reading.utilization;
+    if (typeof usedPercent !== "number" || !Number.isFinite(usedPercent))
+      continue;
+    anyPresent = true;
+    const resetsAt = resetsAtEpochSeconds(reading.resets_at);
+    const prefix = WINDOW_PREFIX[name];
+    attributes[`${prefix}_used_percent`] = usedPercent;
+    if (resetsAt !== void 0)
+      attributes[`${prefix}_resets_at`] = resetsAt;
+    attributes[`${prefix}_window_minutes`] = WINDOW_MINUTES[name];
+    const watermark = input.windows[name];
+    const resetsChanged = resetsAt !== void 0 && resetsAt !== watermark?.resets_at;
+    if (!watermark || resetsChanged || Math.abs(usedPercent - watermark.used_percent) >= SNAPSHOT_MIN_DELTA_PCT) {
+      anyMoved = true;
+    }
+    nextWindows[name] = resetsAt !== void 0 ? { used_percent: usedPercent, resets_at: resetsAt } : { used_percent: usedPercent };
+  }
+  if (!anyPresent || !anyMoved)
+    return { event: null, windows: input.windows };
+  Object.assign(attributes, postureSnapshot(posture));
+  return {
+    event: {
+      event_uuid: probeEventUuid(installId, cache.fetchedAtMs, "windows"),
+      event_type: "usage_limit.snapshot",
+      session_id: sessionId,
+      source: "usage.probe",
+      sequence,
+      timestamp_ns: fetchedAtNs(cache.fetchedAtMs),
+      attributes
+    },
+    windows: nextWindows
+  };
+}
+var SPEND_HEARTBEAT_MS = 36e5;
+function rawString(v) {
+  if (typeof v === "string")
+    return v.length > 0 ? v : void 0;
+  if (typeof v === "number" && Number.isFinite(v))
+    return String(v);
+  return void 0;
+}
+function intAttr(v) {
+  return typeof v === "number" && Number.isFinite(v) ? Math.trunc(v) : void 0;
+}
+function doubleAttr(v) {
+  return typeof v === "number" && Number.isFinite(v) ? v : void 0;
+}
+function spendAttributes(cache, posture) {
+  const attrs = {};
+  const spend = cache.utilization.spend;
+  const extra = cache.utilization.extra_usage;
+  const usedMinor = intAttr(spend?.used?.amount_minor);
+  if (usedMinor !== void 0)
+    attrs.spend_used_minor = usedMinor;
+  if (spend?.used?.currency !== void 0)
+    attrs.spend_currency = spend.used.currency;
+  const limitMinor = intAttr(spend?.limit);
+  if (limitMinor !== void 0)
+    attrs.spend_limit_minor = limitMinor;
+  const percent = doubleAttr(spend?.percent);
+  if (percent !== void 0)
+    attrs.spend_percent = percent;
+  if (spend?.enabled !== void 0)
+    attrs.spend_enabled = spend.enabled;
+  if (spend?.disabled_reason !== void 0)
+    attrs.spend_disabled_reason = spend.disabled_reason;
+  if (extra?.spend_limit_reached !== void 0)
+    attrs.spend_limit_reached = extra.spend_limit_reached;
+  if (extra?.is_enabled !== void 0)
+    attrs.extra_usage_enabled = extra.is_enabled;
+  if (extra?.disabled_reason !== void 0)
+    attrs.extra_usage_disabled_reason = extra.disabled_reason;
+  const monthlyLimit = rawString(extra?.monthly_limit);
+  if (monthlyLimit !== void 0)
+    attrs.extra_usage_monthly_limit = monthlyLimit;
+  const usedCredits = rawString(extra?.used_credits);
+  if (usedCredits !== void 0)
+    attrs.extra_usage_used_credits = usedCredits;
+  const extraUtilization = doubleAttr(extra?.utilization);
+  if (extraUtilization !== void 0)
+    attrs.extra_usage_utilization = extraUtilization;
+  if (extra?.credits_ever_enabled !== void 0)
+    attrs.credits_ever_enabled = extra.credits_ever_enabled;
+  if (Object.keys(attrs).length === 0)
+    return attrs;
+  Object.assign(attrs, postureSnapshot(posture));
+  return attrs;
+}
+function spendHash(attrs) {
+  const entries = Object.entries(attrs).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0).map(([k, v]) => `${k}=${String(v)}`);
+  return sha256Hex(entries.join("|"));
+}
+function usageProbeEvents(input) {
+  const { cache, posture, sessionId, installId, nowMs, state } = input;
+  const windowResult = windowSnapshotEvent({
+    cache,
+    posture,
+    sessionId,
+    installId,
+    sequence: 0,
+    windows: state?.windows ?? {}
+  });
+  const events = windowResult.event ? [windowResult.event] : [];
+  const attrs = spendAttributes(cache, posture);
+  const hasSpend = attrs.spend_used_minor !== void 0;
+  const hash = hasSpend ? spendHash(attrs) : "";
+  const heartbeatDue = state !== null && nowMs - state.spend_emitted_at_ms >= SPEND_HEARTBEAT_MS;
+  const spendChanged = state === null || hash !== state.spend_hash;
+  const emitSpend = hasSpend && (spendChanged || heartbeatDue);
+  if (emitSpend) {
+    events.push({
+      event_uuid: probeEventUuid(installId, cache.fetchedAtMs, "spend"),
+      event_type: "usage_spend.snapshot",
+      session_id: sessionId,
+      source: "usage.probe",
+      sequence: events.length,
+      timestamp_ns: fetchedAtNs(cache.fetchedAtMs),
+      attributes: attrs
+    });
+  }
+  return {
+    events,
+    state: {
+      last_fetched_at_ms: cache.fetchedAtMs,
+      last_attempt_ms: nowMs,
+      windows: windowResult.windows,
+      spend_hash: hasSpend ? hash : state?.spend_hash ?? "",
+      // Stamped from nowMs, the same clock the heartbeat gate compares it to.
+      spend_emitted_at_ms: emitSpend ? nowMs : state?.spend_emitted_at_ms ?? 0
+    }
+  };
+}
 
 // dist/shared/usage-probe/state.mjs
 import { mkdir as mkdir15, readFile as readFile18, rename as rename15, unlink as unlink4, writeFile as writeFile14 } from "node:fs/promises";
@@ -6560,12 +6822,103 @@ async function writeUsageProbeState(stateDir, state) {
   }
 }
 
+// dist/shared/usage-probe/run.mjs
+import { appendFile as appendFile5 } from "node:fs/promises";
+import { join as join30 } from "node:path";
+async function runUsageProbe(opts) {
+  const stateDir = join30(opts.dataDir, "state");
+  const nowMs = (opts.now ?? Date.now)();
+  const prior = await readUsageProbeState(stateDir);
+  try {
+    const after = await readUsageCache(opts.configPath);
+    if (after === null) {
+      await recordAttempt(stateDir, prior, nowMs);
+      return { kind: "no-cache" };
+    }
+    if (classifyReadingAdvancement(prior, after) !== "advanced") {
+      await recordAttempt(stateDir, prior, nowMs);
+      return { kind: "no-change" };
+    }
+    const posture = await readPosture(opts.configPath);
+    const installId = await new IdentityResolver(opts.dataDir).loadOrCreateInstallId();
+    const { events, state } = usageProbeEvents({
+      cache: after,
+      posture,
+      sessionId: opts.sessionId,
+      installId,
+      nowMs,
+      state: prior
+    });
+    const { filtered, dropped: filteredOut } = filterEvents(events, defaultPolicy());
+    const survived = new Set(filtered.map((ev) => ev.event_type));
+    const persisted = {
+      ...state,
+      ...survived.has("usage_limit.snapshot") ? {} : { windows: prior?.windows ?? {} },
+      ...survived.has("usage_spend.snapshot") ? {} : {
+        spend_hash: prior?.spend_hash ?? "",
+        spend_emitted_at_ms: prior?.spend_emitted_at_ms ?? 0
+      }
+    };
+    if (filtered.length === 0) {
+      await writeUsageProbeState(stateDir, persisted);
+      return { kind: "no-change", filteredOut };
+    }
+    const outboundDir = join30(opts.dataDir, "outbound");
+    const queue = new Queue(outboundDir, opts.queueCapBytes ?? QUEUE_CAP_BYTES);
+    const append = await enqueueEvents(queue, filtered);
+    if (append.dropped > 0) {
+      await recordAttempt(stateDir, prior, nowMs);
+      return { kind: "queue-full" };
+    }
+    await writeUsageProbeState(stateDir, persisted);
+    return { kind: "emitted", enqueued: append.written, filteredOut };
+  } catch (err) {
+    await recordAttempt(stateDir, prior, nowMs);
+    return { kind: "run-failed", error: err };
+  }
+}
+function classifyReadingAdvancement(prior, after) {
+  if (prior !== null && after.fetchedAtMs <= prior.last_fetched_at_ms) {
+    return "already-processed";
+  }
+  return "advanced";
+}
+async function recordAttempt(stateDir, prior, nowMs) {
+  await writeUsageProbeState(stateDir, {
+    last_fetched_at_ms: prior?.last_fetched_at_ms ?? 0,
+    last_attempt_ms: nowMs,
+    windows: prior?.windows ?? {},
+    spend_hash: prior?.spend_hash ?? "",
+    spend_emitted_at_ms: prior?.spend_emitted_at_ms ?? 0
+  });
+}
+async function logProbeOutcome(dataDir2, outcome) {
+  const lines = [];
+  const filteredOut = "filteredOut" in outcome ? outcome.filteredOut ?? 0 : 0;
+  if (filteredOut > 0) {
+    lines.push(`usage-probe: ${filteredOut} event(s) over the ${defaultPolicy().maxSerializedBytes}-byte cap`);
+  }
+  if (outcome.kind === "run-failed") {
+    const err = outcome.error;
+    const msg = err instanceof Error ? err.stack ?? err.message : String(err);
+    lines.push(`usage-probe: run failed: ${msg}`);
+  }
+  if (lines.length === 0)
+    return;
+  const at = (/* @__PURE__ */ new Date()).toISOString();
+  try {
+    await appendFile5(join30(dataDir2, "collect-error.log"), lines.map((line) => `${at} ${line}
+`).join(""));
+  } catch {
+  }
+}
+
 // dist/shared/usage-probe/lease.mjs
 import { mkdirSync as mkdirSync2 } from "node:fs";
-import { join as join30 } from "node:path";
+import { join as join31 } from "node:path";
 var MAX_PROBE_LEASE_AGE_MS = DEFAULT_MAX_LEASE_AGE_MS;
 function usageProbeLeasePath(stateDir) {
-  return join30(stateDir, "usage-probe.lock");
+  return join31(stateDir, "usage-probe.lock");
 }
 function acquireProbeLease(stateDir) {
   try {
@@ -6574,41 +6927,8 @@ function acquireProbeLease(stateDir) {
   }
   return acquireLease(usageProbeLeasePath(stateDir), MAX_PROBE_LEASE_AGE_MS);
 }
-function recordProbeLeaseHolder(stateDir, pid) {
-  recordLeaseHolder(usageProbeLeasePath(stateDir), pid);
-}
 function releaseProbeLease(stateDir) {
   releaseLease(usageProbeLeasePath(stateDir));
-}
-
-// dist/shared/usage-probe/spawn.mjs
-import { dirname as dirname8, join as join31 } from "node:path";
-init_runner_env();
-var USAGE_PROBE_REL_PATH = join31("dist", "shared", "bin", "usage-probe.mjs");
-function usageProbeBinPath(pluginRoot) {
-  return pluginBinPath(pluginRoot, USAGE_PROBE_REL_PATH);
-}
-function buildProbeEnv(env, configPath) {
-  const out = {
-    ...buildRunnerEnv(env),
-    CLAUDE_CONFIG_DIR: dirname8(configPath),
-    FANCYSAUCE_USAGE_PROBE: "1"
-  };
-  if (env.CLAUDE_CODE_ENTRYPOINT)
-    out.CLAUDE_CODE_ENTRYPOINT = env.CLAUDE_CODE_ENTRYPOINT;
-  return out;
-}
-async function spawnUsageProbe(input) {
-  const binPath = usageProbeBinPath(input.pluginRoot);
-  const args = [input.sessionId, input.configPath, input.dataDir];
-  const env = buildProbeEnv(input.env, input.configPath);
-  const spawnFn = input.spawner ?? spawnDetached;
-  try {
-    const { pid } = await spawnFn(binPath, args, env);
-    return { kind: "spawned", pid };
-  } catch (err) {
-    return { kind: "error", reason: err.message };
-  }
 }
 
 // dist/agents/claude-code/collect.mjs
@@ -6634,7 +6954,7 @@ async function maybeRefreshWhoami(deps = {}) {
   if (lease.kind === "held")
     return "held";
   const spawned = await spawnWhoamiRefresh({
-    pluginRoot: deps.pluginRoot ?? pluginRootFrom(dirname9(fileURLToPath4(import.meta.url))),
+    pluginRoot: deps.pluginRoot ?? pluginRootFrom(dirname8(fileURLToPath4(import.meta.url))),
     ...deps.spawner !== void 0 ? { spawner: deps.spawner } : {}
   });
   if (spawned.kind === "error") {
@@ -6645,6 +6965,8 @@ async function maybeRefreshWhoami(deps = {}) {
   return "spawned";
 }
 async function maybeProbeUsage(deps) {
+  if (!isValidSessionId(deps.sessionId))
+    return "skipped";
   let root;
   try {
     root = deps.dataDir ?? resolveDataDir();
@@ -6661,42 +6983,21 @@ async function maybeProbeUsage(deps) {
   const chosen = await readPostureFromCandidates(paths);
   if (chosen.posture === null || !postureHasFields(chosen.posture))
     return "skipped";
-  if (!isAbsolute3(chosen.path))
-    return "skipped";
-  const cache = await readUsageCache(chosen.path);
-  const decision = decideProbe({
-    nowMs: now,
-    cacheFetchedAtMs: cache?.fetchedAtMs ?? null,
-    state
-  });
-  if (decision.kind === "skip")
-    return "skipped";
-  const lease = acquireProbeLease(stateDir);
-  if (lease.kind === "held")
+  if (acquireProbeLease(stateDir).kind === "held")
     return "held";
-  await writeUsageProbeState(stateDir, {
-    ...state ?? { last_fetched_at_ms: 0, windows: {}, spend_hash: "", spend_emitted_at_ms: 0 },
-    last_attempt_ms: now
-  });
-  const spawned = await spawnUsageProbe({
-    pluginRoot: deps.pluginRoot ?? pluginRootFrom(dirname9(fileURLToPath4(import.meta.url))),
-    sessionId: deps.sessionId,
-    configPath: chosen.path,
-    dataDir: root,
-    // buildProbeEnv derives the child's env from what it is handed, not from
-    // process.env, so the hook's own env has to travel with the request.
-    env,
-    ...deps.spawner !== void 0 ? { spawner: deps.spawner } : {}
-  });
-  if (spawned.kind === "error") {
+  let outcome;
+  try {
+    outcome = await runUsageProbe({
+      sessionId: deps.sessionId,
+      configPath: chosen.path,
+      dataDir: root,
+      now: () => now
+    });
+  } finally {
     releaseProbeLease(stateDir);
-    return "spawn-failed";
   }
-  recordProbeLeaseHolder(stateDir, spawned.pid);
-  return "spawned";
-}
-function shouldSkipForProbe(env) {
-  return env.FANCYSAUCE_USAGE_PROBE === "1";
+  await logProbeOutcome(root, outcome);
+  return outcome.kind;
 }
 function whoamiNotice(deps = {}) {
   const resolved = resolveCredentialSync({
@@ -6723,8 +7024,6 @@ function readStdin() {
   }
 }
 async function main() {
-  if (shouldSkipForProbe(process.env))
-    return;
   const killer = setTimeout(() => process.exit(0), HOOK_BUDGET_MS2);
   killer.unref?.();
   try {
@@ -6773,6 +7072,5 @@ export {
   pluginRootFrom,
   runCollectOnce,
   serializeForQueue,
-  shouldSkipForProbe,
   whoamiNotice
 };

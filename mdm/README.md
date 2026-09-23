@@ -1,6 +1,6 @@
 # Deploying fancysauce-savings via MDM
 
-This guide is for IT/MDM administrators rolling out fancysauce telemetry to a
+This guide is for IT/MDM administrators rolling out fancysauce usage analytics to a
 managed fleet — the `fancysauce-savings` plugin for Claude Code, and the
 managed-hook path for OpenAI Codex. It works with **any** MDM. Product-specific
 walkthroughs live in subfolders:
@@ -15,7 +15,7 @@ variable-substitution primitives.
 
 ## The two things every deployment must do
 
-There are two ways to deliver Claude Code telemetry. The **plugin arm** below is
+There are two ways to deliver Claude Code usage analytics. The **plugin arm** below is
 the original one. The **managed-hooks arm** ([below](#claude-code-without-the-plugin--managed-hooks))
 needs no plugin install at all and runs a release you pin. Pick one per fleet —
 running both on one Mac collects every session twice.
@@ -38,8 +38,8 @@ Write this file system-wide. On macOS:
 
 - It contains **no secrets** and is **identical for every tenant and user** — deploy it device-wide.
 - Managed settings **register** the marketplace and **enable** the plugin; they do not install it. As of Claude Code v2.1.195 the documentation states that adding a marketplace does not install a plugin that comes from an external source, and it names no exception for managed settings. On this arm the user still runs `claude plugin install fancysauce-savings@fancysauce` (or `/plugin install fancysauce-savings@fancysauce`) once. For an install-free route, use the [managed-hooks arm](#claude-code-without-the-plugin--managed-hooks).
-- You don't bundle or host any plugin code either way: the plugin comes from the public GitHub repo `FancysauceAI/fancysauce-savings`.
-- Because the plugin is **force-enabled via managed settings**, its hooks load even if your managed settings also set `allowManagedHooksOnly`. If you enforce `strictKnownMarketplaces`, add the `fancysauce` marketplace to the allowlist.
+- You don't bundle or host any plugin code either way: the plugin comes from the GitHub dist repo `FancysauceAI/fancysauce-savings`.
+- Because the plugin is **force-enabled via managed settings**, its hooks load even if your managed settings also set `allowManagedHooksOnly`. If you enforce `strictKnownMarketplaces`, add the marketplace registered above to the allowlist.
 - Requires Claude Code **2.1.141+** for reliable `extraKnownMarketplaces`.
 - The plugin registers its hooks in **exec form** (`"command": "node"` plus an
   `args` array), which is what keeps a Windows plugin path from reaching a shell
@@ -47,7 +47,7 @@ Write this file system-wide. On macOS:
   the hooks documentation states no minimum version for it, but we have not
   established the floor. A client too old to read `args` would run bare `node`
   and fail on every event. If any machine in your fleet runs a Claude Code older
-  than the 2.1.141 floor above, confirm telemetry on one of them first.
+  than the 2.1.141 floor above, confirm usage analytics on one of them first.
 
 ### 2. Give each user a credential — the credentials file
 
@@ -60,7 +60,7 @@ Write a per-user JSON file. macOS path (either is read; the system path wins if 
 {
   "schema_version": 1,
   "issued_at": "2026-06-30T12:00:00.000Z",
-  "credential": "fs_live_t_<your-tenant-key>",
+  "credential": "fs_ingest_<your-ingest-token>",
   "identity_hint": {
     "source": "mdm_file",
     "user_email": "<the-user's-email>",
@@ -74,7 +74,7 @@ Write a per-user JSON file. macOS path (either is read; the system path wins if 
 |---|---|---|
 | `schema_version` | yes | Always `1`. |
 | `issued_at` | yes | ISO 8601 UTC string. Stamp it when you write the file. |
-| `credential` | yes | Your org-wide tenant key (`fs_live_t_…`) from the fancysauce dashboard. The **same key for all users** — per-user identity comes from `identity_hint`, not from distinct keys. |
+| `credential` | yes | Your workspace's ingest token (`fs_ingest_…`) from the fancysauce dashboard. It is write-only: it can append usage events to your workspace and nothing else. The **same token for all users** — per-user identity comes from `identity_hint`, not from distinct tokens. Tokens minted before the rename, spelled `fs_live_t_…`, are the same class and remain valid; there is no need to re-deploy. |
 | `identity_hint.source` | yes | Always `"mdm_file"` for MDM deployments. |
 | `identity_hint.user_email` | recommended | The user's email. This is what the plugin uses to attribute usage. Substitute your MDM's per-user email variable here. |
 | `identity_hint.user_upn` | optional | Set if your directory has a UPN distinct from email. |
@@ -88,7 +88,7 @@ or later must be on `PATH`** for the user running Claude Code. Claude Code's own
 installers don't require Node, so a managed fleet can be entirely Node-free with
 every developer running Claude Code happily — and collecting nothing. Add
 `node --version` to your MDM's detection or inventory rules before you roll out,
-and treat a machine without it as unprovisioned rather than as a telemetry bug.
+and treat a machine without it as unprovisioned rather than as an analytics bug.
 
 ## Hard requirements (the plugin enforces these)
 
@@ -102,7 +102,7 @@ and treat a machine without it as unprovisioned rather than as a telemetry bug.
 
 MDMs substitute per-user variables (`$EMAIL`, `{{UserEmail}}`, …) in **specific places only** — and "inside a file dropped by a package" or "inside a script body" is often **not** one of them.
 
-- **Jamf Pro:** substitutes `$EMAIL` **only inside configuration-profile payloads** — never inside package files or scripts. The Jamf template therefore delivers the email via a configuration profile (managed-preferences domain `ai.fancysauce.identity`) and a login script reads it back. See [`jamf/README.md`](jamf/README.md).
+- **Jamf Pro:** substitutes `$EMAIL` **only inside configuration-profile payloads** — never inside package files or scripts. The Jamf template's optional identity profile delivers the email that way (managed-preferences domain `ai.fancysauce.identity`) and a login script reads it back; without the profile the plugin attributes by the developer's Claude Code / Codex sign-in. See [`jamf/README.md`](jamf/README.md).
 - **Kandji:** substitutes `$EMAIL` **directly in a Custom Script body** (bash, not zsh), so a single root script writes the file with the email inlined. See [`kandji/README.md`](kandji/README.md).
 - **Intune (Windows):** substitutes `{{UserEmail}}` / `{{UserPrincipalName}}` for **user-targeted** policies on Entra-joined devices. See [`intune/README.md`](intune/README.md).
 
@@ -129,23 +129,23 @@ stat -f "%A %Su %N" ~/.config/fancysauce/credentials.json   # expect: 600 <user>
 #    are tagged with the user's hashed email (handle_email) or OS handle (handle_os).
 ```
 
-## Key rotation
+## Ingest token rotation
 
-The tenant key is long-lived. To rotate, update the key in your MDM artifact
+The ingest token is long-lived. To rotate, update the token in your MDM artifact
 (package template, config profile, or script) and let the MDM re-run the
 deployment — each tool's README covers the exact step. Revocation is server-side;
-a revoked key simply stops being accepted at ingest.
+a revoked token simply stops being accepted at ingest.
 
 ## Deploying to OpenAI Codex
 
-Codex telemetry uses an **enforced hook** instead of a plugin. Enforced hooks are
+Codex usage analytics use an **enforced hook** instead of a plugin. Enforced hooks are
 auto-trusted — they run zero-step with no user prompt. Three things to deploy
 (MDM-agnostic — adapt file delivery to your tool):
 
 > **Kandji and Jamf admins:** skip the manual steps below — the
 > [Kandji](kandji/README.md) single Custom Script and the
-> [Jamf](jamf/README.md) Composer package each deploy the Codex artifacts
-> alongside the Claude Code ones. Codex on Windows is not yet supported (the
+> [Jamf](jamf/README.md) package (built by `jamf/build-pkg.sh`) each deploy
+> the Codex artifacts alongside the Claude Code ones. Codex on Windows is not yet supported (the
 > wrapper is POSIX `sh`); see [`intune/README.md`](intune/README.md).
 
 ### 1. Deploy `requirements.toml`
@@ -175,7 +175,7 @@ but does **not** distribute scripts — deliver this one via your MDM. It requir
 `git`, `node`, and `perl` (present on typical dev machines). It is fail-open: it
 never breaks a Codex session, git-fetches the pinned/floating code from the public
 `FancysauceAI/fancysauce-savings` repo into `~/.cache/fancysauce/codex/`, and runs
-telemetry from there. No plugin is installed; nothing is written to Codex config.
+usage analytics from there. No plugin is installed; nothing is written to Codex config.
 
 In pinned mode the cached checkout is verified against your `--sha` on **every** event,
 not just when it is first fetched, so a cache directory that is not that exact commit is
@@ -189,7 +189,7 @@ with a single deadline (`FANCYSAUCE_CODEX_BUDGET`, default 45s; per-call
 
 Same `credentials.json` as Claude Code (see the credential section above) — it is
 tool-agnostic. Codex reads it via the same precedence (system file → user file →
-`FANCYSAUCE_API_KEY`). Without it, telemetry is captured locally and uploads once
+`FANCYSAUCE_API_KEY`). Without it, usage data is captured locally and uploads once
 the credential is present.
 
 ## Claude Code without the plugin — managed hooks
@@ -212,13 +212,15 @@ the release it started with only until some session on that Mac fetches the new
 one; from then on its next hook event runs the new release. No plugin is
 installed, and you move the whole fleet by changing one pin.
 
-The Kandji Custom Script deploys this arm. Set `CC_MODE="managed-hooks"` (the
-default) at the top of `kandji/deploy.sh`; `CC_MODE="plugin"` writes the
-marketplace settings above instead. See [`kandji/README.md`](kandji/README.md).
+Both macOS templates deploy this arm. On Kandji, set `CC_MODE="managed-hooks"`
+(the default) at the top of `kandji/deploy.sh`; `CC_MODE="plugin"` writes the
+marketplace settings above instead. On Jamf, `jamf/build-pkg.sh --cc-mode
+managed-hooks` (the default) stages the same files into a package. See
+[`kandji/README.md`](kandji/README.md) and [`jamf/README.md`](jamf/README.md).
 
 Read all of the following before you choose this arm.
 
-- **It is telemetry-only.** No skills, no slash commands, no statusline, no MCP
+- **It is analytics-only.** No skills, no slash commands, no statusline, no MCP
   tools. Those come from the plugin. A fleet that wants them stays on the plugin
   arm.
 - **It never touches your `managed-settings.json`.** The arm writes one drop-in
@@ -231,7 +233,7 @@ Read all of the following before you choose this arm.
   fleet before you roll out.
 - **`disableAllHooks` silences it.** That setting is a normal enterprise posture
   and it suppresses managed hooks too. A fleet that sets it gets silence, not
-  telemetry, and nothing reports an error — the wrapper is fail-open by design.
+  usage analytics, and nothing reports an error — the wrapper is fail-open by design.
 - **`enabledPlugins: { "fancysauce-savings@fancysauce": false }` is deliberate.**
   The plugin and these hooks on one Mac collect the same session twice under two
   install ids, which doubles every count and every dollar figure. Do not remove it.
@@ -296,7 +298,7 @@ check-in, so any edit to it is lost at the next one.
    exist at all.** The Claude Code documentation describes that file as the merge
    base but does not say what happens when it is absent, and we could not
    establish it from the docs. On a Mac with no managed settings of your own,
-   confirm telemetry arrives before rolling out. If it turns out a base file is
+   confirm usage analytics arrive before rolling out. If it turns out a base file is
    required, an empty `{}` at that path is enough.
 
 #### A configuration profile outranks all of this
@@ -389,13 +391,13 @@ script deletes that file outright — the name is exclusively ours.
 `/etc/fancysauce/claude-code.pin` is one line, root-owned, mode `0644`:
 
 ```
-v0.17.0 c5ff8de67006b4f6e056fd9291d73d03788f89e8
+v0.18.0 c7eb31773c818649a3aa8331d295cf69a11c06d2
 ```
 
 Resolve the sha for a tag with:
 
 ```sh
-git ls-remote https://github.com/FancysauceAI/fancysauce-savings.git 'refs/tags/v0.17.0^{}'
+git ls-remote https://github.com/FancysauceAI/fancysauce-savings.git 'refs/tags/v0.18.0^{}'
 ```
 
 The wrapper validates both fields on every read (`vX.Y.Z` tag, 40 hex sha). A
@@ -427,8 +429,8 @@ configuration works around it.
 For machines you don't manage with an MDM — CI runners, shared build boxes, a
 developer's own headless host — the fancysauce dashboard's **`/headless-install`**
 page generates a copy-paste provisioning script that sets up the same
-managed-hook path described above. It carries the tenant key as an ambient
-`FANCYSAUCE_TENANT_KEY` environment variable, which the first tool run graduates
-into the usual `0600` credential file, so the secret never lands in a command
-line or a shell history entry. The telemetry mechanism is identical — only the
+managed-hook path described above. It carries the ingest token as an ambient
+`FANCYSAUCE_INGEST_TOKEN` environment variable, which the first tool run
+graduates into the usual `0600` credential file, so it never lands in a command
+line or a shell history entry. The delivery mechanism is identical — only the
 delivery differs.

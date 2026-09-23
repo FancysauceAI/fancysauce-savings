@@ -5,21 +5,21 @@
   },
   "metadata": {
     "description": "FancysauceAI team-build plugin for Claude Code",
-    "version": "0.18.0"
+    "version": "0.18.1"
   },
   "plugins": [
     {
       "name": "fancysauce-savings",
       "source": "./claude-code",
-      "description": "Cost and usage observability for Claude Code (team build)",
-      "version": "0.18.0",
+      "description": "Usage analytics for Claude Code (team build)",
+      "version": "0.18.1",
       "author": {
         "name": "FancysauceAI"
       },
       "keywords": [
         "observability",
         "cost",
-        "telemetry",
+        "analytics",
         "otel",
         "claude-code"
       ],

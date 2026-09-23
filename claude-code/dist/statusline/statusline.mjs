@@ -81,7 +81,10 @@ function loadStatusLineConfig(dataDir) {
 }
 
 // dist/shared/plugin-commands.mjs
-var LOGIN_COMMAND = "/fancysauce-savings:login";
+var COMMAND_PREFIX = "/fancysauce-savings:";
+var LOGIN_COMMAND = `${COMMAND_PREFIX}login`;
+var RESET_COMMAND = `${COMMAND_PREFIX}reset`;
+var UPLOAD_HISTORY_COMMAND = `${COMMAND_PREFIX}upload-history`;
 
 // dist/statusline/ansi.mjs
 var RESET = "\x1B[0m";
@@ -351,7 +354,7 @@ function updateCumulative(sessionDir, current) {
 
 // dist/shared/whoami/credential.mjs
 import { readFileSync as readFileSync3, statSync } from "node:fs";
-import { posix as posix2, win32 as win322 } from "node:path";
+import { posix as posix2, win32 as win323 } from "node:path";
 
 // dist/shared/credential-paths.mjs
 import { homedir } from "node:os";
@@ -376,6 +379,10 @@ import { join as join3 } from "node:path";
 import { homedir as homedir2 } from "node:os";
 
 // dist/shared/credential-file.mjs
+import { dirname, win32 as win322 } from "node:path";
+var SYSTEM32 = win322.join(process.env.SystemRoot ?? "C:\\Windows", "System32");
+var ICACLS_EXE = win322.join(SYSTEM32, "icacls.exe");
+var WHOAMI_EXE = win322.join(SYSTEM32, "whoami.exe");
 function permissiveModeReason(mode) {
   if ((mode & 63) === 0)
     return null;
@@ -456,7 +463,10 @@ function validateIdentityHint(v) {
 }
 
 // dist/shared/tenant-key-bootstrap.mjs
-var KEY_RE = /^fs_(live|test)_t_[A-Za-z0-9_-]{43}$/;
+var KEY_RE = /^fs_(?:ingest(?:_test)?|(?:live|test)_t)_[A-Za-z0-9_-]{43}$/;
+function ingestTokenFromEnv(env) {
+  return env.FANCYSAUCE_INGEST_TOKEN || env.FANCYSAUCE_TENANT_KEY || "";
+}
 
 // dist/shared/config.mjs
 var DEFAULT_LOGIN_STATE_DIR = join3(homedir2(), ".config", "fancysauce");
@@ -499,7 +509,7 @@ function whoamiCredentialPaths() {
   return parsed ? { system: parsed.system, user: parsed.user } : credentialPaths();
 }
 function pathFlavor() {
-  return process.platform === "win32" ? win322 : posix2;
+  return process.platform === "win32" ? win323 : posix2;
 }
 function resolveCredentialSync(opts = {}) {
   const paths = opts.paths ?? whoamiCredentialPaths();
@@ -514,7 +524,7 @@ function resolveCredentialSync(opts = {}) {
     return withFingerprint("user", usr.token, usr.apiEndpoint);
   if (usr.kind === "malformed")
     return null;
-  const tenantKey = env.FANCYSAUCE_TENANT_KEY ?? "";
+  const tenantKey = ingestTokenFromEnv(env);
   if (KEY_RE.test(tenantKey))
     return withFingerprint("env_tenant_key", tenantKey, null);
   const apiKey = env.FANCYSAUCE_API_KEY;

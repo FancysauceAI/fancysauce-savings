@@ -1818,20 +1818,41 @@ function defaultPolicy() {
 
 // dist/shared/credential-file.mjs
 import { mkdir, rename, open, chmod, unlink, readFile, stat } from "node:fs/promises";
-import { dirname } from "node:path";
+import { dirname, win32 } from "node:path";
 import { randomBytes } from "node:crypto";
-async function writeCredential(path, cred) {
+import { userInfo } from "node:os";
+
+// dist/shared/run-command.mjs
+import { execFile } from "node:child_process";
+function runCommand(cmd, args, timeoutMs, opts = {}) {
+  return new Promise((resolve, reject) => {
+    execFile(cmd, args, { timeout: timeoutMs, ...opts }, (err, stdout) => {
+      if (err)
+        return reject(err);
+      resolve(stdout.toString());
+    });
+  });
+}
+
+// dist/shared/credential-file.mjs
+async function writeCredential(path, cred, deps = {}) {
+  const platform = deps.platform ?? process.platform;
   const parent = dirname(path);
   await mkdir(parent, { recursive: true, mode: 448 });
-  if (process.platform !== "win32") {
+  if (platform !== "win32") {
     await chmod(parent, 448).catch(() => {
     });
   }
+  const protect = platform === "win32" ? windowsAclProtector(deps) : void 0;
+  if (protect)
+    await protect(parent, "dir");
   const tmp = `${path}.${process.pid}.${randomBytes(4).toString("hex")}.tmp`;
   let renamed = false;
   try {
     const fh = await open(tmp, "wx", 384);
     try {
+      if (protect)
+        await protect(tmp, "file");
       await fh.writeFile(JSON.stringify(cred));
       await fh.sync();
     } finally {
@@ -1847,6 +1868,72 @@ async function writeCredential(path, cred) {
       }
     }
   }
+}
+var SYSTEM32 = win32.join(process.env.SystemRoot ?? "C:\\Windows", "System32");
+var ICACLS_EXE = win32.join(SYSTEM32, "icacls.exe");
+var WHOAMI_EXE = win32.join(SYSTEM32, "whoami.exe");
+var SYSTEM_SID = "*S-1-5-18";
+var ADMINISTRATORS_SID = "*S-1-5-32-544";
+var PROTECT_BUDGET_MS = 2e3;
+var WHOAMI_MAX_MS = 1e3;
+var SPAWN_FLOOR_MS = 250;
+var CredentialProtectionError = class extends Error {
+  reason;
+  remedy;
+  constructor(reason, remedy) {
+    super(`could not protect it (${reason}). Protect the folder by hand, then try again: ${remedy}`);
+    this.reason = reason;
+    this.remedy = remedy;
+    this.name = "CredentialProtectionError";
+  }
+};
+function icaclsArgs(target, trustee, kind) {
+  const rights = kind === "dir" ? "(OI)(CI)(F)" : "(F)";
+  return [
+    target,
+    "/inheritance:r",
+    "/grant:r",
+    `${trustee}:${rights}`,
+    "/grant:r",
+    `${SYSTEM_SID}:${rights}`,
+    "/grant:r",
+    `${ADMINISTRATORS_SID}:${rights}`
+  ];
+}
+function windowsAclProtector(deps) {
+  const runner = deps.runner ?? ((cmd, args, timeoutMs) => runCommand(cmd, args, timeoutMs, { windowsHide: true }));
+  const env = deps.env ?? process.env;
+  const now = deps.now ?? Date.now;
+  const deadline = now() + (deps.budgetMs ?? PROTECT_BUDGET_MS);
+  const left = () => {
+    const ms = deadline - now();
+    if (ms < SPAWN_FLOOR_MS)
+      throw new Error(`timed out with ${ms} ms of the budget left`);
+    return ms;
+  };
+  let trustee;
+  return async (target, kind) => {
+    try {
+      trustee ??= await windowsTrustee(runner, env, Math.min(WHOAMI_MAX_MS, left()));
+      await runner(ICACLS_EXE, icaclsArgs(target, trustee, kind), left());
+    } catch (err) {
+      const dir = kind === "dir" ? target : dirname(target);
+      const args = icaclsArgs(dir, trustee ?? "%USERDOMAIN%\\%USERNAME%", "dir");
+      const remedy = `icacls ${args.map((a) => `"${a}"`).join(" ")}`;
+      throw new CredentialProtectionError(err.message, remedy);
+    }
+  };
+}
+async function windowsTrustee(runner, env, timeoutMs) {
+  try {
+    const out = await runner(WHOAMI_EXE, ["/user", "/fo", "csv", "/nh"], timeoutMs);
+    const sid = /\bS-1-[0-9-]+\b/.exec(out);
+    if (sid)
+      return `*${sid[0]}`;
+  } catch {
+  }
+  const { username } = userInfo();
+  return env.USERDOMAIN ? `${env.USERDOMAIN}\\${username}` : username;
 }
 async function readCredential(paths) {
   const sys = await tryReadOne(paths.system);
@@ -1971,7 +2058,10 @@ function validateIdentityHint(v) {
 }
 
 // dist/shared/tenant-key-bootstrap.mjs
-var KEY_RE = /^fs_(live|test)_t_[A-Za-z0-9_-]{43}$/;
+var KEY_RE = /^fs_(?:ingest(?:_test)?|(?:live|test)_t)_[A-Za-z0-9_-]{43}$/;
+function ingestTokenFromEnv(env) {
+  return env.FANCYSAUCE_INGEST_TOKEN || env.FANCYSAUCE_TENANT_KEY || "";
+}
 function decide(existing, args) {
   switch (existing.source) {
     case "absent":
@@ -1994,7 +2084,7 @@ function decide(existing, args) {
 }
 async function ensureAmbientTenantCredential(existing, paths, opts = {}) {
   const env = opts.env ?? process.env;
-  const tenantKey = env.FANCYSAUCE_TENANT_KEY ?? "";
+  const tenantKey = ingestTokenFromEnv(env);
   if (!KEY_RE.test(tenantKey))
     return { result: existing, wrote: false };
   const identity = env.FANCYSAUCE_IDENTITY_TYPE === "hash" ? "hash" : "full";
@@ -2010,7 +2100,7 @@ async function ensureAmbientTenantCredential(existing, paths, opts = {}) {
     identity_type: identity
   };
   try {
-    await writeCredential(paths.user, cred);
+    await writeCredential(paths.user, cred, opts.writeDeps);
     return { result: { source: "user", credential: cred }, wrote: true };
   } catch (err) {
     (opts.logger ?? ((m) => process.stderr.write(m + "\n")))(`fancysauce: ambient tenant-key write failed: ${err.message}`);
@@ -2020,14 +2110,14 @@ async function ensureAmbientTenantCredential(existing, paths, opts = {}) {
 
 // dist/shared/credential-paths.mjs
 import { homedir } from "node:os";
-import { posix, win32 } from "node:path";
+import { posix, win32 as win322 } from "node:path";
 function credentialPaths() {
   if (process.platform === "win32") {
     const programData = process.env.PROGRAMDATA ?? "C:\\ProgramData";
-    const appData = process.env.APPDATA ?? win32.join(homedir(), "AppData", "Roaming");
+    const appData = process.env.APPDATA ?? win322.join(homedir(), "AppData", "Roaming");
     return {
-      system: win32.join(programData, "fancysauce", "credentials.json"),
-      user: win32.join(appData, "fancysauce", "credentials.json")
+      system: win322.join(programData, "fancysauce", "credentials.json"),
+      user: win322.join(appData, "fancysauce", "credentials.json")
     };
   }
   return {
@@ -2043,6 +2133,7 @@ var KNOWN_FANCYSAUCE_VARS = /* @__PURE__ */ new Set([
   "FANCYSAUCE_CREDENTIAL_PATHS",
   "FANCYSAUCE_API_KEY",
   "FANCYSAUCE_IDENTITY_TYPE",
+  "FANCYSAUCE_INGEST_TOKEN",
   "FANCYSAUCE_TENANT_KEY"
 ]);
 function parseCredentialPathsEnv() {
@@ -2599,6 +2690,7 @@ var ATTR_TYPE = {
   plan_type: "string",
   seat_tier: "string",
   rate_limit_tier: "string",
+  user_rate_limit_tier: "string",
   billing_type: "string",
   extra_usage_enabled: "bool",
   extra_usage_disabled_reason: "string",
@@ -2665,6 +2757,19 @@ var ATTR_TYPE = {
   extra_usage_utilization: "double",
   credits_ever_enabled: "bool"
 };
+var RESOURCE_ATTRIBUTE_KEYS = [
+  "service.name",
+  "service.version",
+  "fancysauce.schema_version",
+  "fancysauce.install_id",
+  "fancysauce.agent",
+  "fancysauce.runtime",
+  "os.type",
+  "host.arch",
+  "fancysauce.harness_entrypoint",
+  "fancysauce.user.identity_source",
+  "fancysauce.secure_envelope"
+];
 function encodeOtlp(events, resource, observedTimeUnixNano) {
   const observed = observedTimeUnixNano ?? BigInt(Date.now()) * 1000000n;
   return {
@@ -2683,18 +2788,7 @@ function encodeOtlp(events, resource, observedTimeUnixNano) {
 }
 function encodeResourceAttributes(r) {
   const out = [];
-  const order = [
-    "service.name",
-    "service.version",
-    "fancysauce.schema_version",
-    "fancysauce.install_id",
-    "fancysauce.agent",
-    "os.type",
-    "fancysauce.harness_entrypoint",
-    "fancysauce.user.identity_source",
-    "fancysauce.secure_envelope"
-  ];
-  for (const key of order) {
+  for (const key of RESOURCE_ATTRIBUTE_KEYS) {
     const v = r[key];
     if (v === void 0)
       continue;
@@ -3101,7 +3195,6 @@ import { join as join11 } from "node:path";
 import { randomBytes as randomBytes4 } from "node:crypto";
 
 // dist/shared/identity-sources.mjs
-import { execFile } from "node:child_process";
 var TIMEOUT_MS = 200;
 var MAX_EMAIL_LENGTH = 320;
 function plausibleEmail(value) {
@@ -3117,18 +3210,9 @@ function plausibleEmail(value) {
     return null;
   return trimmed;
 }
-function defaultRunner(cmd, args, timeoutMs) {
-  return new Promise((resolve, reject) => {
-    execFile(cmd, args, { timeout: timeoutMs }, (err, stdout) => {
-      if (err)
-        return reject(err);
-      resolve(stdout.toString());
-    });
-  });
-}
 var GIT_SCOPES = /* @__PURE__ */ new Set(["local", "worktree", "global", "system", "command"]);
 async function readGitConfigEmail(cwd, deps = {}) {
-  const runner = deps.runner ?? defaultRunner;
+  const runner = deps.runner ?? runCommand;
   try {
     const out = await runner("git", ["-C", cwd, "config", "--show-scope", "--get", "user.email"], TIMEOUT_MS);
     const tab = out.indexOf("	");
@@ -3153,7 +3237,7 @@ async function readMacOsDsclEmail(deps = {}) {
   const platform = deps.platform ?? process.platform;
   if (platform !== "darwin")
     return null;
-  const runner = deps.runner ?? defaultRunner;
+  const runner = deps.runner ?? runCommand;
   const user = deps.username ?? process.env.USER ?? process.env.LOGNAME;
   if (!user)
     return null;
@@ -3169,7 +3253,7 @@ async function readWindowsUpn(deps = {}) {
   const platform = deps.platform ?? process.platform;
   if (platform !== "win32")
     return null;
-  const runner = deps.runner ?? defaultRunner;
+  const runner = deps.runner ?? runCommand;
   try {
     const out = await runner("whoami", ["/upn"], TIMEOUT_MS);
     return plausibleEmail(out);
@@ -3204,7 +3288,7 @@ import { join as join8 } from "node:path";
 var BAKED_SERVER_KEY = {
   keyid: "env-production-1",
   alg: "RSA-OAEP-256+A256GCM",
-  publicKeyPem: "-----BEGIN PUBLIC KEY-----\nMIIBojANBgkqhkiG9w0BAQEFAAOCAY8AMIIBigKCAYEA4Dh42p0kvReuiL194qp3\n8j0BSjOmwW9WU9NUUSlBSA1Kn0WPdfMKywsD+DPrlt/KyOKdNLoUXsXrriM212Si\nMgabz4e4pK8ItqgqCg1wPFArY8SEoy8MioMj8iZVz/UPeR3/7Rng8LT50HiaB/kc\nwkBjjLnSU2xYQkKROKMGuTlKDZ4BCpP/uVCFTrZ5BUFEn3r2WyAl3Z6NBjO9hTPB\njKx1AH+CitIZeWVmn39EUwrzUW+LiXbEe1Y+0SXkpTgdqvVMzMjytlEp5Ojisvs1\n/GqoHRoN/NcESILK2s4Rabe3PTquCmZItYbw2sBpFe/6xhHPn/LA2TVjEjx5d+GJ\ndxQnhUWlNPInWul8TCePBAhz6MGThrcVWj6b+V3K4CrjetFIlvF7R2dk/SlWLCUZ\nozfDPZnQfvSZInVSrSRiCqA3OXArmptmFzeZii1RDQsJnNA+Vc2lTvuf2ScepvgG\nWJPZewNj7dknrCLAyj79ZZrQH31cIjgPt3XpT7SHnkaLAgMBAAE=\n-----END PUBLIC KEY-----\n"
+  publicKeyPem: "-----BEGIN PUBLIC KEY-----\nMIIBojANBgkqhkiG9w0BAQEFAAOCAY8AMIIBigKCAYEA4Dh42p0kvReuiL194qp3\n8j0BSjOmwW9WU9NUUSlBSA1Kn0WPdfMKywsD+DPrlt/KyOKdNLoUXsXrriM212Si\nMgabz4e4pK8ItqgqCg1wPFArY8SEoy8MioMj8iZVz/UPeR3/7Rng8LT50HiaB/kc\nwkBjjLnSU2xYQkKROKMGuTlKDZ4BCpP/uVCFTrZ5BUFEn3r2WyAl3Z6NBjO9hTPB\njKx1AH+CitIZeWVmn39EUwrzUW+LiXbEe1Y+0SXkpTgdqvVMzMjytlEp5Ojisvs1\n/GqoHRoN/NcESILK2s4Rabe3PTquCmZItYbw2sBpFe/6xhHPn/LA2TVjEjx5d+GJ\ndxQnhUWlNPInWul8TCePBAhz6MGThrcVWj6b+V3K4CrjetFIlvF7R2dk/SlWLCUZ\nozfDPZnQfvSZInVSrSRiCqA3OXArmptmFzeZii1RDQsJnNA+Vc2lTvuf2ScepvgG\nWJPZewNj7dknrCLAyj79ZZrQH31cIjgPt3XpT7SHnkaLAgMBAAE=\n-----END PUBLIC KEY-----\n\n"
 };
 var CACHE_FILE = "server-key.json";
 var DEFAULT_TTL_MS = 24 * 60 * 60 * 1e3;
@@ -3489,17 +3573,34 @@ var OTEL_OS_TYPE = {
   win32: "windows",
   sunos: "solaris"
 };
+var OTEL_HOST_ARCH = {
+  amd64: "amd64",
+  x64: "amd64",
+  arm: "arm32",
+  arm64: "arm64",
+  "386": "x86",
+  ia32: "x86",
+  ppc: "ppc32",
+  ppc64: "ppc64",
+  ppc64le: "ppc64",
+  s390x: "s390x"
+};
 var HARNESS_ENTRYPOINT_MAX_LEN = 32;
 function toResourceAttributes(id, opts) {
   const rawOsType = opts.osType ?? process.platform;
+  const rawHostArch = opts.hostArch ?? process.arch;
   const attrs = {
     "service.name": "fancysauce",
     "service.version": opts.pluginVersion,
     "fancysauce.schema_version": opts.schemaVersion,
     "fancysauce.install_id": id.install_id,
     "fancysauce.agent": opts.agent,
+    "fancysauce.runtime": "node",
     "os.type": OTEL_OS_TYPE[rawOsType] ?? rawOsType
   };
+  const hostArch = OTEL_HOST_ARCH[rawHostArch];
+  if (hostArch)
+    attrs["host.arch"] = hostArch;
   const entrypoint = opts.harnessEntrypoint ?? process.env.CLAUDE_CODE_ENTRYPOINT;
   if (entrypoint) {
     attrs["fancysauce.harness_entrypoint"] = entrypoint.slice(0, HARNESS_ENTRYPOINT_MAX_LEN);
@@ -3577,7 +3678,7 @@ var SCHEMA_VERSION = "1.2.0";
 
 // dist/shared/is-main-module.mjs
 import { fileURLToPath } from "node:url";
-import { posix as posix2, win32 as win322 } from "node:path";
+import { posix as posix2, win32 as win323 } from "node:path";
 import { realpathSync } from "node:fs";
 function isMainModule(importMetaUrl, argv1, platform = process.platform) {
   if (typeof argv1 !== "string" || argv1.length === 0)
@@ -3585,7 +3686,7 @@ function isMainModule(importMetaUrl, argv1, platform = process.platform) {
   const windows = platform === "win32";
   try {
     const modulePath = real(fileURLToPath(importMetaUrl, { windows }));
-    const scriptPath = real((windows ? win322 : posix2).resolve(argv1));
+    const scriptPath = real((windows ? win323 : posix2).resolve(argv1));
     return windows ? modulePath.toLowerCase() === scriptPath.toLowerCase() : modulePath === scriptPath;
   } catch {
     return false;
