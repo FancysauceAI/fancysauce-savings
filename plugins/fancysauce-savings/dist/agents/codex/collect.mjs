@@ -2460,6 +2460,7 @@ async function ensureAmbientTenantCredential(existing, paths, opts = {}) {
 // dist/shared/config.mjs
 init_credential_paths();
 var INGEST_ENDPOINT = "https://ingest.preview.fancysauce.ai";
+var API_ENDPOINT = "https://api.preview.fancysauce.ai";
 var DEFAULT_LOGIN_STATE_DIR = join(homedir2(), ".config", "fancysauce");
 var KNOWN_FANCYSAUCE_VARS = /* @__PURE__ */ new Set([
   "FANCYSAUCE_CREDENTIAL_PATHS",
@@ -7497,7 +7498,8 @@ async function refreshWhoamiIfStale(opts = {}) {
   if (resolved === null)
     return "no-credential";
   const cacheOpts = opts.dir !== void 0 ? { dir: opts.dir } : {};
-  if (readWhoamiCache(resolved.fingerprint, opts.now ?? Date.now(), cacheOpts) !== null)
+  const cached = readWhoamiCache(resolved.fingerprint, opts.now ?? Date.now(), cacheOpts);
+  if (cached !== null && !lacksGrantBinding(cached, resolved))
     return "fresh";
   const lease = acquireWhoamiLease(resolved.fingerprint, cacheOpts);
   if (lease.kind === "held")
@@ -7513,6 +7515,12 @@ async function refreshWhoamiIfStale(opts = {}) {
   }
   recordLeaseHolder2(resolved.fingerprint, spawned.pid, cacheOpts);
   return "spawned";
+}
+function lacksGrantBinding(entry, resolved) {
+  if (entry.result === void 0)
+    return false;
+  const binding = entry.grant_binding;
+  return binding === void 0 || binding.api_endpoint !== (resolved.apiEndpoint ?? API_ENDPOINT) || binding.ingest_endpoint !== (resolved.ingestEndpoint ?? INGEST_ENDPOINT);
 }
 
 // dist/agents/codex/collect.mjs

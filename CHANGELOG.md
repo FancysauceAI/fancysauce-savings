@@ -2,6 +2,12 @@
 
 All public releases of `fancysauce-savings`. Most recent first.
 
+## v0.20.1 — 2026-10-07
+
+### Fixes
+
+- **Recaps start after an upgrade.** The plugin treats a cached account lookup that has no grant binding as out of date and refreshes it. Before this release, a cache that an older plugin wrote stopped the session-naming worker for up to 6 hours, so no recap was sent. The Node and Go collectors both refresh it. (#210)
+
 ## v0.20.0 — 2026-10-07
 
 ### Highlights

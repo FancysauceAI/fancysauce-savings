@@ -1,6 +1,6 @@
 # What the fancysauce-savings plugin sends
 
-Generated from the plugin's content-filter keep-lists (`dist/shared/policy.mjs`) for version 0.20.0. Hooks receive the full tool input and prompt; the plugin emits only the fields below. Anything not listed is dropped before it is written to disk.
+Generated from the plugin's content-filter keep-lists (`dist/shared/policy.mjs`) for version 0.20.1. Hooks receive the full tool input and prompt; the plugin emits only the fields below. Anything not listed is dropped before it is written to disk.
 
 Kinds: **hash** is an unsalted SHA-256 of the named value, used to correlate equal values across events, not to conceal them: a short or guessable input can be recovered by guessing. **count** and **numeric** are numbers. **categorical** is one of a small fixed set of vendor-defined values. **scalar** is a short vendor-supplied value forwarded as text: a number, a version, or an enum token, never prose. **identifier** is an opaque id assigned by Claude Code or the API. **timestamp** is a point in time. **text** is marked explicitly and explained. **reference list** is a list of structured work references.
 

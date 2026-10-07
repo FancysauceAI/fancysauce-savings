@@ -1,7 +1,7 @@
 {
   "name": "fancysauce-savings",
   "description": "Usage analytics for OpenAI Codex CLI",
-  "version": "0.20.0",
+  "version": "0.20.1",
   "author": {
     "name": "FancysauceAI"
   },
