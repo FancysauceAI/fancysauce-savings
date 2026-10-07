@@ -1,0 +1,93 @@
+#!/usr/bin/env bash
+# Resolves this machine to one of the cross-compiled collectors in
+# bin/<os>-<arch>/ and hands it the invocation untouched: same arguments, same
+# stdin, same exit status. Shipped by scripts/package-plugin.mjs.
+#
+# This runs on all sixteen hook events, so it forks nothing it can avoid:
+# $OSTYPE and $HOSTTYPE are set by bash itself, and uname is only consulted if
+# a build somehow left them empty.
+#
+# Exit 0 on a platform the artifact was not built for. The hook contract is
+# "never break the coding tool", and a machine with no binary is a distribution
+# gap rather than a reason to fail the user's turn.
+set -u
+
+# $0 carries no directory when an exec-form spawn resolved this launcher by
+# bare name off PATH, which is the shape the plugin's bin/ entry produces.
+self="${BASH_SOURCE[0]}"
+case "$self" in
+  */*) ;;
+  *) self="$(command -v -- "$self" 2>/dev/null || printf '%s' "$self")" ;;
+esac
+dir="${self%/*}"
+# Only an absolute path can be used as-is; a relative one is resolved against
+# the caller's cwd, which is not this script's.
+case "$dir" in
+  /*) ;;
+  *) dir="$(cd -- "$dir" && pwd)" ;;
+esac
+
+case "${OSTYPE:-}" in
+  darwin*) os=darwin ;;
+  linux*) os=linux ;;
+  # Git Bash, MSYS2 and Cygwin are the three bash environments on Windows.
+  msys*|cygwin*|win32) os=windows ;;
+  *) os="" ;;
+esac
+
+case "${HOSTTYPE:-}" in
+  arm64|aarch64) arch=arm64 ;;
+  x86_64|amd64) arch=amd64 ;;
+  *) arch="" ;;
+esac
+
+# Only when bash told us nothing: some builds leave one or both unset.
+if [ -z "$os" ] || [ -z "$arch" ]; then
+  [ -z "$os" ] && case "$(uname -s 2>/dev/null)" in
+    Darwin) os=darwin ;;
+    Linux) os=linux ;;
+    MINGW*|MSYS*|CYGWIN*) os=windows ;;
+  esac
+  [ -z "$arch" ] && case "$(uname -m 2>/dev/null)" in
+    arm64|aarch64) arch=arm64 ;;
+    x86_64|amd64) arch=amd64 ;;
+  esac
+fi
+
+exe="fancysauce"
+[ "$os" = "windows" ] && exe="fancysauce.exe"
+bin="$dir/$os-$arch/$exe"
+
+# Exit 0 with a breadcrumb. $CLAUDE_PLUGIN_DATA is the collector's own data
+# directory, so a validator diffing two installs finds the reason one of them
+# captured nothing in the same place they look for what it captured. stderr
+# alone is not enough: Claude Code discards a hook's stderr on success, and
+# this path always succeeds.
+skip() {
+  echo "fancysauce: no collector built for ${os:-unknown}/${arch:-unknown}; skipping capture" >&2
+  if [ -n "${CLAUDE_PLUGIN_DATA:-}" ]; then
+    # 2> before >>: a data dir that does not exist yet would otherwise have its
+    # failed open reported on the stderr the hook contract keeps quiet.
+    # Millisecond precision with a literal .000: every other writer of this
+    # file stamps 2006-01-02T15:04:05.000Z, and `date` has no portable
+    # sub-second format across GNU, BSD and Git Bash.
+    echo "$(date -u '+%Y-%m-%dT%H:%M:%S.000Z') no runnable collector for ${os:-unknown}/${arch:-unknown} at ${bin:-unknown}" \
+      2>/dev/null >>"$CLAUDE_PLUGIN_DATA/collect-error.log"
+  fi
+  exit 0
+}
+
+if [ -z "$os" ] || [ -z "$arch" ] || [ ! -f "$bin" ]; then
+  skip
+fi
+
+# A plugin cache copy can arrive without its executable bit — a zip that
+# carried no modes, a copy across filesystems, a restore from a backup. The
+# tree is user-owned, so repair it once rather than losing capture for the life
+# of the install.
+if [ ! -x "$bin" ]; then
+  chmod u+x "$bin" 2>/dev/null
+  [ -x "$bin" ] || skip
+fi
+
+exec "$bin" "$@"
