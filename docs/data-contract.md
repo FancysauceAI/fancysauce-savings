@@ -1,8 +1,8 @@
 # What the fancysauce-savings plugin sends
 
-Generated from the plugin's content-filter keep-lists (`dist/shared/policy.mjs`) for version 0.18.1. Hooks receive the full tool input and prompt; the plugin emits only the fields below. Anything not listed is dropped before it is written to disk.
+Generated from the plugin's content-filter keep-lists (`dist/shared/policy.mjs`) for version 0.19.0. Hooks receive the full tool input and prompt; the plugin emits only the fields below. Anything not listed is dropped before it is written to disk.
 
-Kinds: **hash** is an unsalted SHA-256 of the named value, used to correlate equal values across events, not to conceal them: a short or guessable input can be recovered by guessing. **count** and **numeric** are numbers. **categorical** is one of a small fixed set of vendor-defined values. **scalar** is a short vendor-supplied value forwarded as text: a number, a version, or an enum token, never prose. **identifier** is an opaque id assigned by Claude Code or the API. **timestamp** is a point in time. **text** is marked explicitly and explained.
+Kinds: **hash** is an unsalted SHA-256 of the named value, used to correlate equal values across events, not to conceal them: a short or guessable input can be recovered by guessing. **count** and **numeric** are numbers. **categorical** is one of a small fixed set of vendor-defined values. **scalar** is a short vendor-supplied value forwarded as text: a number, a version, or an enum token, never prose. **identifier** is an opaque id assigned by Claude Code or the API. **timestamp** is a point in time. **text** is marked explicitly and explained. **reference list** is a list of structured work references.
 
 ## Sent with every batch
 
@@ -14,6 +14,7 @@ Kinds: **hash** is an unsalted SHA-256 of the named value, used to correlate equ
 | `fancysauce.install_id` | identifier | Random id generated on the machine at first run. |
 | `fancysauce.agent` | categorical | `claude-code` or `codex-cli`. |
 | `fancysauce.runtime` | categorical | Which collector build sent the batch: `node` or `go`. Fixed at build time, not read from the machine. |
+| `fancysauce.plugin` | categorical | The `<plugin>@<marketplace>` name Claude Code installed the plugin under, read from Claude Code's `installed_plugins.json`. Absent when that file has no entry for this install, and on Codex. |
 | `os.type` | categorical | Operating system family (`darwin`, `linux`, `windows`), from the process platform. |
 | `host.arch` | categorical | CPU architecture of the machine, from OpenTelemetry's `host.arch` enum: `amd64`, `arm32`, `arm64`, `ia64`, `ppc32`, `ppc64`, `s390x` or `x86`. Absent when the machine's architecture has no value in that enum. |
 | `fancysauce.harness_entrypoint` | categorical | How Claude Code was launched, copied (truncated) from the `CLAUDE_CODE_ENTRYPOINT` environment variable Claude Code sets for its hooks. Absent when unset, and never sent by the history backfill. |
@@ -28,6 +29,7 @@ Kinds: **hash** is an unsalted SHA-256 of the named value, used to correlate equ
 | `fancysauce.event_type` | categorical | The event type, one of the sections below. |
 | `fancysauce.session_id` | identifier | Claude Code's session id. |
 | `fancysauce.source` | categorical | Which hook or transcript read produced the event. |
+| `fancysauce.replay` | categorical | Whether the event is live (`none`) or sent again (`history_scan`, `catch_up`, `reread`). Absent means unknown. |
 | `fancysauce.sequence` | count | Position of the event within one hook fire. |
 | `timeUnixNano` | timestamp | When the event happened. |
 | `observedTimeUnixNano` | timestamp | When the batch was encoded for upload. |
@@ -95,6 +97,7 @@ Source: hook `PostToolUse`. A tool call succeeded.
 | `ref_id` | identifier | Reference id, e.g. a pull request number. Same condition. |
 | `ref_scope` | identifier | Reference scope, e.g. `owner/repo`. Same condition. |
 | `ref_source` | categorical | Which tool output the reference was found in. Same condition. |
+| `refs` | reference list | A list of 2..10 distinct references, each an object with `system`, `kind`, `id`, `scope` and `source`. Present only when the event has 2..10 distinct references, and exclusive with the five `ref_*` strings. |
 
 ## `tool_call.failed`
 

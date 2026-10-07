@@ -47,6 +47,23 @@ certutil -hashfile "<plugin root>\bin\windows-amd64\fancysauce.exe" SHA256
 Compare the result, case-insensitively, against the line for
 `windows-amd64/fancysauce.exe` in `bin\SHA256SUMS`.
 
+## Slash commands from PowerShell
+
+On a build whose slash commands run the collector rather than Node, a Claude
+Code whose registered shell is PowerShell runs them against the per-target
+binary directly:
+
+```powershell
+& "$env:CLAUDE_PLUGIN_ROOT\bin\windows-amd64\fancysauce.exe" setup
+& "$env:CLAUDE_PLUGIN_ROOT\bin\windows-amd64\fancysauce.exe" upload-history
+& "$env:CLAUDE_PLUGIN_ROOT\bin\windows-amd64\fancysauce.exe" reset
+```
+
+Claude Code sets `$env:CLAUDE_PLUGIN_ROOT` to `<plugin root>` for the command;
+substitute it to run one by hand. The root copy `bin\fancysauce.exe` is the
+hook's exec-form target only — run from there, the collector cannot find the
+plugin's data directory.
+
 ## How to tell the collector is being blocked
 
 - **The plugin's data dir stays empty, with no `collect-error.log` line at

@@ -176,7 +176,7 @@ function endpointUrl(endpoint, route) {
 
 // dist/shared/plugin-commands.mjs
 var COMMAND_PREFIX = "/fancysauce-savings:";
-var LOGIN_COMMAND = `${COMMAND_PREFIX}login`;
+var LOGIN_COMMAND = "/fancysauce-savings:login";
 var RESET_COMMAND = `${COMMAND_PREFIX}reset`;
 var UPLOAD_HISTORY_COMMAND = `${COMMAND_PREFIX}upload-history`;
 

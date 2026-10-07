@@ -1237,11 +1237,11 @@ var require_mtime_precision = __commonJS({
     function probe(file, fs, callback) {
       const cachedPrecision = fs[cacheSymbol];
       if (cachedPrecision) {
-        return fs.stat(file, (err, stat2) => {
+        return fs.stat(file, (err, stat3) => {
           if (err) {
             return callback(err);
           }
-          callback(null, stat2.mtime, cachedPrecision);
+          callback(null, stat3.mtime, cachedPrecision);
         });
       }
       const mtime = new Date(Math.ceil(Date.now() / 1e3) * 1e3 + 5);
@@ -1249,13 +1249,13 @@ var require_mtime_precision = __commonJS({
         if (err) {
           return callback(err);
         }
-        fs.stat(file, (err2, stat2) => {
+        fs.stat(file, (err2, stat3) => {
           if (err2) {
             return callback(err2);
           }
-          const precision = stat2.mtime.getTime() % 1e3 === 0 ? "s" : "ms";
+          const precision = stat3.mtime.getTime() % 1e3 === 0 ? "s" : "ms";
           Object.defineProperty(fs, cacheSymbol, { value: precision });
-          callback(null, stat2.mtime, precision);
+          callback(null, stat3.mtime, precision);
         });
       });
     }
@@ -1309,14 +1309,14 @@ var require_lockfile = __commonJS({
         if (options.stale <= 0) {
           return callback(Object.assign(new Error("Lock file is already being held"), { code: "ELOCKED", file }));
         }
-        options.fs.stat(lockfilePath, (err2, stat2) => {
+        options.fs.stat(lockfilePath, (err2, stat3) => {
           if (err2) {
             if (err2.code === "ENOENT") {
               return acquireLock(file, { ...options, stale: 0 }, callback);
             }
             return callback(err2);
           }
-          if (!isLockStale(stat2, options)) {
+          if (!isLockStale(stat3, options)) {
             return callback(Object.assign(new Error("Lock file is already being held"), { code: "ELOCKED", file }));
           }
           removeLock(file, options, (err3) => {
@@ -1328,8 +1328,8 @@ var require_lockfile = __commonJS({
         });
       });
     }
-    function isLockStale(stat2, options) {
-      return stat2.mtime.getTime() < Date.now() - options.stale;
+    function isLockStale(stat3, options) {
+      return stat3.mtime.getTime() < Date.now() - options.stale;
     }
     function removeLock(file, options, callback) {
       options.fs.rmdir(getLockFile(file, options), (err) => {
@@ -1347,7 +1347,7 @@ var require_lockfile = __commonJS({
       lock2.updateDelay = lock2.updateDelay || options.update;
       lock2.updateTimeout = setTimeout(() => {
         lock2.updateTimeout = null;
-        options.fs.stat(lock2.lockfilePath, (err, stat2) => {
+        options.fs.stat(lock2.lockfilePath, (err, stat3) => {
           const isOverThreshold = lock2.lastUpdate + options.stale < Date.now();
           if (err) {
             if (err.code === "ENOENT" || isOverThreshold) {
@@ -1356,7 +1356,7 @@ var require_lockfile = __commonJS({
             lock2.updateDelay = 1e3;
             return updateLock(file, options);
           }
-          const isMtimeOurs = lock2.mtime.getTime() === stat2.mtime.getTime();
+          const isMtimeOurs = lock2.mtime.getTime() === stat3.mtime.getTime();
           if (!isMtimeOurs) {
             return setLockAsCompromised(
               file,
@@ -1481,11 +1481,11 @@ var require_lockfile = __commonJS({
         if (err) {
           return callback(err);
         }
-        options.fs.stat(getLockFile(file2, options), (err2, stat2) => {
+        options.fs.stat(getLockFile(file2, options), (err2, stat3) => {
           if (err2) {
             return err2.code === "ENOENT" ? callback(null, false) : callback(err2);
           }
-          return callback(null, !isLockStale(stat2, options));
+          return callback(null, !isLockStale(stat3, options));
         });
       });
     }
@@ -1611,7 +1611,7 @@ var require_proper_lockfile = __commonJS({
 
 // dist/shared/bin/backfill-runner.mjs
 import { writeFile as writeFile5 } from "node:fs/promises";
-import { join as join12 } from "node:path";
+import { join as join13 } from "node:path";
 
 // dist/shared/config.mjs
 import { join } from "node:path";
@@ -1646,7 +1646,8 @@ function defaultPolicy() {
       "ref_kind",
       "ref_id",
       "ref_scope",
-      "ref_source"
+      "ref_source",
+      "refs"
     ]),
     "tool_call.failed": Object.freeze([
       "tool_name",
@@ -2612,6 +2613,35 @@ function parseRetryAfter(h) {
   return null;
 }
 
+// dist/shared/types.mjs
+var REPLAY_MARKERS = ["none", "history_scan", "catch_up", "reread"];
+function isReplayMarker(value) {
+  return typeof value === "string" && REPLAY_MARKERS.includes(value);
+}
+var WORK_REF_FIELDS = ["system", "kind", "id", "scope", "source"];
+var MAX_REFS_PER_EVENT = 10;
+function workRefField(item, field) {
+  if (typeof item !== "object" || item === null)
+    return void 0;
+  return item[field];
+}
+function validateWorkRefList(value) {
+  if (!Array.isArray(value) || value.length < 2 || value.length > MAX_REFS_PER_EVENT)
+    return void 0;
+  const refs = [];
+  for (const item of value) {
+    const ref = {};
+    for (const field of WORK_REF_FIELDS) {
+      const fieldValue = workRefField(item, field);
+      if (typeof fieldValue !== "string" || fieldValue === "")
+        return void 0;
+      ref[field] = fieldValue;
+    }
+    refs.push(ref);
+  }
+  return refs;
+}
+
 // dist/shared/otlp-encoder.mjs
 var ATTR_DENY = /* @__PURE__ */ new Set([
   "cwd",
@@ -2628,6 +2658,7 @@ var ATTR_TYPE = {
   "fancysauce.event_type": "string",
   "fancysauce.session_id": "string",
   "fancysauce.source": "string",
+  "fancysauce.replay": "string",
   "fancysauce.sequence": "int",
   // session.start
   model: "string",
@@ -2652,6 +2683,7 @@ var ATTR_TYPE = {
   ref_id: "string",
   ref_scope: "string",
   ref_source: "string",
+  refs: "ref_list",
   // subagent.{start,complete}
   agent_id: "string",
   agent_type: "string",
@@ -2764,6 +2796,7 @@ var RESOURCE_ATTRIBUTE_KEYS = [
   "fancysauce.install_id",
   "fancysauce.agent",
   "fancysauce.runtime",
+  "fancysauce.plugin",
   "os.type",
   "host.arch",
   "fancysauce.harness_entrypoint",
@@ -2801,9 +2834,12 @@ function encodeLogRecord(event, observedTimeUnixNano) {
     { key: "fancysauce.event_uuid", value: encodeAnyValue("fancysauce.event_uuid", event.event_uuid) },
     { key: "fancysauce.event_type", value: encodeAnyValue("fancysauce.event_type", event.event_type) },
     { key: "fancysauce.session_id", value: encodeAnyValue("fancysauce.session_id", event.session_id) },
-    { key: "fancysauce.source", value: encodeAnyValue("fancysauce.source", event.source) },
-    { key: "fancysauce.sequence", value: encodeAnyValue("fancysauce.sequence", event.sequence) }
+    { key: "fancysauce.source", value: encodeAnyValue("fancysauce.source", event.source) }
   ];
+  if (event.replay !== void 0) {
+    attrs.push({ key: "fancysauce.replay", value: encodeAnyValue("fancysauce.replay", event.replay) });
+  }
+  attrs.push({ key: "fancysauce.sequence", value: encodeAnyValue("fancysauce.sequence", event.sequence) });
   for (const [key, val] of Object.entries(event.attributes)) {
     attrs.push({ key, value: encodeAnyValue(key, val) });
   }
@@ -2824,6 +2860,9 @@ function encodeAnyValue(key, v) {
   }
   switch (type) {
     case "string":
+      if (typeof v === "object" && v !== null) {
+        throw new Error(`Attribute ${key} typed string requires a scalar, got a list`);
+      }
       return { stringValue: String(v) };
     case "bool":
       return { boolValue: Boolean(v) };
@@ -2839,6 +2878,20 @@ function encodeAnyValue(key, v) {
       if (typeof v === "bigint")
         return { doubleValue: Number(v) };
       throw new Error(`Attribute ${key} typed double requires number|bigint, got ${typeof v}`);
+    case "ref_list": {
+      const refs = validateWorkRefList(v);
+      if (!refs) {
+        throw new Error(`Attribute ${key} typed ref_list requires an array of 2..${MAX_REFS_PER_EVENT} items with five non-empty string fields (system, kind, id, scope, source)`);
+      }
+      const values = refs.map((ref) => {
+        const fields = WORK_REF_FIELDS.map((field) => {
+          const value = ref[field];
+          return { key: field, value: { stringValue: value } };
+        });
+        return { kvlistValue: { values: fields } };
+      });
+      return { arrayValue: { values } };
+    }
   }
 }
 
@@ -2964,12 +3017,12 @@ async function readBatch(queuePath, startOffset, maxEvents, maxBytes) {
     } catch {
       return { events: [], endOffset: startOffset };
     }
-    const stat2 = await fh.stat();
-    if (stat2.size < startOffset)
-      return { events: [], endOffset: startOffset, cursorPastEof: true, queueSize: stat2.size };
-    if (stat2.size <= startOffset)
+    const stat3 = await fh.stat();
+    if (stat3.size < startOffset)
+      return { events: [], endOffset: startOffset, cursorPastEof: true, queueSize: stat3.size };
+    if (stat3.size <= startOffset)
       return { events: [], endOffset: startOffset };
-    const toRead = Math.min(stat2.size - startOffset, maxBytes);
+    const toRead = Math.min(stat3.size - startOffset, maxBytes);
     const buf = Buffer.alloc(toRead);
     await fh.read(buf, 0, toRead, startOffset);
     const lastNl = buf.lastIndexOf("\n".charCodeAt(0));
@@ -3017,15 +3070,15 @@ async function maybeCompact(dataDir, cursor, queuePath) {
       } catch {
         return;
       }
-      const stat2 = await fh.stat();
-      if (flushedOffset >= stat2.size) {
+      const stat3 = await fh.stat();
+      if (flushedOffset >= stat3.size) {
         await fh.close();
         fh = null;
         await cursor.resetUnlocked();
         await writeFile4(queuePath, "");
         return;
       }
-      const tailLen = stat2.size - flushedOffset;
+      const tailLen = stat3.size - flushedOffset;
       const buf = Buffer.alloc(tailLen);
       await fh.read(buf, 0, tailLen, flushedOffset);
       await fh.close();
@@ -3096,6 +3149,7 @@ function revive(v) {
     event_type: o.event_type,
     session_id: o.session_id,
     source: o.source,
+    ...isReplayMarker(o.replay) ? { replay: o.replay } : {},
     sequence: o.sequence,
     timestamp_ns: typeof o.timestamp_ns === "bigint" ? o.timestamp_ns : BigInt(o.timestamp_ns),
     attributes: o.attributes
@@ -3103,48 +3157,99 @@ function revive(v) {
 }
 
 // dist/shared/backfill/pid-guard.mjs
-import { readFile as readFile6, rm, mkdir as mkdir5, open as open3 } from "node:fs/promises";
+import { readFile as readFile6, rm, mkdir as mkdir5, open as open3, link, stat as stat2 } from "node:fs/promises";
 import { join as join6 } from "node:path";
-async function isBackfillActive(stateDir) {
+import { randomUUID } from "node:crypto";
+var RECOVERY_LOCK_MAX_AGE_MS = 1e4;
+async function readPidGuard(stateDir) {
   try {
     const raw = await readFile6(join6(stateDir, "backfill.pid"), "utf8");
     const pid = Number(raw.trim());
-    if (!Number.isFinite(pid) || pid <= 0)
-      return null;
-    try {
-      process.kill(pid, 0);
-      return pid;
-    } catch {
-      return null;
-    }
+    return { raw, pid: Number.isFinite(pid) && pid > 0 ? pid : null };
   } catch {
     return null;
   }
 }
+function isPidLive(pid) {
+  if (pid === null)
+    return false;
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+}
+async function tryAcquireRecoveryLock(lockPath) {
+  try {
+    await mkdir5(lockPath, { mode: 448 });
+    return true;
+  } catch (err) {
+    if (err.code !== "EEXIST")
+      throw err;
+  }
+  try {
+    const lockStat = await stat2(lockPath);
+    if (Date.now() - lockStat.mtimeMs <= RECOVERY_LOCK_MAX_AGE_MS)
+      return false;
+    await rm(lockPath, { recursive: true, force: true });
+    await mkdir5(lockPath, { mode: 448 });
+    return true;
+  } catch (err) {
+    if (err.code === "EEXIST" || err.code === "ENOENT")
+      return false;
+    throw err;
+  }
+}
+async function isBackfillActive(stateDir) {
+  const guard = await readPidGuard(stateDir);
+  return isPidLive(guard?.pid ?? null) ? guard.pid : null;
+}
 async function acquirePidGuard(stateDir) {
   await mkdir5(stateDir, { recursive: true });
   const path = join6(stateDir, "backfill.pid");
-  for (let attempt = 0; attempt < 2; attempt++) {
+  const recoveryLockPath = join6(stateDir, "backfill.pid.recover");
+  const tempPath = join6(stateDir, `backfill.pid.${process.pid}.${randomUUID()}.tmp`);
+  try {
+    const fh = await open3(tempPath, "wx", 384);
     try {
-      const fh = await open3(path, "wx", 384);
-      try {
-        await fh.writeFile(String(process.pid));
-        await fh.sync();
-      } finally {
-        await fh.close();
-      }
-      return { kind: "acquired" };
-    } catch (err) {
-      if (err.code !== "EEXIST")
-        throw err;
-      const live2 = await isBackfillActive(stateDir);
-      if (live2 !== null)
-        return { kind: "already-running", pid: live2 };
-      await rm(path, { force: true });
+      await fh.writeFile(String(process.pid));
+      await fh.sync();
+    } finally {
+      await fh.close();
     }
+    for (let attempt = 0; attempt < 8; attempt++) {
+      try {
+        await link(tempPath, path);
+        return { kind: "acquired" };
+      } catch (err) {
+        if (err.code !== "EEXIST")
+          throw err;
+        const staleRead = await readPidGuard(stateDir);
+        if (isPidLive(staleRead?.pid ?? null))
+          return { kind: "already-running", pid: staleRead.pid };
+        const hasRecoveryLock = await tryAcquireRecoveryLock(recoveryLockPath);
+        if (!hasRecoveryLock) {
+          const current = await readPidGuard(stateDir);
+          if (isPidLive(current?.pid ?? null))
+            return { kind: "already-running", pid: current.pid };
+          continue;
+        }
+        try {
+          const current = await readPidGuard(stateDir);
+          if (current !== null && current.raw === staleRead?.raw && !isPidLive(current.pid)) {
+            await rm(path, { force: true });
+          }
+        } finally {
+          await rm(recoveryLockPath, { recursive: true, force: true });
+        }
+      }
+    }
+    const live = await isBackfillActive(stateDir);
+    return live !== null ? { kind: "already-running", pid: live } : { kind: "already-running", pid: -1 };
+  } finally {
+    await rm(tempPath, { force: true });
   }
-  const live = await isBackfillActive(stateDir);
-  return live !== null ? { kind: "already-running", pid: live } : { kind: "already-running", pid: -1 };
 }
 async function releasePidGuard(stateDir) {
   await rm(join6(stateDir, "backfill.pid"), { force: true });
@@ -3188,11 +3293,55 @@ async function writeStatus(stateDir, s) {
 }
 
 // dist/shared/identity-resolver.mjs
-import { createHash as createHash2, randomUUID } from "node:crypto";
+import { createHash as createHash2, randomUUID as randomUUID2 } from "node:crypto";
 import { execFile as execFile2 } from "node:child_process";
 import { open as open5, readFile as readFile8, rename as rename7, unlink as unlink3 } from "node:fs/promises";
-import { join as join11 } from "node:path";
+import { join as join12 } from "node:path";
 import { randomBytes as randomBytes4 } from "node:crypto";
+
+// dist/shared/data-dir.mjs
+import { readFileSync } from "node:fs";
+import { basename, join as join8, dirname as dirname3, relative, isAbsolute, sep } from "node:path";
+import { fileURLToPath } from "node:url";
+import { homedir as homedir3 } from "node:os";
+function defaultPluginRoot() {
+  const here = dirname3(fileURLToPath(import.meta.url));
+  return join8(here, "..", "..", "..");
+}
+function trimTrailingSlash(p) {
+  return p.endsWith("/") || p.endsWith("\\") ? p.slice(0, -1) : p;
+}
+function registeredPluginKey(opts = {}) {
+  const home = opts.homeDir ?? homedir3();
+  const root = trimTrailingSlash(opts.pluginRoot ?? defaultPluginRoot());
+  return registryKey(root, home);
+}
+function registryKey(root, home) {
+  try {
+    const regPath = join8(home, ".claude", "plugins", "installed_plugins.json");
+    const reg = JSON.parse(readFileSync(regPath, "utf8"));
+    const plugins = reg?.plugins;
+    if (typeof plugins !== "object" || plugins === null)
+      return null;
+    for (const [key, entries] of Object.entries(plugins)) {
+      if (!Array.isArray(entries))
+        continue;
+      for (const entry of entries) {
+        const installPath = entry.installPath;
+        if (typeof installPath !== "string")
+          continue;
+        if (trimTrailingSlash(installPath) !== root)
+          continue;
+        const at = key.lastIndexOf("@");
+        if (at <= 0 || at >= key.length - 1)
+          continue;
+        return key;
+      }
+    }
+  } catch {
+  }
+  return null;
+}
 
 // dist/shared/identity-sources.mjs
 var TIMEOUT_MS = 200;
@@ -3283,12 +3432,12 @@ function seal(plaintext, key) {
 }
 
 // dist/shared/server-key.mjs
-import { readFileSync } from "node:fs";
-import { join as join8 } from "node:path";
+import { readFileSync as readFileSync2 } from "node:fs";
+import { join as join9 } from "node:path";
 var BAKED_SERVER_KEY = {
   keyid: "env-production-1",
   alg: "RSA-OAEP-256+A256GCM",
-  publicKeyPem: "-----BEGIN PUBLIC KEY-----\nMIIBojANBgkqhkiG9w0BAQEFAAOCAY8AMIIBigKCAYEA4Dh42p0kvReuiL194qp3\n8j0BSjOmwW9WU9NUUSlBSA1Kn0WPdfMKywsD+DPrlt/KyOKdNLoUXsXrriM212Si\nMgabz4e4pK8ItqgqCg1wPFArY8SEoy8MioMj8iZVz/UPeR3/7Rng8LT50HiaB/kc\nwkBjjLnSU2xYQkKROKMGuTlKDZ4BCpP/uVCFTrZ5BUFEn3r2WyAl3Z6NBjO9hTPB\njKx1AH+CitIZeWVmn39EUwrzUW+LiXbEe1Y+0SXkpTgdqvVMzMjytlEp5Ojisvs1\n/GqoHRoN/NcESILK2s4Rabe3PTquCmZItYbw2sBpFe/6xhHPn/LA2TVjEjx5d+GJ\ndxQnhUWlNPInWul8TCePBAhz6MGThrcVWj6b+V3K4CrjetFIlvF7R2dk/SlWLCUZ\nozfDPZnQfvSZInVSrSRiCqA3OXArmptmFzeZii1RDQsJnNA+Vc2lTvuf2ScepvgG\nWJPZewNj7dknrCLAyj79ZZrQH31cIjgPt3XpT7SHnkaLAgMBAAE=\n-----END PUBLIC KEY-----\n\n"
+  publicKeyPem: "-----BEGIN PUBLIC KEY-----\nMIIBojANBgkqhkiG9w0BAQEFAAOCAY8AMIIBigKCAYEA4Dh42p0kvReuiL194qp3\n8j0BSjOmwW9WU9NUUSlBSA1Kn0WPdfMKywsD+DPrlt/KyOKdNLoUXsXrriM212Si\nMgabz4e4pK8ItqgqCg1wPFArY8SEoy8MioMj8iZVz/UPeR3/7Rng8LT50HiaB/kc\nwkBjjLnSU2xYQkKROKMGuTlKDZ4BCpP/uVCFTrZ5BUFEn3r2WyAl3Z6NBjO9hTPB\njKx1AH+CitIZeWVmn39EUwrzUW+LiXbEe1Y+0SXkpTgdqvVMzMjytlEp5Ojisvs1\n/GqoHRoN/NcESILK2s4Rabe3PTquCmZItYbw2sBpFe/6xhHPn/LA2TVjEjx5d+GJ\ndxQnhUWlNPInWul8TCePBAhz6MGThrcVWj6b+V3K4CrjetFIlvF7R2dk/SlWLCUZ\nozfDPZnQfvSZInVSrSRiCqA3OXArmptmFzeZii1RDQsJnNA+Vc2lTvuf2ScepvgG\nWJPZewNj7dknrCLAyj79ZZrQH31cIjgPt3XpT7SHnkaLAgMBAAE=\n-----END PUBLIC KEY-----\n"
 };
 var CACHE_FILE = "server-key.json";
 var DEFAULT_TTL_MS = 24 * 60 * 60 * 1e3;
@@ -3300,9 +3449,9 @@ function isServerKeyShape(v) {
 }
 function loadServerKey(deps) {
   const ttl = deps.ttlMs ?? DEFAULT_TTL_MS;
-  const read = deps.readFileImpl ?? ((p) => readFileSync(p, "utf8"));
+  const read = deps.readFileImpl ?? ((p) => readFileSync2(p, "utf8"));
   try {
-    const parsed = JSON.parse(read(join8(deps.cacheDir, CACHE_FILE)));
+    const parsed = JSON.parse(read(join9(deps.cacheDir, CACHE_FILE)));
     if (!isServerKeyShape(parsed) || typeof parsed.fetched_at !== "number")
       return BAKED_SERVER_KEY;
     if (deps.now - parsed.fetched_at > ttl)
@@ -3314,10 +3463,10 @@ function loadServerKey(deps) {
 }
 
 // dist/shared/native-identity.mjs
-import { readFileSync as readFileSync2 } from "node:fs";
+import { readFileSync as readFileSync3 } from "node:fs";
 import { execFileSync } from "node:child_process";
-import { join as join9 } from "node:path";
-import { homedir as homedir3 } from "node:os";
+import { join as join10 } from "node:path";
+import { homedir as homedir4 } from "node:os";
 var CLI_TIMEOUT_MS = 500;
 function defaultClaudeStatus() {
   try {
@@ -3335,13 +3484,13 @@ function pick(o, k) {
   return typeof v === "string" && v.length > 0 ? v : void 0;
 }
 function readNativeIdentity(agent, deps = {}) {
-  const home = deps.home ?? homedir3();
-  const read = deps.readFileImpl ?? ((p) => readFileSync2(p, "utf8"));
+  const home = deps.home ?? homedir4();
+  const read = deps.readFileImpl ?? ((p) => readFileSync3(p, "utf8"));
   return agent === "claude-code" ? readClaude(home, read, deps.claudeStatus ?? defaultClaudeStatus) : readCodex(home, read);
 }
 function readClaude(home, read, status) {
   try {
-    const parsed = JSON.parse(read(join9(home, ".claude.json")));
+    const parsed = JSON.parse(read(join10(home, ".claude.json")));
     const oa = parsed.oauthAccount;
     if (oa && typeof oa === "object") {
       const email = pick(oa, "emailAddress");
@@ -3384,7 +3533,7 @@ function readClaude(home, read, status) {
 function readCodex(home, read) {
   let auth;
   try {
-    auth = JSON.parse(read(join9(home, ".codex", "auth.json")));
+    auth = JSON.parse(read(join10(home, ".codex", "auth.json")));
   } catch {
     return null;
   }
@@ -3431,8 +3580,8 @@ function decodeJwtPayload(token) {
 }
 
 // dist/shared/identity-cache.mjs
-import { readFileSync as readFileSync3, writeFileSync } from "node:fs";
-import { join as join10 } from "node:path";
+import { readFileSync as readFileSync4, writeFileSync } from "node:fs";
+import { join as join11 } from "node:path";
 var CACHE_FILE2 = "identity-cache.json";
 var DEFAULT_TTL_MS2 = 12 * 60 * 60 * 1e3;
 var CACHED_IDENTITY_SOURCES = [
@@ -3444,9 +3593,9 @@ var CACHED_IDENTITY_SOURCES = [
 var CACHED_SOURCE_SET = new Set(CACHED_IDENTITY_SOURCES);
 function readIdentityCache(deps) {
   const ttl = deps.ttlMs ?? DEFAULT_TTL_MS2;
-  const read = deps.readFileImpl ?? ((p) => readFileSync3(p, "utf8"));
+  const read = deps.readFileImpl ?? ((p) => readFileSync4(p, "utf8"));
   try {
-    const parsed = JSON.parse(read(join10(deps.dir, CACHE_FILE2)));
+    const parsed = JSON.parse(read(join11(deps.dir, CACHE_FILE2)));
     if (typeof parsed !== "object" || parsed === null)
       return { fresh: false };
     const entry = parsed;
@@ -3471,7 +3620,7 @@ function writeIdentityCache(deps) {
   const write = deps.writeFileImpl ?? ((p, data) => writeFileSync(p, data, { mode: 384 }));
   try {
     const entry = { identity: deps.identity, fetched_at: deps.now };
-    write(join10(deps.dir, CACHE_FILE2), JSON.stringify(entry));
+    write(join11(deps.dir, CACHE_FILE2), JSON.stringify(entry));
   } catch {
   }
 }
@@ -3484,7 +3633,7 @@ var IdentityResolver = class {
   git;
   constructor(dir, git = defaultGitAccess()) {
     this.dir = dir;
-    this.installPath = join11(dir, "install.json");
+    this.installPath = join12(dir, "install.json");
     this.git = git;
   }
   async resolve(cwd, opts) {
@@ -3522,7 +3671,7 @@ var IdentityResolver = class {
       const existing = await readInstallId(this.installPath);
       if (existing !== null)
         return existing;
-      const install_id = randomUUID();
+      const install_id = randomUUID2();
       const body = { install_id, created_at: (/* @__PURE__ */ new Date()).toISOString() };
       await writeInstallFile(this.installPath, body);
       return install_id;
@@ -3589,6 +3738,7 @@ var HARNESS_ENTRYPOINT_MAX_LEN = 32;
 function toResourceAttributes(id, opts) {
   const rawOsType = opts.osType ?? process.platform;
   const rawHostArch = opts.hostArch ?? process.arch;
+  const plugin = opts.plugin ?? registeredPluginKey();
   const attrs = {
     "service.name": "fancysauce",
     "service.version": opts.pluginVersion,
@@ -3596,6 +3746,7 @@ function toResourceAttributes(id, opts) {
     "fancysauce.install_id": id.install_id,
     "fancysauce.agent": opts.agent,
     "fancysauce.runtime": "node",
+    ...plugin ? { "fancysauce.plugin": plugin } : {},
     "os.type": OTEL_OS_TYPE[rawOsType] ?? rawOsType
   };
   const hostArch = OTEL_HOST_ARCH[rawHostArch];
@@ -3674,10 +3825,10 @@ function gitRead(args) {
 }
 
 // dist/shared/schema-version.mjs
-var SCHEMA_VERSION = "1.2.0";
+var SCHEMA_VERSION = "1.2.1";
 
 // dist/shared/is-main-module.mjs
-import { fileURLToPath } from "node:url";
+import { fileURLToPath as fileURLToPath2 } from "node:url";
 import { posix as posix2, win32 as win323 } from "node:path";
 import { realpathSync } from "node:fs";
 function isMainModule(importMetaUrl, argv1, platform = process.platform) {
@@ -3685,7 +3836,7 @@ function isMainModule(importMetaUrl, argv1, platform = process.platform) {
     return false;
   const windows = platform === "win32";
   try {
-    const modulePath = real(fileURLToPath(importMetaUrl, { windows }));
+    const modulePath = real(fileURLToPath2(importMetaUrl, { windows }));
     const scriptPath = real((windows ? win323 : posix2).resolve(argv1));
     return windows ? modulePath.toLowerCase() === scriptPath.toLowerCase() : modulePath === scriptPath;
   } catch {
@@ -3707,8 +3858,8 @@ var BATCH_BUDGET_MS = 5e3;
 var POST_BATCH_SLEEP_MS = 50;
 var EMPTY_READ_THRESHOLD = 3;
 async function runBackfill(opts) {
-  const stateDir = join12(opts.dataDir, "state");
-  const outboundDir = join12(opts.dataDir, "outbound");
+  const stateDir = join13(opts.dataDir, "state");
+  const outboundDir = join13(opts.dataDir, "outbound");
   const acquire = await acquirePidGuard(stateDir);
   if (acquire.kind === "already-running") {
     return { kind: "error", reason: `another runner is active (pid ${acquire.pid})` };
@@ -3839,7 +3990,7 @@ function sleep(ms) {
   return new Promise((res) => setTimeout(res, ms));
 }
 async function writeRenewalMarker(stateDir) {
-  const path = join12(stateDir, "credential-needs-renewal.backfill");
+  const path = join13(stateDir, "credential-needs-renewal.backfill");
   await writeFile5(path, JSON.stringify({ noticed_at: (/* @__PURE__ */ new Date()).toISOString() }), { mode: 384 }).catch(() => {
   });
 }

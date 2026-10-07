@@ -133,7 +133,7 @@ var require_polyfills = __commonJS({
       }
       if (platform === "win32") {
         fs.rename = typeof fs.rename !== "function" ? fs.rename : (function(fs$rename) {
-          function rename16(from, to, cb) {
+          function rename17(from, to, cb) {
             var start = Date.now();
             var backoff = 0;
             fs$rename(from, to, function CB(er) {
@@ -153,8 +153,8 @@ var require_polyfills = __commonJS({
               if (cb) cb(er);
             });
           }
-          if (Object.setPrototypeOf) Object.setPrototypeOf(rename16, fs$rename);
-          return rename16;
+          if (Object.setPrototypeOf) Object.setPrototypeOf(rename17, fs$rename);
+          return rename17;
         })(fs.rename);
       }
       fs.read = typeof fs.read !== "function" ? fs.read : (function(fs$read) {
@@ -558,8 +558,8 @@ var require_graceful_fs = __commonJS({
       fs2.createReadStream = createReadStream;
       fs2.createWriteStream = createWriteStream;
       var fs$readFile = fs2.readFile;
-      fs2.readFile = readFile19;
-      function readFile19(path, options, cb) {
+      fs2.readFile = readFile20;
+      function readFile20(path, options, cb) {
         if (typeof options === "function")
           cb = options, options = null;
         return go$readFile(path, options, cb);
@@ -575,8 +575,8 @@ var require_graceful_fs = __commonJS({
         }
       }
       var fs$writeFile = fs2.writeFile;
-      fs2.writeFile = writeFile15;
-      function writeFile15(path, data, options, cb) {
+      fs2.writeFile = writeFile16;
+      function writeFile16(path, data, options, cb) {
         if (typeof options === "function")
           cb = options, options = null;
         return go$writeFile(path, data, options, cb);
@@ -1271,11 +1271,11 @@ var require_mtime_precision = __commonJS({
     function probe(file, fs, callback) {
       const cachedPrecision = fs[cacheSymbol];
       if (cachedPrecision) {
-        return fs.stat(file, (err, stat5) => {
+        return fs.stat(file, (err, stat6) => {
           if (err) {
             return callback(err);
           }
-          callback(null, stat5.mtime, cachedPrecision);
+          callback(null, stat6.mtime, cachedPrecision);
         });
       }
       const mtime = new Date(Math.ceil(Date.now() / 1e3) * 1e3 + 5);
@@ -1283,13 +1283,13 @@ var require_mtime_precision = __commonJS({
         if (err) {
           return callback(err);
         }
-        fs.stat(file, (err2, stat5) => {
+        fs.stat(file, (err2, stat6) => {
           if (err2) {
             return callback(err2);
           }
-          const precision = stat5.mtime.getTime() % 1e3 === 0 ? "s" : "ms";
+          const precision = stat6.mtime.getTime() % 1e3 === 0 ? "s" : "ms";
           Object.defineProperty(fs, cacheSymbol, { value: precision });
-          callback(null, stat5.mtime, precision);
+          callback(null, stat6.mtime, precision);
         });
       });
     }
@@ -1343,14 +1343,14 @@ var require_lockfile = __commonJS({
         if (options.stale <= 0) {
           return callback(Object.assign(new Error("Lock file is already being held"), { code: "ELOCKED", file }));
         }
-        options.fs.stat(lockfilePath, (err2, stat5) => {
+        options.fs.stat(lockfilePath, (err2, stat6) => {
           if (err2) {
             if (err2.code === "ENOENT") {
               return acquireLock(file, { ...options, stale: 0 }, callback);
             }
             return callback(err2);
           }
-          if (!isLockStale(stat5, options)) {
+          if (!isLockStale(stat6, options)) {
             return callback(Object.assign(new Error("Lock file is already being held"), { code: "ELOCKED", file }));
           }
           removeLock(file, options, (err3) => {
@@ -1362,8 +1362,8 @@ var require_lockfile = __commonJS({
         });
       });
     }
-    function isLockStale(stat5, options) {
-      return stat5.mtime.getTime() < Date.now() - options.stale;
+    function isLockStale(stat6, options) {
+      return stat6.mtime.getTime() < Date.now() - options.stale;
     }
     function removeLock(file, options, callback) {
       options.fs.rmdir(getLockFile(file, options), (err) => {
@@ -1381,7 +1381,7 @@ var require_lockfile = __commonJS({
       lock2.updateDelay = lock2.updateDelay || options.update;
       lock2.updateTimeout = setTimeout(() => {
         lock2.updateTimeout = null;
-        options.fs.stat(lock2.lockfilePath, (err, stat5) => {
+        options.fs.stat(lock2.lockfilePath, (err, stat6) => {
           const isOverThreshold = lock2.lastUpdate + options.stale < Date.now();
           if (err) {
             if (err.code === "ENOENT" || isOverThreshold) {
@@ -1390,7 +1390,7 @@ var require_lockfile = __commonJS({
             lock2.updateDelay = 1e3;
             return updateLock(file, options);
           }
-          const isMtimeOurs = lock2.mtime.getTime() === stat5.mtime.getTime();
+          const isMtimeOurs = lock2.mtime.getTime() === stat6.mtime.getTime();
           if (!isMtimeOurs) {
             return setLockAsCompromised(
               file,
@@ -1515,11 +1515,11 @@ var require_lockfile = __commonJS({
         if (err) {
           return callback(err);
         }
-        options.fs.stat(getLockFile(file2, options), (err2, stat5) => {
+        options.fs.stat(getLockFile(file2, options), (err2, stat6) => {
           if (err2) {
             return err2.code === "ENOENT" ? callback(null, false) : callback(err2);
           }
-          return callback(null, !isLockStale(stat5, options));
+          return callback(null, !isLockStale(stat6, options));
         });
       });
     }
@@ -1650,55 +1650,107 @@ __export(pid_guard_exports, {
   isBackfillActive: () => isBackfillActive,
   releasePidGuard: () => releasePidGuard
 });
-import { readFile as readFile9, rm as rm2, mkdir as mkdir7, open as open5 } from "node:fs/promises";
+import { readFile as readFile9, rm as rm2, mkdir as mkdir7, open as open5, link, stat as stat3 } from "node:fs/promises";
 import { join as join15 } from "node:path";
-async function isBackfillActive(stateDir) {
+import { randomUUID as randomUUID2 } from "node:crypto";
+async function readPidGuard(stateDir) {
   try {
     const raw = await readFile9(join15(stateDir, "backfill.pid"), "utf8");
     const pid = Number(raw.trim());
-    if (!Number.isFinite(pid) || pid <= 0)
-      return null;
-    try {
-      process.kill(pid, 0);
-      return pid;
-    } catch {
-      return null;
-    }
+    return { raw, pid: Number.isFinite(pid) && pid > 0 ? pid : null };
   } catch {
     return null;
   }
 }
+function isPidLive(pid) {
+  if (pid === null)
+    return false;
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+}
+async function tryAcquireRecoveryLock(lockPath) {
+  try {
+    await mkdir7(lockPath, { mode: 448 });
+    return true;
+  } catch (err) {
+    if (err.code !== "EEXIST")
+      throw err;
+  }
+  try {
+    const lockStat = await stat3(lockPath);
+    if (Date.now() - lockStat.mtimeMs <= RECOVERY_LOCK_MAX_AGE_MS)
+      return false;
+    await rm2(lockPath, { recursive: true, force: true });
+    await mkdir7(lockPath, { mode: 448 });
+    return true;
+  } catch (err) {
+    if (err.code === "EEXIST" || err.code === "ENOENT")
+      return false;
+    throw err;
+  }
+}
+async function isBackfillActive(stateDir) {
+  const guard = await readPidGuard(stateDir);
+  return isPidLive(guard?.pid ?? null) ? guard.pid : null;
+}
 async function acquirePidGuard(stateDir) {
   await mkdir7(stateDir, { recursive: true });
   const path = join15(stateDir, "backfill.pid");
-  for (let attempt = 0; attempt < 2; attempt++) {
+  const recoveryLockPath = join15(stateDir, "backfill.pid.recover");
+  const tempPath = join15(stateDir, `backfill.pid.${process.pid}.${randomUUID2()}.tmp`);
+  try {
+    const fh = await open5(tempPath, "wx", 384);
     try {
-      const fh = await open5(path, "wx", 384);
-      try {
-        await fh.writeFile(String(process.pid));
-        await fh.sync();
-      } finally {
-        await fh.close();
-      }
-      return { kind: "acquired" };
-    } catch (err) {
-      if (err.code !== "EEXIST")
-        throw err;
-      const live2 = await isBackfillActive(stateDir);
-      if (live2 !== null)
-        return { kind: "already-running", pid: live2 };
-      await rm2(path, { force: true });
+      await fh.writeFile(String(process.pid));
+      await fh.sync();
+    } finally {
+      await fh.close();
     }
+    for (let attempt = 0; attempt < 8; attempt++) {
+      try {
+        await link(tempPath, path);
+        return { kind: "acquired" };
+      } catch (err) {
+        if (err.code !== "EEXIST")
+          throw err;
+        const staleRead = await readPidGuard(stateDir);
+        if (isPidLive(staleRead?.pid ?? null))
+          return { kind: "already-running", pid: staleRead.pid };
+        const hasRecoveryLock = await tryAcquireRecoveryLock(recoveryLockPath);
+        if (!hasRecoveryLock) {
+          const current = await readPidGuard(stateDir);
+          if (isPidLive(current?.pid ?? null))
+            return { kind: "already-running", pid: current.pid };
+          continue;
+        }
+        try {
+          const current = await readPidGuard(stateDir);
+          if (current !== null && current.raw === staleRead?.raw && !isPidLive(current.pid)) {
+            await rm2(path, { force: true });
+          }
+        } finally {
+          await rm2(recoveryLockPath, { recursive: true, force: true });
+        }
+      }
+    }
+    const live = await isBackfillActive(stateDir);
+    return live !== null ? { kind: "already-running", pid: live } : { kind: "already-running", pid: -1 };
+  } finally {
+    await rm2(tempPath, { force: true });
   }
-  const live = await isBackfillActive(stateDir);
-  return live !== null ? { kind: "already-running", pid: live } : { kind: "already-running", pid: -1 };
 }
 async function releasePidGuard(stateDir) {
   await rm2(join15(stateDir, "backfill.pid"), { force: true });
 }
+var RECOVERY_LOCK_MAX_AGE_MS;
 var init_pid_guard = __esm({
   "dist/shared/backfill/pid-guard.mjs"() {
     "use strict";
+    RECOVERY_LOCK_MAX_AGE_MS = 1e4;
   }
 });
 
@@ -1880,13 +1932,13 @@ var init_status = __esm({
 // dist/agents/claude-code/collect.mjs
 import { readFileSync as readFileSync9 } from "node:fs";
 import { homedir as homedir7 } from "node:os";
-import { dirname as dirname8, join as join32 } from "node:path";
+import { dirname as dirname8, join as join33 } from "node:path";
 import { fileURLToPath as fileURLToPath4 } from "node:url";
 
 // dist/shared/run-collect.mjs
 import { readFileSync as readFileSync7 } from "node:fs";
-import { randomUUID as randomUUID2 } from "node:crypto";
-import { mkdir as mkdir10, writeFile as writeFile8, appendFile as appendFile3, stat as stat3, rm as rm3 } from "node:fs/promises";
+import { randomUUID as randomUUID3 } from "node:crypto";
+import { mkdir as mkdir10, writeFile as writeFile8, appendFile as appendFile3, stat as stat4, rm as rm3 } from "node:fs/promises";
 import { join as join19 } from "node:path";
 
 // dist/shared/config.mjs
@@ -1922,7 +1974,8 @@ function defaultPolicy() {
       "ref_kind",
       "ref_id",
       "ref_scope",
-      "ref_source"
+      "ref_source",
+      "refs"
     ]),
     "tool_call.failed": Object.freeze([
       "tool_name",
@@ -2531,7 +2584,19 @@ function defaultPluginRoot() {
 function trimTrailingSlash(p) {
   return p.endsWith("/") || p.endsWith("\\") ? p.slice(0, -1) : p;
 }
+function registeredPluginKey(opts = {}) {
+  const home = opts.homeDir ?? homedir3();
+  const root = trimTrailingSlash(opts.pluginRoot ?? defaultPluginRoot());
+  return registryKey(root, home);
+}
 function deriveFromRegistry(root, home) {
+  const key = registryKey(root, home);
+  if (key === null)
+    return null;
+  const at = key.lastIndexOf("@");
+  return join2(home, ".claude", "plugins", "data", `${key.slice(0, at)}-${key.slice(at + 1)}`);
+}
+function registryKey(root, home) {
   try {
     const regPath = join2(home, ".claude", "plugins", "installed_plugins.json");
     const reg = JSON.parse(readFileSync(regPath, "utf8"));
@@ -2550,9 +2615,7 @@ function deriveFromRegistry(root, home) {
         const at = key.lastIndexOf("@");
         if (at <= 0 || at >= key.length - 1)
           continue;
-        const plugin = key.slice(0, at);
-        const alias = key.slice(at + 1);
-        return join2(home, ".claude", "plugins", "data", `${plugin}-${alias}`);
+        return key;
       }
     }
   } catch {
@@ -2658,7 +2721,7 @@ init_credential_paths();
 
 // dist/shared/plugin-commands.mjs
 var COMMAND_PREFIX = "/fancysauce-savings:";
-var LOGIN_COMMAND = `${COMMAND_PREFIX}login`;
+var LOGIN_COMMAND = "/fancysauce-savings:login";
 var RESET_COMMAND = `${COMMAND_PREFIX}reset`;
 var UPLOAD_HISTORY_COMMAND = `${COMMAND_PREFIX}upload-history`;
 
@@ -2670,6 +2733,35 @@ function sha256Hex(input) {
 function deterministicUuid(parts) {
   const h = sha256Hex(parts.join("|"));
   return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20, 32)}`;
+}
+
+// dist/shared/types.mjs
+var REPLAY_MARKERS = ["none", "history_scan", "catch_up", "reread"];
+function isReplayMarker(value) {
+  return typeof value === "string" && REPLAY_MARKERS.includes(value);
+}
+var WORK_REF_FIELDS = ["system", "kind", "id", "scope", "source"];
+var MAX_REFS_PER_EVENT = 10;
+function workRefField(item, field) {
+  if (typeof item !== "object" || item === null)
+    return void 0;
+  return item[field];
+}
+function validateWorkRefList(value) {
+  if (!Array.isArray(value) || value.length < 2 || value.length > MAX_REFS_PER_EVENT)
+    return void 0;
+  const refs = [];
+  for (const item of value) {
+    const ref = {};
+    for (const field of WORK_REF_FIELDS) {
+      const fieldValue = workRefField(item, field);
+      if (typeof fieldValue !== "string" || fieldValue === "")
+        return void 0;
+      ref[field] = fieldValue;
+    }
+    refs.push(ref);
+  }
+  return refs;
 }
 
 // dist/shared/content-filter.mjs
@@ -2751,8 +2843,15 @@ function toolCallComplete(a) {
   if (refKeys.every((key) => typeof a[key] === "string" && a[key] !== "")) {
     for (const key of refKeys)
       out[key] = a[key];
+  } else {
+    const refs = filteredRefs(a.refs);
+    if (refs)
+      out.refs = refs;
   }
   return out;
+}
+function filteredRefs(v) {
+  return validateWorkRefList(v);
 }
 function toolCallFailed(a) {
   const rawInput = typeof a.tool_input_raw === "string" ? a.tool_input_raw : "";
@@ -2932,7 +3031,7 @@ import { join as join3 } from "node:path";
 var BAKED_SERVER_KEY = {
   keyid: "env-production-1",
   alg: "RSA-OAEP-256+A256GCM",
-  publicKeyPem: "-----BEGIN PUBLIC KEY-----\nMIIBojANBgkqhkiG9w0BAQEFAAOCAY8AMIIBigKCAYEA4Dh42p0kvReuiL194qp3\n8j0BSjOmwW9WU9NUUSlBSA1Kn0WPdfMKywsD+DPrlt/KyOKdNLoUXsXrriM212Si\nMgabz4e4pK8ItqgqCg1wPFArY8SEoy8MioMj8iZVz/UPeR3/7Rng8LT50HiaB/kc\nwkBjjLnSU2xYQkKROKMGuTlKDZ4BCpP/uVCFTrZ5BUFEn3r2WyAl3Z6NBjO9hTPB\njKx1AH+CitIZeWVmn39EUwrzUW+LiXbEe1Y+0SXkpTgdqvVMzMjytlEp5Ojisvs1\n/GqoHRoN/NcESILK2s4Rabe3PTquCmZItYbw2sBpFe/6xhHPn/LA2TVjEjx5d+GJ\ndxQnhUWlNPInWul8TCePBAhz6MGThrcVWj6b+V3K4CrjetFIlvF7R2dk/SlWLCUZ\nozfDPZnQfvSZInVSrSRiCqA3OXArmptmFzeZii1RDQsJnNA+Vc2lTvuf2ScepvgG\nWJPZewNj7dknrCLAyj79ZZrQH31cIjgPt3XpT7SHnkaLAgMBAAE=\n-----END PUBLIC KEY-----\n\n"
+  publicKeyPem: "-----BEGIN PUBLIC KEY-----\nMIIBojANBgkqhkiG9w0BAQEFAAOCAY8AMIIBigKCAYEA4Dh42p0kvReuiL194qp3\n8j0BSjOmwW9WU9NUUSlBSA1Kn0WPdfMKywsD+DPrlt/KyOKdNLoUXsXrriM212Si\nMgabz4e4pK8ItqgqCg1wPFArY8SEoy8MioMj8iZVz/UPeR3/7Rng8LT50HiaB/kc\nwkBjjLnSU2xYQkKROKMGuTlKDZ4BCpP/uVCFTrZ5BUFEn3r2WyAl3Z6NBjO9hTPB\njKx1AH+CitIZeWVmn39EUwrzUW+LiXbEe1Y+0SXkpTgdqvVMzMjytlEp5Ojisvs1\n/GqoHRoN/NcESILK2s4Rabe3PTquCmZItYbw2sBpFe/6xhHPn/LA2TVjEjx5d+GJ\ndxQnhUWlNPInWul8TCePBAhz6MGThrcVWj6b+V3K4CrjetFIlvF7R2dk/SlWLCUZ\nozfDPZnQfvSZInVSrSRiCqA3OXArmptmFzeZii1RDQsJnNA+Vc2lTvuf2ScepvgG\nWJPZewNj7dknrCLAyj79ZZrQH31cIjgPt3XpT7SHnkaLAgMBAAE=\n-----END PUBLIC KEY-----\n"
 };
 var CACHE_FILE = "server-key.json";
 var DEFAULT_TTL_MS = 24 * 60 * 60 * 1e3;
@@ -3233,6 +3332,7 @@ var HARNESS_ENTRYPOINT_MAX_LEN = 32;
 function toResourceAttributes(id, opts) {
   const rawOsType = opts.osType ?? process.platform;
   const rawHostArch = opts.hostArch ?? process.arch;
+  const plugin = opts.plugin ?? registeredPluginKey();
   const attrs = {
     "service.name": "fancysauce",
     "service.version": opts.pluginVersion,
@@ -3240,6 +3340,7 @@ function toResourceAttributes(id, opts) {
     "fancysauce.install_id": id.install_id,
     "fancysauce.agent": opts.agent,
     "fancysauce.runtime": "node",
+    ...plugin ? { "fancysauce.plugin": plugin } : {},
     "os.type": OTEL_OS_TYPE[rawOsType] ?? rawOsType
   };
   const hostArch = OTEL_HOST_ARCH[rawHostArch];
@@ -3742,6 +3843,7 @@ var ATTR_TYPE = {
   "fancysauce.event_type": "string",
   "fancysauce.session_id": "string",
   "fancysauce.source": "string",
+  "fancysauce.replay": "string",
   "fancysauce.sequence": "int",
   // session.start
   model: "string",
@@ -3766,6 +3868,7 @@ var ATTR_TYPE = {
   ref_id: "string",
   ref_scope: "string",
   ref_source: "string",
+  refs: "ref_list",
   // subagent.{start,complete}
   agent_id: "string",
   agent_type: "string",
@@ -3878,6 +3981,7 @@ var RESOURCE_ATTRIBUTE_KEYS = [
   "fancysauce.install_id",
   "fancysauce.agent",
   "fancysauce.runtime",
+  "fancysauce.plugin",
   "os.type",
   "host.arch",
   "fancysauce.harness_entrypoint",
@@ -3915,9 +4019,12 @@ function encodeLogRecord(event, observedTimeUnixNano) {
     { key: "fancysauce.event_uuid", value: encodeAnyValue("fancysauce.event_uuid", event.event_uuid) },
     { key: "fancysauce.event_type", value: encodeAnyValue("fancysauce.event_type", event.event_type) },
     { key: "fancysauce.session_id", value: encodeAnyValue("fancysauce.session_id", event.session_id) },
-    { key: "fancysauce.source", value: encodeAnyValue("fancysauce.source", event.source) },
-    { key: "fancysauce.sequence", value: encodeAnyValue("fancysauce.sequence", event.sequence) }
+    { key: "fancysauce.source", value: encodeAnyValue("fancysauce.source", event.source) }
   ];
+  if (event.replay !== void 0) {
+    attrs.push({ key: "fancysauce.replay", value: encodeAnyValue("fancysauce.replay", event.replay) });
+  }
+  attrs.push({ key: "fancysauce.sequence", value: encodeAnyValue("fancysauce.sequence", event.sequence) });
   for (const [key, val] of Object.entries(event.attributes)) {
     attrs.push({ key, value: encodeAnyValue(key, val) });
   }
@@ -3938,6 +4045,9 @@ function encodeAnyValue(key, v) {
   }
   switch (type) {
     case "string":
+      if (typeof v === "object" && v !== null) {
+        throw new Error(`Attribute ${key} typed string requires a scalar, got a list`);
+      }
       return { stringValue: String(v) };
     case "bool":
       return { boolValue: Boolean(v) };
@@ -3953,6 +4063,20 @@ function encodeAnyValue(key, v) {
       if (typeof v === "bigint")
         return { doubleValue: Number(v) };
       throw new Error(`Attribute ${key} typed double requires number|bigint, got ${typeof v}`);
+    case "ref_list": {
+      const refs = validateWorkRefList(v);
+      if (!refs) {
+        throw new Error(`Attribute ${key} typed ref_list requires an array of 2..${MAX_REFS_PER_EVENT} items with five non-empty string fields (system, kind, id, scope, source)`);
+      }
+      const values = refs.map((ref) => {
+        const fields = WORK_REF_FIELDS.map((field) => {
+          const value = ref[field];
+          return { key: field, value: { stringValue: value } };
+        });
+        return { kvlistValue: { values: fields } };
+      });
+      return { arrayValue: { values } };
+    }
   }
 }
 
@@ -4078,12 +4202,12 @@ async function readBatch(queuePath, startOffset, maxEvents, maxBytes) {
     } catch {
       return { events: [], endOffset: startOffset };
     }
-    const stat5 = await fh.stat();
-    if (stat5.size < startOffset)
-      return { events: [], endOffset: startOffset, cursorPastEof: true, queueSize: stat5.size };
-    if (stat5.size <= startOffset)
+    const stat6 = await fh.stat();
+    if (stat6.size < startOffset)
+      return { events: [], endOffset: startOffset, cursorPastEof: true, queueSize: stat6.size };
+    if (stat6.size <= startOffset)
       return { events: [], endOffset: startOffset };
-    const toRead = Math.min(stat5.size - startOffset, maxBytes);
+    const toRead = Math.min(stat6.size - startOffset, maxBytes);
     const buf = Buffer.alloc(toRead);
     await fh.read(buf, 0, toRead, startOffset);
     const lastNl = buf.lastIndexOf("\n".charCodeAt(0));
@@ -4131,15 +4255,15 @@ async function maybeCompact(dataDir2, cursor, queuePath) {
       } catch {
         return;
       }
-      const stat5 = await fh.stat();
-      if (flushedOffset >= stat5.size) {
+      const stat6 = await fh.stat();
+      if (flushedOffset >= stat6.size) {
         await fh.close();
         fh = null;
         await cursor.resetUnlocked();
         await writeFile4(queuePath, "");
         return;
       }
-      const tailLen = stat5.size - flushedOffset;
+      const tailLen = stat6.size - flushedOffset;
       const buf = Buffer.alloc(tailLen);
       await fh.read(buf, 0, tailLen, flushedOffset);
       await fh.close();
@@ -4210,6 +4334,7 @@ function revive(v) {
     event_type: o.event_type,
     session_id: o.session_id,
     source: o.source,
+    ...isReplayMarker(o.replay) ? { replay: o.replay } : {},
     sequence: o.sequence,
     timestamp_ns: typeof o.timestamp_ns === "bigint" ? o.timestamp_ns : BigInt(o.timestamp_ns),
     attributes: o.attributes
@@ -4256,6 +4381,7 @@ function serialize(e) {
     event_type: e.event_type,
     session_id: e.session_id,
     source: e.source,
+    replay: e.replay,
     sequence: e.sequence,
     timestamp_ns: e.timestamp_ns.toString(),
     attributes: e.attributes
@@ -4549,7 +4675,7 @@ function sessionIndexSink(opts = {}) {
 }
 
 // dist/shared/schema-version.mjs
-var SCHEMA_VERSION = "1.2.0";
+var SCHEMA_VERSION = "1.2.1";
 
 // dist/shared/whoami/credential.mjs
 init_credential_paths();
@@ -4824,11 +4950,18 @@ function serializeForQueue(event) {
   if (typeof event.event_uuid !== "string" || event.event_uuid.length === 0) {
     throw new Error(`event_uuid must be non-empty before enqueue (event_type=${event.event_type}, source=${event.source})`);
   }
+  if (event.replay !== void 0 && !isReplayMarker(event.replay)) {
+    throw new Error(`replay must be one of ${REPLAY_MARKERS.join(", ")} (event_type=${event.event_type}, replay=${String(event.replay)})`);
+  }
+  if (event.replay === void 0) {
+    throw new Error(`replay is required before enqueue (event_type=${event.event_type}, source=${event.source})`);
+  }
   return JSON.stringify({
     event_uuid: event.event_uuid,
     event_type: event.event_type,
     session_id: event.session_id,
     source: event.source,
+    replay: event.replay,
     sequence: event.sequence,
     timestamp_ns: event.timestamp_ns.toString(),
     attributes: event.attributes
@@ -4884,7 +5017,7 @@ async function runCollect(adapter, opts) {
     const pluginFlags = adapter.agent === "claude-code" ? readPluginFlags() : NO_PLUGIN_FLAGS;
     const enrichedRaw = await adapter.mapHookEvent(hookPayload, { pluginFlags });
     const stamped = enrichedRaw && enrichedRaw.event_type === "session.start" && identity.repo_url_hash ? { ...enrichedRaw, attributes: { ...enrichedRaw.attributes, "fancysauce.repo_url_hash": identity.repo_url_hash } } : enrichedRaw;
-    const withId = stamped === null ? null : { ...stamped, event_uuid: randomUUID2() };
+    const withId = stamped === null ? null : { ...stamped, event_uuid: randomUUID3() };
     const primary = withId === null ? null : filterEvent(withId, config.policy);
     let primaryPending = primary;
     const outboundDir = join19(root, "outbound");
@@ -4906,6 +5039,10 @@ async function runCollect(adapter, opts) {
       const all = p ? [p, ...filteredTail] : filteredTail;
       if (all.length === 0)
         return;
+      for (const event of all) {
+        if (event.replay === void 0)
+          event.replay = "none";
+      }
       const result = await enqueueEvents(queue, all);
       queueDropped += result.dropped;
       sinkEvents.push(...all);
@@ -4956,7 +5093,7 @@ async function runCollect(adapter, opts) {
     try {
       const stateDir = join19(root, "state");
       const pendingPath = join19(config.loginStateDir, "backfill-pending");
-      const pendingExists = await stat3(pendingPath).then(() => true).catch(() => false);
+      const pendingExists = await stat4(pendingPath).then(() => true).catch(() => false);
       if (pendingExists) {
         const { isBackfillActive: isBackfillActive2 } = await Promise.resolve().then(() => (init_pid_guard(), pid_guard_exports));
         const { spawnBackfillRunner: spawnBackfillRunner2 } = await Promise.resolve().then(() => (init_runner_spawn(), runner_spawn_exports));
@@ -4976,7 +5113,7 @@ async function runCollect(adapter, opts) {
         const { hasScanOnceMarker: hasScanOnceMarker2, claimScanOnce: claimScanOnce2 } = await Promise.resolve().then(() => (init_scan_once(), scan_once_exports));
         const alreadyAttempted = await hasScanOnceMarker2(stateDir);
         if (!alreadyAttempted && await claimScanOnce2(stateDir, pluginVersion())) {
-          const skipMarkerExists = await stat3(join19(stateDir, "backfill-skip")).then(() => true).catch(() => false);
+          const skipMarkerExists = await stat4(join19(stateDir, "backfill-skip")).then(() => true).catch(() => false);
           if (!skipMarkerExists) {
             const { spawnAutoScan: spawnAutoScan2 } = await Promise.resolve().then(() => (init_runner_spawn(), runner_spawn_exports));
             const { credentialPaths: credentialPaths2 } = await Promise.resolve().then(() => (init_credential_paths(), credential_paths_exports));
@@ -5015,34 +5152,374 @@ ${err.stack ?? ""}` : String(err);
 
 // dist/agents/claude-code/adapter.mjs
 import { homedir as homedir6 } from "node:os";
-import { join as join25 } from "node:path";
+import { join as join26 } from "node:path";
 
 // dist/shared/ref-extract.mjs
-var GITHUB_PR_URL = /https:\/\/github\.com\/([A-Za-z0-9._-]{1,100})\/([A-Za-z0-9._-]{1,100})\/pull\/([0-9]{1,9})(?![0-9])/g;
-function extractGithubPrRef(toolName, toolResponseRaw) {
-  if (toolName !== "Bash" || !toolResponseRaw)
-    return null;
-  const matches = /* @__PURE__ */ new Map();
-  GITHUB_PR_URL.lastIndex = 0;
-  for (const match2 of toolResponseRaw.matchAll(GITHUB_PR_URL)) {
-    const scope = `${match2[1]}/${match2[2]}`;
-    const id = String(Number(match2[3]));
-    const key = `${scope}\0${id}`;
-    if (!matches.has(key))
-      matches.set(key, { scope, id });
-    if (matches.size > 1)
-      return null;
+var OWNER_REPO = "([A-Za-z0-9._-]{1,100})/([A-Za-z0-9._-]{1,100})";
+var HTTPS = "[hH][tT][tT][pP][sS]";
+var GITHUB = "[gG][iI][tT][hH][uU][bB]";
+var COM = "[cC][oO][mM]";
+var API = `[aA][pP][iI]\\.${GITHUB}\\.${COM}`;
+var REPOS = "[rR][eE][pP][oO][sS]";
+var PULL = "[pP][uU][lL][lL]";
+var PULLS = `${PULL}[sS]`;
+var GITLAB = "[gG][iI][tT][lL][aA][bB]";
+var MERGE_REQUESTS = "[mM][eE][rR][gG][eE]_[rR][eE][qQ][uU][eE][sS][tT][sS]";
+var GITLAB_PATH_SEGMENT = "[A-Za-z0-9_][A-Za-z0-9._-]{0,254}";
+var GITLAB_PATH = `(${GITLAB_PATH_SEGMENT}(?:/${GITLAB_PATH_SEGMENT}){1,20})`;
+var GITLAB_PATH_RE = new RegExp(`^${GITLAB_PATH}$`);
+var GITHUB_PR_URL = new RegExp(`${HTTPS}://${GITHUB}\\.${COM}/${OWNER_REPO}/${PULL}/([0-9]{1,9})(?![0-9])`, "g");
+var NOT_IN_A_NAME = "(?<![A-Za-z0-9._/-])";
+var GITHUB_PR_API_PATH = new RegExp(`(?:(?:${HTTPS}://|${NOT_IN_A_NAME}|(?<=\\\\[nrt]))${API}/|(?:${NOT_IN_A_NAME}|(?<=\\\\[nrt]))/?)${REPOS}/${OWNER_REPO}/${PULLS}/([0-9]{1,9})(?![0-9])`, "g");
+var GITLAB_MR_URL = new RegExp(`${HTTPS}://${GITLAB}\\.${COM}/${GITLAB_PATH}/-/${MERGE_REQUESTS}/([0-9]{1,9})(?![0-9])`, "g");
+var GITLAB_API_PROJECT = "((?:[A-Za-z0-9._-]|%2[fF])+)/";
+var GITLAB_API_URL = new RegExp(`${HTTPS}://${GITLAB}\\.${COM}/api/v4/projects/${GITLAB_API_PROJECT}${MERGE_REQUESTS}/([0-9]{1,9})(?![0-9])`, "g");
+var GITLAB_API_BARE_PATH = new RegExp(`/api/v4/projects/${GITLAB_API_PROJECT}${MERGE_REQUESTS}/([0-9]{1,9})(?![0-9])`, "g");
+function responseMatches(response) {
+  const matches = [];
+  for (const pattern of [GITHUB_PR_URL, GITHUB_PR_API_PATH]) {
+    pattern.lastIndex = 0;
+    for (const match of response.matchAll(pattern)) {
+      if (pattern === GITHUB_PR_API_PATH && !match[0].toLowerCase().startsWith("https://") && !apiPathBoundary(response, match.index ?? 0)) {
+        continue;
+      }
+      matches.push({
+        index: match.index ?? 0,
+        system: "github",
+        kind: "pull_request",
+        scope: `${match[1]}/${match[2]}`,
+        number: match[3]
+      });
+    }
   }
-  const match = matches.values().next().value;
-  if (!match)
-    return null;
-  return {
-    system: "github",
-    kind: "pull_request",
-    id: match.id,
-    scope: match.scope,
-    source: "tool_output"
+  GITLAB_MR_URL.lastIndex = 0;
+  for (const match of response.matchAll(GITLAB_MR_URL)) {
+    matches.push({ index: match.index ?? 0, system: "gitlab", kind: "merge_request", scope: match[1], number: match[2] });
+  }
+  for (const [pattern, hasHost] of [[GITLAB_API_URL, true], [GITLAB_API_BARE_PATH, false]]) {
+    pattern.lastIndex = 0;
+    for (const match of response.matchAll(pattern)) {
+      const start = match.index ?? 0;
+      if (!hasHost && !apiPathBoundary(response, start))
+        continue;
+      const scope = match[1].replace(/%2f/gi, "/");
+      if (!GITLAB_PATH_RE.test(scope))
+        continue;
+      matches.push({ index: start, system: "gitlab", kind: "merge_request", scope, number: match[2] });
+    }
+  }
+  return matches.sort((a, b) => a.index - b.index);
+}
+function apiPathBoundary(response, start) {
+  if (start === 0 || jsonEscapeBoundary(response, start))
+    return true;
+  return !/[A-Za-z0-9._/-]/.test(response[start - 1]);
+}
+function jsonEscapeBoundary(response, start) {
+  if (start < 2 || !"nrt".includes(response[start - 1]))
+    return false;
+  let backslashes = 0;
+  for (let i = start - 2; i >= 0 && response[i] === "\\"; i -= 1)
+    backslashes += 1;
+  return backslashes % 2 === 1;
+}
+var GH_PR_ACTION_VERBS = /* @__PURE__ */ new Set([
+  "create",
+  "edit",
+  "comment",
+  "merge",
+  "review",
+  "ready",
+  "close",
+  "reopen"
+]);
+var GL_MR_ACTION_VERBS = /* @__PURE__ */ new Set([
+  "create",
+  "update",
+  "note",
+  "merge",
+  "approve",
+  "revoke",
+  "close",
+  "reopen",
+  "ready",
+  "draft",
+  "rebase"
+]);
+var COMMAND_PREFIX_WORDS = /* @__PURE__ */ new Set([
+  "env",
+  "command",
+  "nohup",
+  "time",
+  "exec",
+  "!",
+  "{",
+  "if",
+  "then",
+  "else",
+  "elif",
+  "do",
+  "while",
+  "until"
+]);
+var GIT_OPTIONS_WITH_VALUE = /* @__PURE__ */ new Set([
+  "-C",
+  "-c",
+  "--git-dir",
+  "--work-tree",
+  "--namespace",
+  "--config-env"
+]);
+var ASSIGNMENT_WORD = /^[A-Za-z_][A-Za-z0-9_]*=/;
+var REDIRECT_OPERATOR = /^(?:\d*(?:>&|<&)|\d*(?:>>|>|<<|<)|&>>?|>&)$/;
+var REDIRECT_WORD = /^(\d*(?:>&|<&)|\d*(?:>>|>|<<|<)|&>>?|>&)(.+)$/;
+function redirectTargetIsValid(operator, target) {
+  if (target === "" || /^[<>&]/.test(target))
+    return false;
+  if (operator !== ">&" && (operator.endsWith(">&") || operator.endsWith("<&"))) {
+    return /^\d+$/.test(target) || target === "-";
+  }
+  return true;
+}
+function redirectWordIsValid(word) {
+  const match = REDIRECT_WORD.exec(word);
+  return match !== null && redirectTargetIsValid(match[1], match[2]);
+}
+function splitSimpleCommands(command) {
+  const segments = [];
+  let words = [];
+  let cur;
+  const pending = [];
+  const n = command.length;
+  let i = 0;
+  const endWord = () => {
+    if (cur !== void 0) {
+      words.push(cur);
+      cur = void 0;
+    }
   };
+  const endSegment = () => {
+    endWord();
+    if (words.length > 0)
+      segments.push(words);
+    words = [];
+  };
+  const takeSingle = () => {
+    const start = i + 1;
+    const end = command.indexOf("'", start);
+    const j = end === -1 ? n : end;
+    const text = command.slice(start, j);
+    i = j + 1;
+    return text;
+  };
+  const takeDouble = () => {
+    let j = i + 1;
+    let text = "";
+    while (j < n && command[j] !== '"') {
+      if (command[j] === "\\" && j + 1 < n) {
+        text += command[j + 1];
+        j += 2;
+      } else {
+        text += command[j];
+        j += 1;
+      }
+    }
+    i = j + 1;
+    return text;
+  };
+  const readDelimiter = () => {
+    while (i < n && (command[i] === " " || command[i] === "	"))
+      i += 1;
+    let text = "";
+    while (i < n && !" 	\n;&|()<>`".includes(command[i])) {
+      if (command[i] === "'")
+        text += takeSingle();
+      else if (command[i] === '"')
+        text += takeDouble();
+      else if (command[i] === "\\") {
+        if (i + 1 < n)
+          text += command[i + 1];
+        i += 2;
+      } else {
+        text += command[i];
+        i += 1;
+      }
+    }
+    return text;
+  };
+  while (i < n) {
+    const c = command[i];
+    const next = command[i + 1];
+    if (c === "\\") {
+      if (next === "\n")
+        i += 2;
+      else {
+        if (next !== void 0)
+          cur = (cur ?? "") + next;
+        i += 2;
+      }
+    } else if (c === "'") {
+      cur = (cur ?? "") + takeSingle();
+    } else if (c === '"') {
+      cur = (cur ?? "") + takeDouble();
+    } else if (c === "#" && cur === void 0) {
+      const newline = command.indexOf("\n", i);
+      i = newline === -1 ? n : newline;
+    } else if (c === "<" && next === "<") {
+      endWord();
+      if (command[i + 2] === "<") {
+        i += 3;
+        continue;
+      }
+      i += 2;
+      let stripTabs = false;
+      if (command[i] === "-") {
+        stripTabs = true;
+        i += 1;
+      }
+      const delimiter = readDelimiter();
+      if (delimiter !== "")
+        pending.push({ delimiter, stripTabs });
+    } else if (c === "\n") {
+      endSegment();
+      i += 1;
+      for (const heredoc of pending) {
+        while (i <= n) {
+          const newline = command.indexOf("\n", i);
+          const end = newline === -1 ? n : newline;
+          const line = command.slice(i, end);
+          const bodyLine = heredoc.stripTabs ? line.replace(/^\t+/, "") : line;
+          i = newline === -1 ? n : newline + 1;
+          if (bodyLine === heredoc.delimiter || newline === -1)
+            break;
+        }
+      }
+      pending.length = 0;
+    } else if (c === " " || c === "	") {
+      endWord();
+      i += 1;
+    } else if (c === "&" && (command[i - 1] === "<" || command[i - 1] === ">" || next === ">")) {
+      cur = (cur ?? "") + c;
+      i += 1;
+    } else if (";&|()`".includes(c)) {
+      endSegment();
+      i += 1;
+    } else if (c === "$" && next === "(") {
+      endSegment();
+      i += 2;
+    } else {
+      cur = (cur ?? "") + c;
+      i += 1;
+    }
+  }
+  endSegment();
+  return segments;
+}
+function simpleCommandActsOnWorkItem(words) {
+  let k = 0;
+  while (k < words.length && (ASSIGNMENT_WORD.test(words[k]) || COMMAND_PREFIX_WORDS.has(words[k])))
+    k += 1;
+  if (k >= words.length)
+    return false;
+  const head = words[k].slice(words[k].lastIndexOf("/") + 1);
+  if (head === "gh") {
+    let j = k + 1;
+    if (words[j] !== "pr")
+      return false;
+    j += 1;
+    while (j < words.length) {
+      if (words[j] === "-R" || words[j] === "--repo")
+        j += 2;
+      else if (words[j].startsWith("--repo="))
+        j += 1;
+      else
+        break;
+    }
+    return j < words.length && GH_PR_ACTION_VERBS.has(words[j]);
+  }
+  if (head === "glab") {
+    let j = k + 1;
+    if (words[j] !== "mr")
+      return false;
+    j += 1;
+    while (j < words.length) {
+      if (words[j] === "-R" || words[j] === "--repo")
+        j += 2;
+      else if (words[j].startsWith("--repo="))
+        j += 1;
+      else
+        break;
+    }
+    return j < words.length && GL_MR_ACTION_VERBS.has(words[j]);
+  }
+  if (head === "git") {
+    let j = k + 1;
+    while (j < words.length && words[j].startsWith("-")) {
+      j += GIT_OPTIONS_WITH_VALUE.has(words[j]) ? 2 : 1;
+    }
+    return words[j] === "push";
+  }
+  return false;
+}
+function onlyRedirectWords(words, start) {
+  for (let k = start; k < words.length; k += 1) {
+    if (redirectWordIsValid(words[k]))
+      continue;
+    if (REDIRECT_OPERATOR.test(words[k])) {
+      const operator = words[k];
+      k += 1;
+      if (k >= words.length || !redirectTargetIsValid(operator, words[k]))
+        return false;
+      continue;
+    }
+    return false;
+  }
+  return true;
+}
+function simpleCommandIsShellSyntax(words) {
+  if (words.length > 0 && onlyRedirectWords(words, 0))
+    return true;
+  let k = 0;
+  while (k < words.length && (words[k] === "do" || words[k] === "then" || words[k] === "else"))
+    k += 1;
+  if (k === words.length)
+    return k > 0;
+  if (words[k] === "for")
+    return true;
+  if (words[k] === "done" || words[k] === "fi" || words[k] === "}")
+    return onlyRedirectWords(words, k + 1);
+  return words[k] === "{" && k + 1 === words.length;
+}
+function commandActsOnWorkItem(command) {
+  return splitSimpleCommands(command).some(simpleCommandActsOnWorkItem);
+}
+function commandIsOnlyActingCommands(command) {
+  const segments = splitSimpleCommands(command);
+  return segments.length > 0 && segments.every((words) => simpleCommandIsShellSyntax(words) || simpleCommandActsOnWorkItem(words));
+}
+function extractWorkItemRefs(toolName, command, toolResponseRaw) {
+  if (toolName !== "Bash" || !toolResponseRaw || !commandActsOnWorkItem(command))
+    return [];
+  const refs = /* @__PURE__ */ new Map();
+  for (const match of responseMatches(toolResponseRaw)) {
+    const id = String(Number(match.number));
+    if (id === "0")
+      continue;
+    const key = `${match.system}\0${match.scope.toLowerCase()}\0${id}`;
+    if (!refs.has(key))
+      refs.set(key, {
+        system: match.system,
+        kind: match.kind,
+        id,
+        scope: match.scope,
+        source: "tool_output"
+      });
+  }
+  if (refs.size > MAX_REFS_PER_EVENT)
+    return [];
+  if (refs.size > 1 && !commandIsOnlyActingCommands(command))
+    return [];
+  return [...refs.values()];
 }
 
 // dist/shared/stable-stringify.mjs
@@ -5058,7 +5535,7 @@ function stableStringify(value) {
 }
 
 // dist/shared/usage-limit.mjs
-import { randomUUID as randomUUID3 } from "node:crypto";
+import { randomUUID as randomUUID4 } from "node:crypto";
 function classifyLimitKind(text) {
   if (/not your usage limit/i.test(text) || /temporarily limiting/i.test(text)) {
     return "server_throttle";
@@ -5183,7 +5660,7 @@ function detectUsageLimit(rec, sessionId, sequence, nowMs) {
   if (reset !== void 0)
     attributes.reset_at_guess = reset;
   return {
-    event_uuid: randomUUID3(),
+    event_uuid: randomUUID4(),
     event_type: "usage_limit.exceeded",
     session_id: sessionId,
     source: "transcript.tail",
@@ -5217,6 +5694,10 @@ var TOOL_HOOKS = /* @__PURE__ */ new Set([
   "PostToolUse",
   "PostToolUseFailure"
 ]);
+function bashCommand(toolInput) {
+  const command = toolInput?.command;
+  return typeof command === "string" ? command : "";
+}
 function mapHookToEvent(input, sequence, opts = {}) {
   const pluginFlags = opts.pluginFlags ?? NO_PLUGIN_FLAGS;
   const eventType = HOOK_TO_EVENT_TYPE[input.hook_event_name];
@@ -5245,13 +5726,16 @@ function mapHookToEvent(input, sequence, opts = {}) {
       const toolResponseRaw = stableStringify(input.tool_response);
       attributes.tool_response_raw = toolResponseRaw;
       if (input.hook_event_name === "PostToolUse" && pluginFlagOn(pluginFlags, PLUGIN_FLAG_GITHUB_PR_REF)) {
-        const ref = extractGithubPrRef(input.tool_name ?? "", toolResponseRaw);
-        if (ref) {
+        const refs = extractWorkItemRefs(input.tool_name ?? "", bashCommand(input.tool_input), toolResponseRaw);
+        if (refs.length === 1) {
+          const [ref] = refs;
           attributes.ref_system = ref.system;
           attributes.ref_kind = ref.kind;
           attributes.ref_id = ref.id;
           attributes.ref_scope = ref.scope;
           attributes.ref_source = ref.source;
+        } else if (refs.length > 1) {
+          attributes.refs = refs;
         }
       }
     }
@@ -5377,18 +5861,18 @@ async function computeSubagentDuration(transcriptPath) {
   let fh = null;
   try {
     fh = await open7(transcriptPath, "r");
-    const stat5 = await fh.stat();
-    if (stat5.size === 0)
+    const stat6 = await fh.stat();
+    if (stat6.size === 0)
       return null;
-    const headSize = Math.min(stat5.size, READ_WINDOW_BYTES);
+    const headSize = Math.min(stat6.size, READ_WINDOW_BYTES);
     const headBuf = Buffer.alloc(headSize);
     await fh.read(headBuf, 0, headSize, 0);
     const firstNewline = headBuf.indexOf("\n".charCodeAt(0));
     if (firstNewline < 0)
       return null;
     const firstLine = headBuf.slice(0, firstNewline).toString("utf8");
-    const tailSize = Math.min(stat5.size, READ_WINDOW_BYTES);
-    const tailStart = stat5.size - tailSize;
+    const tailSize = Math.min(stat6.size, READ_WINDOW_BYTES);
+    const tailStart = stat6.size - tailSize;
     const tailBuf = Buffer.alloc(tailSize);
     await fh.read(tailBuf, 0, tailSize, tailStart);
     let usableEnd = tailBuf.length;
@@ -5462,14 +5946,21 @@ var SubagentMetaCache = class {
 
 // dist/agents/claude-code/transcript-tail.mjs
 var import_proper_lockfile4 = __toESM(require_proper_lockfile(), 1);
-import { mkdir as mkdir11, readFile as readFile13, readdir, writeFile as writeFile10, appendFile as appendFile4, rename as rename11, lstat as lstat2 } from "node:fs/promises";
-import { basename as basename2, dirname as dirname7, isAbsolute as isAbsolute2, join as join21, relative as relative2, sep as sep2 } from "node:path";
+import { mkdir as mkdir11, readFile as readFile14, readdir, writeFile as writeFile11, appendFile as appendFile4, rename as rename12, lstat as lstat2 } from "node:fs/promises";
+import { basename as basename2, dirname as dirname7, isAbsolute as isAbsolute2, join as join22, relative as relative2, sep as sep2 } from "node:path";
 import { homedir as homedir5 } from "node:os";
-import { randomUUID as randomUUID4 } from "node:crypto";
+import { randomUUID as randomUUID6 } from "node:crypto";
 
 // dist/agents/claude-code/subagent-cursor.mjs
 import { readFile as readFile12, rename as rename10, writeFile as writeFile9 } from "node:fs/promises";
 import { join as join20 } from "node:path";
+function rereadSince(cursor) {
+  const v = cursor.reread_since_ms;
+  return typeof v === "number" ? v : void 0;
+}
+function cursorBody(offset, rereadSinceMs) {
+  return rereadSinceMs === void 0 ? { byte_offset: offset } : { byte_offset: offset, reread_since_ms: rereadSinceMs };
+}
 var SubagentCursor = class {
   dir;
   path;
@@ -5480,38 +5971,41 @@ var SubagentCursor = class {
     this.tmpPath = `${this.path}.tmp`;
   }
   async read() {
+    return (await this.readState()).offset;
+  }
+  async readState() {
     try {
       const buf = await readFile12(this.path, "utf8");
       const parsed = JSON.parse(buf);
-      return parsed.byte_offset ?? 0;
+      return { offset: parsed.byte_offset ?? 0, rereadSinceMs: rereadSince(parsed) };
     } catch (err) {
       if (err.code === "ENOENT")
-        return 0;
+        return { offset: 0, rereadSinceMs: void 0 };
       throw err;
     }
   }
+  // Keeps the stored restart stamp.
   async advance(offset) {
     await withDirLock(this.dir, async () => {
-      const current = await this.read();
-      if (offset < current) {
-        throw new Error(`SubagentCursor.advance monotonic violation: ${offset} < ${current}`);
+      const current = await this.readState();
+      if (offset < current.offset) {
+        throw new Error(`SubagentCursor.advance monotonic violation: ${offset} < ${current.offset}`);
       }
-      await this.write(offset);
+      await this.write(offset, current.rereadSinceMs);
     });
   }
-  // Force-write cursor to 0. Bypasses the monotonic guard. Used when the
-  // transcript file shrank below the recorded offset (CC compaction,
-  // manual prune, agent_id collision across sessions): without a reset,
-  // every subsequent tail would see `stat.size <= cursor` and emit
-  // nothing, permanently locking the agent's events out.
-  async reset() {
+  // Force-write cursor to 0, with the restart stamp. Bypasses the monotonic
+  // guard. Used when the transcript file shrank below the recorded offset
+  // (CC compaction, manual prune, agent_id collision across sessions):
+  // without a reset, every subsequent tail would see `stat.size <= cursor`
+  // and emit nothing, permanently locking the agent's events out.
+  async reset(rereadSinceMs) {
     await withDirLock(this.dir, async () => {
-      await this.write(0);
+      await this.write(0, rereadSinceMs);
     });
   }
-  async write(offset) {
-    const body = { byte_offset: offset };
-    await writeFile9(this.tmpPath, JSON.stringify(body), "utf8");
+  async write(offset, rereadSinceMs) {
+    await writeFile9(this.tmpPath, JSON.stringify(cursorBody(offset, rereadSinceMs)), "utf8");
     await rename10(this.tmpPath, this.path);
   }
 };
@@ -5532,13 +6026,13 @@ async function readWindow(opts) {
       }
       throw err;
     }
-    const stat5 = await fh.stat();
-    const truncated = stat5.size < startOffset;
+    const stat6 = await fh.stat();
+    const truncated = stat6.size < startOffset;
     const effectiveStart = truncated ? 0 : startOffset;
-    if (stat5.size <= effectiveStart) {
+    if (stat6.size <= effectiveStart) {
       return { events: [], endOffset: effectiveStart, truncated };
     }
-    const toRead = Math.min(stat5.size - effectiveStart, maxReadBytes);
+    const toRead = Math.min(stat6.size - effectiveStart, maxReadBytes);
     const buf = Buffer.alloc(toRead);
     await fh.read(buf, 0, toRead, effectiveStart);
     const lastNewline = buf.lastIndexOf("\n".charCodeAt(0));
@@ -5552,6 +6046,92 @@ async function readWindow(opts) {
   } finally {
     if (fh)
       await fh.close();
+  }
+}
+
+// dist/shared/replay-marker.mjs
+import { link as link2, readFile as readFile13, rename as rename11, unlink as unlink4, writeFile as writeFile10 } from "node:fs/promises";
+import { join as join21 } from "node:path";
+import { randomUUID as randomUUID5 } from "node:crypto";
+var WATCH_SINCE_FILE = "watch_since.json";
+function replayMarker(timestampNs, watchSinceMs, rereadSinceMs) {
+  const eventMs = Number(timestampNs / 1000000n);
+  if (rereadSinceMs !== void 0 && eventMs < rereadSinceMs)
+    return "reread";
+  if (eventMs < watchSinceMs)
+    return "catch_up";
+  return "none";
+}
+function markReplay(events, watchSinceMs, rereadSinceMs) {
+  for (const ev of events)
+    ev.replay = replayMarker(ev.timestamp_ns, watchSinceMs, rereadSinceMs);
+}
+async function readOrCreateWatchSince(sessionDir, nowMs, onError, legacyCursorName = "transcript_cursor.json") {
+  const path = join21(sessionDir, WATCH_SINCE_FILE);
+  const existing = await readWatchSince(path);
+  if (existing !== void 0)
+    return existing;
+  const value = await cursorOffset(join21(sessionDir, legacyCursorName)) > 0 ? 0 : nowMs;
+  const body = JSON.stringify({ since_ms: value });
+  try {
+    if (await createExclusive(path, body))
+      return value;
+    const winner = await readWatchSince(path);
+    if (winner !== void 0)
+      return winner;
+    await replace(path, body);
+    return value;
+  } catch (err) {
+    await onError(err);
+    return nowMs;
+  }
+}
+async function readWatchSince(path) {
+  try {
+    const parsed = JSON.parse(await readFile13(path, "utf8"));
+    if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed))
+      return void 0;
+    const v = parsed.since_ms;
+    return typeof v === "number" && Number.isSafeInteger(v) && v >= 0 ? v : void 0;
+  } catch {
+    return void 0;
+  }
+}
+async function cursorOffset(path) {
+  try {
+    const parsed = JSON.parse(await readFile13(path, "utf8"));
+    if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed))
+      return 0;
+    const v = parsed.byte_offset;
+    return typeof v === "number" ? v : 0;
+  } catch {
+    return 0;
+  }
+}
+async function createExclusive(path, body) {
+  const tmp = `${path}.${randomUUID5()}.tmp`;
+  await writeFile10(tmp, body, "utf8");
+  try {
+    await link2(tmp, path);
+    return true;
+  } catch (err) {
+    if (err?.code === "EEXIST")
+      return false;
+    throw err;
+  } finally {
+    await unlink4(tmp).catch(() => {
+    });
+  }
+}
+async function replace(path, body) {
+  const tmp = `${path}.${randomUUID5()}.tmp`;
+  await writeFile10(tmp, body, "utf8");
+  try {
+    await rename11(tmp, path);
+  } catch (err) {
+    await unlink4(tmp).catch(() => {
+    });
+    throw err;
   }
 }
 
@@ -5570,12 +6150,14 @@ var TranscriptTail = class {
   maxReadBytes;
   errorLogPath;
   transcriptRoot;
+  nowMs;
   constructor(stateDir, options = {}) {
     this.stateDir = stateDir;
     this.maxReadBytes = options.maxReadBytes ?? DEFAULT_MAX_READ_BYTES;
     this.errorLogPath = options.errorLogPath;
-    const root = options.transcriptRoot ?? join21(homedir5(), ".claude", "projects");
+    const root = options.transcriptRoot ?? join22(homedir5(), ".claude", "projects");
     this.transcriptRoot = root.endsWith(sep2) ? root : root + sep2;
+    this.nowMs = options.nowMs;
   }
   // `persist` runs after all events are read but BEFORE any cursor is
   // advanced. If it throws, every cursor stays at its previous offset and
@@ -5589,7 +6171,9 @@ var TranscriptTail = class {
     }
     const cursorDir = this.cursorDir(sessionId);
     await mkdir11(cursorDir, { recursive: true });
-    const cursorPath = join21(cursorDir, "transcript_cursor.json");
+    const nowMs = this.nowMs ?? Date.now();
+    const watchSinceMs = await readOrCreateWatchSince(cursorDir, nowMs, (err) => this.logTailError(`watch-since ${sessionId}`, err));
+    const cursorPath = join22(cursorDir, "transcript_cursor.json");
     let release;
     try {
       release = await import_proper_lockfile4.default.lock(cursorPath, {
@@ -5601,10 +6185,13 @@ var TranscriptTail = class {
       return { events: [], skipped: true, newCursor: 0 };
     }
     try {
-      const startOffset = await this.readCursor(cursorPath);
+      const cursor = await this.readCursor(cursorPath, nowMs);
+      const startOffset = cursor.offset;
       const { events, endOffset, truncated } = await this.readSince(sessionId, transcriptPath, startOffset, sequenceBase, this.maxReadBytes);
-      const sessionDir = join21(dirname7(transcriptPath), basename2(transcriptPath, ".jsonl"));
-      const subagentsRoot = join21(sessionDir, "subagents");
+      const rereadSinceMs = truncated ? nowMs : cursor.rereadSinceMs;
+      markReplay(events, watchSinceMs, rereadSinceMs);
+      const sessionDir = join22(dirname7(transcriptPath), basename2(transcriptPath, ".jsonl"));
+      const subagentsRoot = join22(sessionDir, "subagents");
       const subagentPaths = await discoverSubagentTranscripts(sessionDir, (dir, err) => this.logSubagentError(sessionId, relative2(sessionDir, dir) || "subagents", err));
       const metaCache = new SubagentMetaCache();
       let seq = sequenceBase + events.length;
@@ -5627,7 +6214,9 @@ var TranscriptTail = class {
             cursorDir: subCursorDir,
             metaCache,
             sequenceBase: seq,
-            maxReadBytes: this.maxReadBytes
+            maxReadBytes: this.maxReadBytes,
+            watchSinceMs,
+            nowMs
           });
         } catch (err) {
           await this.logSubagentError(sessionId, errorLabel, err);
@@ -5639,7 +6228,7 @@ var TranscriptTail = class {
       }
       await persist(events);
       if (truncated || endOffset > startOffset) {
-        await this.writeCursor(cursorPath, endOffset);
+        await this.writeCursor(cursorPath, endOffset, rereadSinceMs);
       }
       for (const commit of subagentCommits) {
         await commit();
@@ -5655,11 +6244,11 @@ var TranscriptTail = class {
     }
     const cursorDir = this.cursorDir(sessionId);
     await mkdir11(cursorDir, { recursive: true });
-    const cursorPath = join21(cursorDir, "transcript_cursor.json");
+    const cursorPath = join22(cursorDir, "transcript_cursor.json");
     try {
-      await readFile13(cursorPath);
+      await readFile14(cursorPath);
     } catch {
-      await writeFile10(cursorPath, "{}", "utf8");
+      await writeFile11(cursorPath, "{}", "utf8");
     }
     const release = await import_proper_lockfile4.default.lock(cursorPath, { retries: 0, realpath: false });
     return { release: async () => {
@@ -5681,29 +6270,46 @@ var TranscriptTail = class {
     return true;
   }
   async logSubagentError(sessionId, agentLabel, err) {
+    await this.logTailError(`subagent-tail ${sessionId}/${agentLabel}`, err);
+  }
+  async logTailError(label, err) {
     if (!this.errorLogPath)
       return;
     const msg = err instanceof Error ? `${err.message}` : String(err);
-    const line = `${(/* @__PURE__ */ new Date()).toISOString()} subagent-tail ${sessionId}/${agentLabel}: ${msg}`.replace(/[\p{Cc}\p{Cf}]+/gu, " ").slice(0, 2e3) + "\n";
+    const line = `${(/* @__PURE__ */ new Date()).toISOString()} ${label}: ${msg}`.replace(/[\p{Cc}\p{Cf}]+/gu, " ").slice(0, 2e3) + "\n";
     try {
       await appendFile4(this.errorLogPath, line);
     } catch {
     }
   }
-  async readCursor(cursorPath) {
+  // A missing cursor is a first read. A cursor that is there and cannot be
+  // read or parsed restarts the file at byte 0, so it sets the restart stamp.
+  async readCursor(cursorPath, nowMs) {
+    let buf;
     try {
-      const buf = await readFile13(cursorPath, "utf8");
-      const parsed = JSON.parse(buf);
-      return parsed.byte_offset ?? 0;
-    } catch {
-      return 0;
+      buf = await readFile14(cursorPath, "utf8");
+    } catch (err) {
+      if (err?.code === "ENOENT")
+        return { offset: 0, rereadSinceMs: void 0 };
+      return { offset: 0, rereadSinceMs: nowMs };
     }
+    let parsed;
+    try {
+      parsed = JSON.parse(buf);
+    } catch {
+      parsed = void 0;
+    }
+    if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+      return { offset: 0, rereadSinceMs: nowMs };
+    }
+    const cursor = parsed;
+    return { offset: cursor.byte_offset ?? 0, rereadSinceMs: rereadSince(cursor) };
   }
-  async writeCursor(cursorPath, offset) {
-    const body = { byte_offset: offset };
+  async writeCursor(cursorPath, offset, rereadSinceMs) {
+    const body = cursorBody(offset, rereadSinceMs);
     const tmp = `${cursorPath}.tmp`;
-    await writeFile10(tmp, JSON.stringify(body), "utf8");
-    await rename11(tmp, cursorPath);
+    await writeFile11(tmp, JSON.stringify(body), "utf8");
+    await rename12(tmp, cursorPath);
   }
   async readSince(sessionId, path, startOffset, sequenceBase, maxReadBytes) {
     return readWindow({
@@ -5745,10 +6351,10 @@ function ccParseWindow(stamp, detectLimit) {
   };
 }
 async function readSubagent(opts) {
-  const { sessionId, agentId, transcriptPath, metaPath, cursorDir, metaCache = new SubagentMetaCache(), sequenceBase = 0, maxReadBytes = DEFAULT_MAX_READ_BYTES } = opts;
+  const { sessionId, agentId, transcriptPath, metaPath, cursorDir, metaCache = new SubagentMetaCache(), sequenceBase = 0, maxReadBytes = DEFAULT_MAX_READ_BYTES, watchSinceMs, nowMs = Date.now() } = opts;
   await mkdir11(cursorDir, { recursive: true });
   const cursor = new SubagentCursor(cursorDir);
-  const startOffset = await cursor.read();
+  const { offset: startOffset, rereadSinceMs: storedRereadSinceMs } = await cursor.readState();
   const meta = await metaCache.get(metaPath);
   let events;
   let endOffset;
@@ -5781,6 +6387,7 @@ async function readSubagent(opts) {
     }
     throw err;
   }
+  markReplay(events, watchSinceMs, truncated ? nowMs : storedRereadSinceMs);
   return {
     events,
     // Whether committing would actually move this agent's cursor forward.
@@ -5793,7 +6400,7 @@ async function readSubagent(opts) {
     advanced: truncated || endOffset > startOffset,
     commit: async () => {
       if (truncated)
-        await cursor.reset();
+        await cursor.reset(nowMs);
       const current = await cursor.read();
       if (endOffset > current)
         await cursor.advance(endOffset);
@@ -5802,7 +6409,7 @@ async function readSubagent(opts) {
 }
 var MAX_SUBAGENT_DISCOVERY_DEPTH = 4;
 async function discoverSubagentTranscripts(sessionDir, onError) {
-  const root = join21(sessionDir, "subagents");
+  const root = join22(sessionDir, "subagents");
   try {
     if (!(await lstat2(root)).isDirectory())
       return [];
@@ -5825,7 +6432,7 @@ async function walkSubagentDir(dir, depthRemaining, onError) {
     return [];
   }
   const found = await Promise.all(entries.map(async (entry) => {
-    const full = join21(dir, entry.name);
+    const full = join22(dir, entry.name);
     const kind = await classifyDirent(full, entry);
     if (kind === "file" && entry.name.startsWith("agent-") && entry.name.endsWith(".jsonl")) {
       return [full];
@@ -5858,7 +6465,7 @@ function isValidSessionId2(s) {
   return typeof s === "string" && SESSION_ID_RE2.test(s);
 }
 function sessionCursorDir(stateDir, sessionId) {
-  return join21(stateDir, "sessions", sessionId);
+  return join22(stateDir, "sessions", sessionId);
 }
 function deriveSubagentCursorDir(sessCursorDir, subagentsRoot, subagentPath) {
   const agentId = basename2(subagentPath, ".jsonl").slice("agent-".length);
@@ -5869,8 +6476,8 @@ function deriveSubagentCursorDir(sessCursorDir, subagentsRoot, subagentPath) {
   if (nestedDir === ".." || nestedDir.startsWith(".." + sep2)) {
     return { ok: false, agentId, reason: `transcript outside subagents root: ${subagentPath}` };
   }
-  const cursorDir = nestedDir === "" ? join21(sessCursorDir, "subagents", agentId) : join21(sessCursorDir, "subagents", nestedDir, agentId);
-  const errorLabel = nestedDir === "" ? agentId : join21(nestedDir, agentId);
+  const cursorDir = nestedDir === "" ? join22(sessCursorDir, "subagents", agentId) : join22(sessCursorDir, "subagents", nestedDir, agentId);
+  const errorLabel = nestedDir === "" ? agentId : join22(nestedDir, agentId);
   return { ok: true, agentId, cursorDir, errorLabel };
 }
 function isAssistantRecord(r) {
@@ -5930,7 +6537,7 @@ function toApiRequestEvent(r, sessionId, sequence) {
     attrs.api_error_status = r.apiErrorStatus;
   }
   return {
-    event_uuid: randomUUID4(),
+    event_uuid: randomUUID6(),
     event_type: "api.request",
     session_id: sessionId,
     source: "transcript.tail",
@@ -5941,22 +6548,22 @@ function toApiRequestEvent(r, sessionId, sequence) {
 }
 
 // dist/agents/claude-code/stop-failure-marker.mjs
-import { mkdir as mkdir12, readFile as readFile14, rename as rename12, rm as rm4, writeFile as writeFile11 } from "node:fs/promises";
-import { join as join22 } from "node:path";
+import { mkdir as mkdir12, readFile as readFile15, rename as rename13, rm as rm4, writeFile as writeFile12 } from "node:fs/promises";
+import { join as join23 } from "node:path";
 var STOP_FAILURE_DEDUP_WINDOW_MS = 6e4;
 function stopFailureMarkerPath(stateDir, sessionId) {
-  return join22(stateDir, "stop-failure", `${sessionId}.json`);
+  return join23(stateDir, "stop-failure", `${sessionId}.json`);
 }
 async function writeStopFailureMarker(stateDir, sessionId, marker) {
   if (!isValidSessionId(sessionId))
     return;
-  const dir = join22(stateDir, "stop-failure");
+  const dir = join23(stateDir, "stop-failure");
   const path = stopFailureMarkerPath(stateDir, sessionId);
   try {
     await mkdir12(dir, { recursive: true, mode: 448 });
     const tmp = `${path}.${process.pid}.tmp`;
-    await writeFile11(tmp, JSON.stringify(marker), { encoding: "utf8", mode: 384 });
-    await rename12(tmp, path);
+    await writeFile12(tmp, JSON.stringify(marker), { encoding: "utf8", mode: 384 });
+    await rename13(tmp, path);
   } catch {
   }
 }
@@ -5964,7 +6571,7 @@ async function readStopFailureMarker(stateDir, sessionId) {
   if (!isValidSessionId(sessionId))
     return null;
   try {
-    const parsed = JSON.parse(await readFile14(stopFailureMarkerPath(stateDir, sessionId), "utf8"));
+    const parsed = JSON.parse(await readFile15(stopFailureMarkerPath(stateDir, sessionId), "utf8"));
     if (typeof parsed.at_ms !== "number" || !Number.isFinite(parsed.at_ms))
       return null;
     return {
@@ -6002,14 +6609,14 @@ function describesSameLimit(marker, eventAtMs, limitMessage) {
 }
 
 // dist/shared/account-posture.mjs
-import { readFile as readFile15 } from "node:fs/promises";
-import { join as join23 } from "node:path";
+import { readFile as readFile16 } from "node:fs/promises";
+import { join as join24 } from "node:path";
 function resolveClaudeConfigPaths(env, homeDir) {
-  const home = join23(homeDir, ".claude.json");
+  const home = join24(homeDir, ".claude.json");
   const dir = env.CLAUDE_CONFIG_DIR;
   if (!dir || dir.length === 0)
     return [home];
-  const scoped = join23(dir, ".claude.json");
+  const scoped = join24(dir, ".claude.json");
   return scoped === home ? [home] : [scoped, home];
 }
 function str(v) {
@@ -6021,7 +6628,7 @@ function bool(v) {
 async function readPosture(path) {
   let raw;
   try {
-    raw = await readFile15(path, "utf8");
+    raw = await readFile16(path, "utf8");
   } catch {
     return null;
   }
@@ -6101,19 +6708,19 @@ async function readPostureFromCandidates(paths) {
 }
 
 // dist/shared/usage-config.mjs
-import { randomUUID as randomUUID5 } from "node:crypto";
-import { stat as stat4, readFile as readFile16, writeFile as writeFile12, rename as rename13, mkdir as mkdir13 } from "node:fs/promises";
-import { join as join24 } from "node:path";
+import { randomUUID as randomUUID7 } from "node:crypto";
+import { stat as stat5, readFile as readFile17, writeFile as writeFile13, rename as rename14, mkdir as mkdir13 } from "node:fs/promises";
+import { join as join25 } from "node:path";
 var noopCommit = async () => {
 };
 async function prepareUsageConfigEvent(opts) {
-  const statePath = join24(opts.stateDir, "usage-config.json");
+  const statePath = join25(opts.stateDir, "usage-config.json");
   const prev = await readState(statePath);
   let mtimeToken = 0;
   let statted = 0;
   for (const path of opts.configPaths) {
     try {
-      mtimeToken += (await stat4(path)).mtimeMs;
+      mtimeToken += (await stat5(path)).mtimeMs;
       statted++;
     } catch {
     }
@@ -6143,7 +6750,7 @@ async function prepareUsageConfigEvent(opts) {
     return { event: null, commit: () => commitState(hash), wouldAdvance: true };
   }
   const event = {
-    event_uuid: randomUUID5(),
+    event_uuid: randomUUID7(),
     event_type: "usage_config.changed",
     session_id: opts.sessionId,
     source: "transcript.tail",
@@ -6155,7 +6762,7 @@ async function prepareUsageConfigEvent(opts) {
 }
 async function readState(path) {
   try {
-    const parsed = JSON.parse(await readFile16(path, "utf8"));
+    const parsed = JSON.parse(await readFile17(path, "utf8"));
     if (typeof parsed.last_mtime_ms !== "number" || typeof parsed.last_hash !== "string") {
       return null;
     }
@@ -6171,8 +6778,8 @@ async function readState(path) {
 async function writeStateAtomic(stateDir, path, body) {
   await mkdir13(stateDir, { recursive: true, mode: 448 });
   const tmp = `${path}.${process.pid}.tmp`;
-  await writeFile12(tmp, JSON.stringify(body), "utf8");
-  await rename13(tmp, path);
+  await writeFile13(tmp, JSON.stringify(body), "utf8");
+  await rename14(tmp, path);
 }
 
 // dist/agents/claude-code/adapter.mjs
@@ -6235,7 +6842,7 @@ var ClaudeCodeAdapter = class {
         });
         if (!probe.wouldAdvance)
           return;
-        await withDirLock(join25(ctx.stateDir, "usage-config"), async () => {
+        await withDirLock(join26(ctx.stateDir, "usage-config"), async () => {
           const uc = await prepareUsageConfigEvent({
             stateDir: ctx.stateDir,
             configPaths,
@@ -6346,13 +6953,13 @@ function releaseWhoamiLease(fingerprint2, opts = {}) {
 }
 
 // dist/shared/whoami/spawn.mjs
-import { join as join27 } from "node:path";
+import { join as join28 } from "node:path";
 
 // dist/shared/spawn.mjs
 import { spawn as spawn2 } from "node:child_process";
-import { join as join26 } from "node:path";
+import { join as join27 } from "node:path";
 function pluginBinPath(pluginRoot, relPath) {
-  return join26(pluginRoot, relPath);
+  return join27(pluginRoot, relPath);
 }
 function spawnDetached(binPath, args, env) {
   return new Promise((resolve, reject) => {
@@ -6372,7 +6979,7 @@ function spawnDetached(binPath, args, env) {
 
 // dist/shared/whoami/spawn.mjs
 init_runner_env();
-var WHOAMI_REFRESH_REL_PATH = join27("dist", "shared", "bin", "whoami-refresh.mjs");
+var WHOAMI_REFRESH_REL_PATH = join28("dist", "shared", "bin", "whoami-refresh.mjs");
 function whoamiRefreshBinPath(pluginRoot) {
   return pluginBinPath(pluginRoot, WHOAMI_REFRESH_REL_PATH);
 }
@@ -6472,8 +7079,8 @@ function real(p) {
 }
 
 // dist/shared/heartbeat.mjs
-import { mkdir as mkdir14, rename as rename14, writeFile as writeFile13 } from "node:fs/promises";
-import { join as join28 } from "node:path";
+import { mkdir as mkdir14, rename as rename15, writeFile as writeFile14 } from "node:fs/promises";
+import { join as join29 } from "node:path";
 import { randomBytes as randomBytes5 } from "node:crypto";
 async function recordHeartbeat(dataDir2, now = /* @__PURE__ */ new Date()) {
   const beat = {
@@ -6482,19 +7089,19 @@ async function recordHeartbeat(dataDir2, now = /* @__PURE__ */ new Date()) {
     argv1: process.argv[1] ?? "",
     data_dir: dataDir2
   };
-  const stateDir = join28(dataDir2, "state");
-  const path = join28(stateDir, "last-fire.json");
+  const stateDir = join29(dataDir2, "state");
+  const path = join29(stateDir, "last-fire.json");
   const tmp = `${path}.${process.pid}.${randomBytes5(4).toString("hex")}.tmp`;
   try {
     await mkdir14(stateDir, { recursive: true, mode: 448 });
-    await writeFile13(tmp, JSON.stringify(beat), { encoding: "utf8", mode: 384 });
-    await rename14(tmp, path);
+    await writeFile14(tmp, JSON.stringify(beat), { encoding: "utf8", mode: 384 });
+    await rename15(tmp, path);
   } catch {
   }
 }
 
 // dist/shared/usage-probe/probe.mjs
-import { readFile as readFile17 } from "node:fs/promises";
+import { readFile as readFile18 } from "node:fs/promises";
 var PROBE_MIN_INTERVAL_MS = 3e5;
 var WINDOW_ORDER = ["five_hour", "seven_day"];
 var WINDOW_MINUTES = Object.freeze({
@@ -6529,7 +7136,7 @@ function windowReading(v) {
 async function readUsageCache(path) {
   let doc;
   try {
-    doc = JSON.parse(await readFile17(path, "utf8"));
+    doc = JSON.parse(await readFile18(path, "utf8"));
   } catch {
     return null;
   }
@@ -6730,7 +7337,7 @@ function spendAttributes(cache, posture) {
   return attrs;
 }
 function spendHash(attrs) {
-  const entries = Object.entries(attrs).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0).map(([k, v]) => `${k}=${String(v)}`);
+  const entries = Object.entries(attrs).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0).map(([k, v]) => `${k}=${typeof v === "object" ? stableStringify(v) : String(v)}`);
   return sha256Hex(entries.join("|"));
 }
 function usageProbeEvents(input) {
@@ -6775,15 +7382,15 @@ function usageProbeEvents(input) {
 }
 
 // dist/shared/usage-probe/state.mjs
-import { mkdir as mkdir15, readFile as readFile18, rename as rename15, unlink as unlink4, writeFile as writeFile14 } from "node:fs/promises";
-import { join as join29 } from "node:path";
+import { mkdir as mkdir15, readFile as readFile19, rename as rename16, unlink as unlink5, writeFile as writeFile15 } from "node:fs/promises";
+import { join as join30 } from "node:path";
 function usageProbeStatePath(stateDir) {
-  return join29(stateDir, "usage-probe.json");
+  return join30(stateDir, "usage-probe.json");
 }
 async function readUsageProbeState(stateDir) {
   let parsed;
   try {
-    parsed = JSON.parse(await readFile18(usageProbeStatePath(stateDir), "utf8"));
+    parsed = JSON.parse(await readFile19(usageProbeStatePath(stateDir), "utf8"));
   } catch {
     return null;
   }
@@ -6814,19 +7421,19 @@ async function writeUsageProbeState(stateDir, state) {
   const tmp = `${path}.${process.pid}.tmp`;
   try {
     await mkdir15(stateDir, { recursive: true, mode: 448 });
-    await writeFile14(tmp, JSON.stringify(state), { encoding: "utf8", mode: 384 });
-    await rename15(tmp, path);
+    await writeFile15(tmp, JSON.stringify(state), { encoding: "utf8", mode: 384 });
+    await rename16(tmp, path);
   } catch {
-    await unlink4(tmp).catch(() => {
+    await unlink5(tmp).catch(() => {
     });
   }
 }
 
 // dist/shared/usage-probe/run.mjs
 import { appendFile as appendFile5 } from "node:fs/promises";
-import { join as join30 } from "node:path";
+import { join as join31 } from "node:path";
 async function runUsageProbe(opts) {
-  const stateDir = join30(opts.dataDir, "state");
+  const stateDir = join31(opts.dataDir, "state");
   const nowMs = (opts.now ?? Date.now)();
   const prior = await readUsageProbeState(stateDir);
   try {
@@ -6863,7 +7470,11 @@ async function runUsageProbe(opts) {
       await writeUsageProbeState(stateDir, persisted);
       return { kind: "no-change", filteredOut };
     }
-    const outboundDir = join30(opts.dataDir, "outbound");
+    for (const event of filtered) {
+      if (event.replay === void 0)
+        event.replay = "none";
+    }
+    const outboundDir = join31(opts.dataDir, "outbound");
     const queue = new Queue(outboundDir, opts.queueCapBytes ?? QUEUE_CAP_BYTES);
     const append = await enqueueEvents(queue, filtered);
     if (append.dropped > 0) {
@@ -6907,7 +7518,7 @@ async function logProbeOutcome(dataDir2, outcome) {
     return;
   const at = (/* @__PURE__ */ new Date()).toISOString();
   try {
-    await appendFile5(join30(dataDir2, "collect-error.log"), lines.map((line) => `${at} ${line}
+    await appendFile5(join31(dataDir2, "collect-error.log"), lines.map((line) => `${at} ${line}
 `).join(""));
   } catch {
   }
@@ -6915,10 +7526,10 @@ async function logProbeOutcome(dataDir2, outcome) {
 
 // dist/shared/usage-probe/lease.mjs
 import { mkdirSync as mkdirSync2 } from "node:fs";
-import { join as join31 } from "node:path";
+import { join as join32 } from "node:path";
 var MAX_PROBE_LEASE_AGE_MS = DEFAULT_MAX_LEASE_AGE_MS;
 function usageProbeLeasePath(stateDir) {
-  return join31(stateDir, "usage-probe.lock");
+  return join32(stateDir, "usage-probe.lock");
 }
 function acquireProbeLease(stateDir) {
   try {
@@ -6937,7 +7548,7 @@ async function runCollectOnce(opts) {
   return runCollect(new ClaudeCodeAdapter(), opts);
 }
 function pluginRootFrom(containerDir) {
-  return join32(containerDir, "..", "..", "..");
+  return join33(containerDir, "..", "..", "..");
 }
 async function maybeRefreshWhoami(deps = {}) {
   const resolved = resolveCredentialSync({
@@ -6973,7 +7584,7 @@ async function maybeProbeUsage(deps) {
   } catch {
     return "skipped";
   }
-  const stateDir = join32(root, "state");
+  const stateDir = join33(root, "state");
   const now = deps.now ?? Date.now();
   const state = await readUsageProbeState(stateDir);
   if (state && now - state.last_attempt_ms < PROBE_MIN_INTERVAL_MS)

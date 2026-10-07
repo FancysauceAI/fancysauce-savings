@@ -59,23 +59,30 @@ var init_credential_paths = __esm({
 });
 
 // dist/shared/backfill/pid-guard.mjs
-import { readFile as readFile2, rm, mkdir as mkdir2, open as open2 } from "node:fs/promises";
+import { readFile as readFile2, rm, mkdir as mkdir2, open as open2, link, stat as stat2 } from "node:fs/promises";
 import { join as join2 } from "node:path";
-async function isBackfillActive(stateDir) {
+async function readPidGuard(stateDir) {
   try {
     const raw = await readFile2(join2(stateDir, "backfill.pid"), "utf8");
     const pid = Number(raw.trim());
-    if (!Number.isFinite(pid) || pid <= 0)
-      return null;
-    try {
-      process.kill(pid, 0);
-      return pid;
-    } catch {
-      return null;
-    }
+    return { raw, pid: Number.isFinite(pid) && pid > 0 ? pid : null };
   } catch {
     return null;
   }
+}
+function isPidLive(pid) {
+  if (pid === null)
+    return false;
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+}
+async function isBackfillActive(stateDir) {
+  const guard = await readPidGuard(stateDir);
+  return isPidLive(guard?.pid ?? null) ? guard.pid : null;
 }
 var init_pid_guard = __esm({
   "dist/shared/backfill/pid-guard.mjs"() {
@@ -230,7 +237,7 @@ var require_polyfills = __commonJS({
       }
       if (platform === "win32") {
         fs.rename = typeof fs.rename !== "function" ? fs.rename : (function(fs$rename) {
-          function rename5(from, to, cb) {
+          function rename6(from, to, cb) {
             var start = Date.now();
             var backoff = 0;
             fs$rename(from, to, function CB(er) {
@@ -250,8 +257,8 @@ var require_polyfills = __commonJS({
               if (cb) cb(er);
             });
           }
-          if (Object.setPrototypeOf) Object.setPrototypeOf(rename5, fs$rename);
-          return rename5;
+          if (Object.setPrototypeOf) Object.setPrototypeOf(rename6, fs$rename);
+          return rename6;
         })(fs.rename);
       }
       fs.read = typeof fs.read !== "function" ? fs.read : (function(fs$read) {
@@ -655,8 +662,8 @@ var require_graceful_fs = __commonJS({
       fs2.createReadStream = createReadStream;
       fs2.createWriteStream = createWriteStream;
       var fs$readFile = fs2.readFile;
-      fs2.readFile = readFile6;
-      function readFile6(path, options, cb) {
+      fs2.readFile = readFile7;
+      function readFile7(path, options, cb) {
         if (typeof options === "function")
           cb = options, options = null;
         return go$readFile(path, options, cb);
@@ -672,8 +679,8 @@ var require_graceful_fs = __commonJS({
         }
       }
       var fs$writeFile = fs2.writeFile;
-      fs2.writeFile = writeFile4;
-      function writeFile4(path, data, options, cb) {
+      fs2.writeFile = writeFile5;
+      function writeFile5(path, data, options, cb) {
         if (typeof options === "function")
           cb = options, options = null;
         return go$writeFile(path, data, options, cb);
@@ -1368,11 +1375,11 @@ var require_mtime_precision = __commonJS({
     function probe(file, fs, callback) {
       const cachedPrecision = fs[cacheSymbol];
       if (cachedPrecision) {
-        return fs.stat(file, (err, stat3) => {
+        return fs.stat(file, (err, stat4) => {
           if (err) {
             return callback(err);
           }
-          callback(null, stat3.mtime, cachedPrecision);
+          callback(null, stat4.mtime, cachedPrecision);
         });
       }
       const mtime = new Date(Math.ceil(Date.now() / 1e3) * 1e3 + 5);
@@ -1380,13 +1387,13 @@ var require_mtime_precision = __commonJS({
         if (err) {
           return callback(err);
         }
-        fs.stat(file, (err2, stat3) => {
+        fs.stat(file, (err2, stat4) => {
           if (err2) {
             return callback(err2);
           }
-          const precision = stat3.mtime.getTime() % 1e3 === 0 ? "s" : "ms";
+          const precision = stat4.mtime.getTime() % 1e3 === 0 ? "s" : "ms";
           Object.defineProperty(fs, cacheSymbol, { value: precision });
-          callback(null, stat3.mtime, precision);
+          callback(null, stat4.mtime, precision);
         });
       });
     }
@@ -1440,14 +1447,14 @@ var require_lockfile = __commonJS({
         if (options.stale <= 0) {
           return callback(Object.assign(new Error("Lock file is already being held"), { code: "ELOCKED", file }));
         }
-        options.fs.stat(lockfilePath, (err2, stat3) => {
+        options.fs.stat(lockfilePath, (err2, stat4) => {
           if (err2) {
             if (err2.code === "ENOENT") {
               return acquireLock(file, { ...options, stale: 0 }, callback);
             }
             return callback(err2);
           }
-          if (!isLockStale(stat3, options)) {
+          if (!isLockStale(stat4, options)) {
             return callback(Object.assign(new Error("Lock file is already being held"), { code: "ELOCKED", file }));
           }
           removeLock(file, options, (err3) => {
@@ -1459,8 +1466,8 @@ var require_lockfile = __commonJS({
         });
       });
     }
-    function isLockStale(stat3, options) {
-      return stat3.mtime.getTime() < Date.now() - options.stale;
+    function isLockStale(stat4, options) {
+      return stat4.mtime.getTime() < Date.now() - options.stale;
     }
     function removeLock(file, options, callback) {
       options.fs.rmdir(getLockFile(file, options), (err) => {
@@ -1478,7 +1485,7 @@ var require_lockfile = __commonJS({
       lock2.updateDelay = lock2.updateDelay || options.update;
       lock2.updateTimeout = setTimeout(() => {
         lock2.updateTimeout = null;
-        options.fs.stat(lock2.lockfilePath, (err, stat3) => {
+        options.fs.stat(lock2.lockfilePath, (err, stat4) => {
           const isOverThreshold = lock2.lastUpdate + options.stale < Date.now();
           if (err) {
             if (err.code === "ENOENT" || isOverThreshold) {
@@ -1487,7 +1494,7 @@ var require_lockfile = __commonJS({
             lock2.updateDelay = 1e3;
             return updateLock(file, options);
           }
-          const isMtimeOurs = lock2.mtime.getTime() === stat3.mtime.getTime();
+          const isMtimeOurs = lock2.mtime.getTime() === stat4.mtime.getTime();
           if (!isMtimeOurs) {
             return setLockAsCompromised(
               file,
@@ -1612,11 +1619,11 @@ var require_lockfile = __commonJS({
         if (err) {
           return callback(err);
         }
-        options.fs.stat(getLockFile(file2, options), (err2, stat3) => {
+        options.fs.stat(getLockFile(file2, options), (err2, stat4) => {
           if (err2) {
             return err2.code === "ENOENT" ? callback(null, false) : callback(err2);
           }
-          return callback(null, !isLockStale(stat3, options));
+          return callback(null, !isLockStale(stat4, options));
         });
       });
     }
@@ -1743,10 +1750,10 @@ var require_proper_lockfile = __commonJS({
 // dist/shared/bin/auto-scan.mjs
 import { appendFileSync } from "node:fs";
 import { appendFile as appendFile3 } from "node:fs/promises";
-import { join as join10 } from "node:path";
+import { join as join11 } from "node:path";
 
 // dist/shared/backfill/scan-then-drain.mjs
-import { join as join9 } from "node:path";
+import { join as join10 } from "node:path";
 
 // dist/shared/config.mjs
 import { join } from "node:path";
@@ -1781,7 +1788,8 @@ function defaultPolicy() {
       "ref_kind",
       "ref_id",
       "ref_scope",
-      "ref_source"
+      "ref_source",
+      "refs"
     ]),
     "tool_call.failed": Object.freeze([
       "tool_name",
@@ -2356,7 +2364,7 @@ init_credential_paths();
 
 // dist/shared/plugin-commands.mjs
 var COMMAND_PREFIX = "/fancysauce-savings:";
-var LOGIN_COMMAND = `${COMMAND_PREFIX}login`;
+var LOGIN_COMMAND = "/fancysauce-savings:login";
 var RESET_COMMAND = `${COMMAND_PREFIX}reset`;
 var UPLOAD_HISTORY_COMMAND = `${COMMAND_PREFIX}upload-history`;
 
@@ -2367,14 +2375,14 @@ init_runner_spawn();
 // dist/shared/backfill/scan.mjs
 import { appendFile as appendFile2, mkdir as mkdir6, readdir as readdir2 } from "node:fs/promises";
 import { homedir as homedir4 } from "node:os";
-import { join as join8, relative as relative2 } from "node:path";
+import { join as join9, relative as relative2 } from "node:path";
 
 // dist/agents/claude-code/transcript-tail.mjs
 var import_proper_lockfile2 = __toESM(require_proper_lockfile(), 1);
-import { mkdir as mkdir4, readFile as readFile4, readdir, writeFile as writeFile2, appendFile, rename as rename3, lstat as lstat2 } from "node:fs/promises";
-import { basename, dirname as dirname3, isAbsolute, join as join5, relative, sep } from "node:path";
+import { mkdir as mkdir4, readFile as readFile5, readdir, writeFile as writeFile3, appendFile, rename as rename4, lstat as lstat2 } from "node:fs/promises";
+import { basename, dirname as dirname3, isAbsolute, join as join6, relative, sep } from "node:path";
 import { homedir as homedir3 } from "node:os";
-import { randomUUID as randomUUID2 } from "node:crypto";
+import { randomUUID as randomUUID3 } from "node:crypto";
 
 // dist/agents/claude-code/subagent-cursor.mjs
 import { readFile as readFile3, rename as rename2, writeFile } from "node:fs/promises";
@@ -2399,6 +2407,13 @@ async function withDirLock(dir, fn) {
 }
 
 // dist/agents/claude-code/subagent-cursor.mjs
+function rereadSince(cursor) {
+  const v = cursor.reread_since_ms;
+  return typeof v === "number" ? v : void 0;
+}
+function cursorBody(offset, rereadSinceMs) {
+  return rereadSinceMs === void 0 ? { byte_offset: offset } : { byte_offset: offset, reread_since_ms: rereadSinceMs };
+}
 var SubagentCursor = class {
   dir;
   path;
@@ -2409,38 +2424,41 @@ var SubagentCursor = class {
     this.tmpPath = `${this.path}.tmp`;
   }
   async read() {
+    return (await this.readState()).offset;
+  }
+  async readState() {
     try {
       const buf = await readFile3(this.path, "utf8");
       const parsed = JSON.parse(buf);
-      return parsed.byte_offset ?? 0;
+      return { offset: parsed.byte_offset ?? 0, rereadSinceMs: rereadSince(parsed) };
     } catch (err) {
       if (err.code === "ENOENT")
-        return 0;
+        return { offset: 0, rereadSinceMs: void 0 };
       throw err;
     }
   }
+  // Keeps the stored restart stamp.
   async advance(offset) {
     await withDirLock(this.dir, async () => {
-      const current = await this.read();
-      if (offset < current) {
-        throw new Error(`SubagentCursor.advance monotonic violation: ${offset} < ${current}`);
+      const current = await this.readState();
+      if (offset < current.offset) {
+        throw new Error(`SubagentCursor.advance monotonic violation: ${offset} < ${current.offset}`);
       }
-      await this.write(offset);
+      await this.write(offset, current.rereadSinceMs);
     });
   }
-  // Force-write cursor to 0. Bypasses the monotonic guard. Used when the
-  // transcript file shrank below the recorded offset (CC compaction,
-  // manual prune, agent_id collision across sessions): without a reset,
-  // every subsequent tail would see `stat.size <= cursor` and emit
-  // nothing, permanently locking the agent's events out.
-  async reset() {
+  // Force-write cursor to 0, with the restart stamp. Bypasses the monotonic
+  // guard. Used when the transcript file shrank below the recorded offset
+  // (CC compaction, manual prune, agent_id collision across sessions):
+  // without a reset, every subsequent tail would see `stat.size <= cursor`
+  // and emit nothing, permanently locking the agent's events out.
+  async reset(rereadSinceMs) {
     await withDirLock(this.dir, async () => {
-      await this.write(0);
+      await this.write(0, rereadSinceMs);
     });
   }
-  async write(offset) {
-    const body = { byte_offset: offset };
-    await writeFile(this.tmpPath, JSON.stringify(body), "utf8");
+  async write(offset, rereadSinceMs) {
+    await writeFile(this.tmpPath, JSON.stringify(cursorBody(offset, rereadSinceMs)), "utf8");
     await rename2(this.tmpPath, this.path);
   }
 };
@@ -2497,13 +2515,13 @@ async function readWindow(opts) {
       }
       throw err;
     }
-    const stat3 = await fh.stat();
-    const truncated = stat3.size < startOffset;
+    const stat4 = await fh.stat();
+    const truncated = stat4.size < startOffset;
     const effectiveStart = truncated ? 0 : startOffset;
-    if (stat3.size <= effectiveStart) {
+    if (stat4.size <= effectiveStart) {
       return { events: [], endOffset: effectiveStart, truncated };
     }
-    const toRead = Math.min(stat3.size - effectiveStart, maxReadBytes);
+    const toRead = Math.min(stat4.size - effectiveStart, maxReadBytes);
     const buf = Buffer.alloc(toRead);
     await fh.read(buf, 0, toRead, effectiveStart);
     const lastNewline = buf.lastIndexOf("\n".charCodeAt(0));
@@ -2656,6 +2674,92 @@ function detectUsageLimit(rec, sessionId, sequence, nowMs) {
   };
 }
 
+// dist/shared/replay-marker.mjs
+import { link as link2, readFile as readFile4, rename as rename3, unlink as unlink2, writeFile as writeFile2 } from "node:fs/promises";
+import { join as join5 } from "node:path";
+import { randomUUID as randomUUID2 } from "node:crypto";
+var WATCH_SINCE_FILE = "watch_since.json";
+function replayMarker(timestampNs, watchSinceMs, rereadSinceMs) {
+  const eventMs = Number(timestampNs / 1000000n);
+  if (rereadSinceMs !== void 0 && eventMs < rereadSinceMs)
+    return "reread";
+  if (eventMs < watchSinceMs)
+    return "catch_up";
+  return "none";
+}
+function markReplay(events, watchSinceMs, rereadSinceMs) {
+  for (const ev of events)
+    ev.replay = replayMarker(ev.timestamp_ns, watchSinceMs, rereadSinceMs);
+}
+async function readOrCreateWatchSince(sessionDir, nowMs, onError, legacyCursorName = "transcript_cursor.json") {
+  const path = join5(sessionDir, WATCH_SINCE_FILE);
+  const existing = await readWatchSince(path);
+  if (existing !== void 0)
+    return existing;
+  const value = await cursorOffset(join5(sessionDir, legacyCursorName)) > 0 ? 0 : nowMs;
+  const body = JSON.stringify({ since_ms: value });
+  try {
+    if (await createExclusive(path, body))
+      return value;
+    const winner = await readWatchSince(path);
+    if (winner !== void 0)
+      return winner;
+    await replace(path, body);
+    return value;
+  } catch (err) {
+    await onError(err);
+    return nowMs;
+  }
+}
+async function readWatchSince(path) {
+  try {
+    const parsed = JSON.parse(await readFile4(path, "utf8"));
+    if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed))
+      return void 0;
+    const v = parsed.since_ms;
+    return typeof v === "number" && Number.isSafeInteger(v) && v >= 0 ? v : void 0;
+  } catch {
+    return void 0;
+  }
+}
+async function cursorOffset(path) {
+  try {
+    const parsed = JSON.parse(await readFile4(path, "utf8"));
+    if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed))
+      return 0;
+    const v = parsed.byte_offset;
+    return typeof v === "number" ? v : 0;
+  } catch {
+    return 0;
+  }
+}
+async function createExclusive(path, body) {
+  const tmp = `${path}.${randomUUID2()}.tmp`;
+  await writeFile2(tmp, body, "utf8");
+  try {
+    await link2(tmp, path);
+    return true;
+  } catch (err) {
+    if (err?.code === "EEXIST")
+      return false;
+    throw err;
+  } finally {
+    await unlink2(tmp).catch(() => {
+    });
+  }
+}
+async function replace(path, body) {
+  const tmp = `${path}.${randomUUID2()}.tmp`;
+  await writeFile2(tmp, body, "utf8");
+  try {
+    await rename3(tmp, path);
+  } catch (err) {
+    await unlink2(tmp).catch(() => {
+    });
+    throw err;
+  }
+}
+
 // dist/agents/claude-code/transcript-tail.mjs
 var SESSION_ID_RE = /^[A-Za-z0-9_-]{16,128}$/;
 var AGENT_ID_RE = /^[A-Za-z0-9_-]{16,128}$/;
@@ -2671,12 +2775,14 @@ var TranscriptTail = class {
   maxReadBytes;
   errorLogPath;
   transcriptRoot;
+  nowMs;
   constructor(stateDir, options = {}) {
     this.stateDir = stateDir;
     this.maxReadBytes = options.maxReadBytes ?? DEFAULT_MAX_READ_BYTES;
     this.errorLogPath = options.errorLogPath;
-    const root = options.transcriptRoot ?? join5(homedir3(), ".claude", "projects");
+    const root = options.transcriptRoot ?? join6(homedir3(), ".claude", "projects");
     this.transcriptRoot = root.endsWith(sep) ? root : root + sep;
+    this.nowMs = options.nowMs;
   }
   // `persist` runs after all events are read but BEFORE any cursor is
   // advanced. If it throws, every cursor stays at its previous offset and
@@ -2690,7 +2796,9 @@ var TranscriptTail = class {
     }
     const cursorDir = this.cursorDir(sessionId);
     await mkdir4(cursorDir, { recursive: true });
-    const cursorPath = join5(cursorDir, "transcript_cursor.json");
+    const nowMs = this.nowMs ?? Date.now();
+    const watchSinceMs = await readOrCreateWatchSince(cursorDir, nowMs, (err) => this.logTailError(`watch-since ${sessionId}`, err));
+    const cursorPath = join6(cursorDir, "transcript_cursor.json");
     let release;
     try {
       release = await import_proper_lockfile2.default.lock(cursorPath, {
@@ -2702,10 +2810,13 @@ var TranscriptTail = class {
       return { events: [], skipped: true, newCursor: 0 };
     }
     try {
-      const startOffset = await this.readCursor(cursorPath);
+      const cursor = await this.readCursor(cursorPath, nowMs);
+      const startOffset = cursor.offset;
       const { events, endOffset, truncated } = await this.readSince(sessionId, transcriptPath, startOffset, sequenceBase, this.maxReadBytes);
-      const sessionDir = join5(dirname3(transcriptPath), basename(transcriptPath, ".jsonl"));
-      const subagentsRoot = join5(sessionDir, "subagents");
+      const rereadSinceMs = truncated ? nowMs : cursor.rereadSinceMs;
+      markReplay(events, watchSinceMs, rereadSinceMs);
+      const sessionDir = join6(dirname3(transcriptPath), basename(transcriptPath, ".jsonl"));
+      const subagentsRoot = join6(sessionDir, "subagents");
       const subagentPaths = await discoverSubagentTranscripts(sessionDir, (dir, err) => this.logSubagentError(sessionId, relative(sessionDir, dir) || "subagents", err));
       const metaCache = new SubagentMetaCache();
       let seq = sequenceBase + events.length;
@@ -2728,7 +2839,9 @@ var TranscriptTail = class {
             cursorDir: subCursorDir,
             metaCache,
             sequenceBase: seq,
-            maxReadBytes: this.maxReadBytes
+            maxReadBytes: this.maxReadBytes,
+            watchSinceMs,
+            nowMs
           });
         } catch (err) {
           await this.logSubagentError(sessionId, errorLabel, err);
@@ -2740,7 +2853,7 @@ var TranscriptTail = class {
       }
       await persist(events);
       if (truncated || endOffset > startOffset) {
-        await this.writeCursor(cursorPath, endOffset);
+        await this.writeCursor(cursorPath, endOffset, rereadSinceMs);
       }
       for (const commit of subagentCommits) {
         await commit();
@@ -2756,11 +2869,11 @@ var TranscriptTail = class {
     }
     const cursorDir = this.cursorDir(sessionId);
     await mkdir4(cursorDir, { recursive: true });
-    const cursorPath = join5(cursorDir, "transcript_cursor.json");
+    const cursorPath = join6(cursorDir, "transcript_cursor.json");
     try {
-      await readFile4(cursorPath);
+      await readFile5(cursorPath);
     } catch {
-      await writeFile2(cursorPath, "{}", "utf8");
+      await writeFile3(cursorPath, "{}", "utf8");
     }
     const release = await import_proper_lockfile2.default.lock(cursorPath, { retries: 0, realpath: false });
     return { release: async () => {
@@ -2782,29 +2895,46 @@ var TranscriptTail = class {
     return true;
   }
   async logSubagentError(sessionId, agentLabel, err) {
+    await this.logTailError(`subagent-tail ${sessionId}/${agentLabel}`, err);
+  }
+  async logTailError(label, err) {
     if (!this.errorLogPath)
       return;
     const msg = err instanceof Error ? `${err.message}` : String(err);
-    const line = `${(/* @__PURE__ */ new Date()).toISOString()} subagent-tail ${sessionId}/${agentLabel}: ${msg}`.replace(/[\p{Cc}\p{Cf}]+/gu, " ").slice(0, 2e3) + "\n";
+    const line = `${(/* @__PURE__ */ new Date()).toISOString()} ${label}: ${msg}`.replace(/[\p{Cc}\p{Cf}]+/gu, " ").slice(0, 2e3) + "\n";
     try {
       await appendFile(this.errorLogPath, line);
     } catch {
     }
   }
-  async readCursor(cursorPath) {
+  // A missing cursor is a first read. A cursor that is there and cannot be
+  // read or parsed restarts the file at byte 0, so it sets the restart stamp.
+  async readCursor(cursorPath, nowMs) {
+    let buf;
     try {
-      const buf = await readFile4(cursorPath, "utf8");
-      const parsed = JSON.parse(buf);
-      return parsed.byte_offset ?? 0;
-    } catch {
-      return 0;
+      buf = await readFile5(cursorPath, "utf8");
+    } catch (err) {
+      if (err?.code === "ENOENT")
+        return { offset: 0, rereadSinceMs: void 0 };
+      return { offset: 0, rereadSinceMs: nowMs };
     }
+    let parsed;
+    try {
+      parsed = JSON.parse(buf);
+    } catch {
+      parsed = void 0;
+    }
+    if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+      return { offset: 0, rereadSinceMs: nowMs };
+    }
+    const cursor = parsed;
+    return { offset: cursor.byte_offset ?? 0, rereadSinceMs: rereadSince(cursor) };
   }
-  async writeCursor(cursorPath, offset) {
-    const body = { byte_offset: offset };
+  async writeCursor(cursorPath, offset, rereadSinceMs) {
+    const body = cursorBody(offset, rereadSinceMs);
     const tmp = `${cursorPath}.tmp`;
-    await writeFile2(tmp, JSON.stringify(body), "utf8");
-    await rename3(tmp, cursorPath);
+    await writeFile3(tmp, JSON.stringify(body), "utf8");
+    await rename4(tmp, cursorPath);
   }
   async readSince(sessionId, path, startOffset, sequenceBase, maxReadBytes) {
     return readWindow({
@@ -2846,10 +2976,10 @@ function ccParseWindow(stamp, detectLimit) {
   };
 }
 async function readSubagent(opts) {
-  const { sessionId, agentId, transcriptPath, metaPath, cursorDir, metaCache = new SubagentMetaCache(), sequenceBase = 0, maxReadBytes = DEFAULT_MAX_READ_BYTES } = opts;
+  const { sessionId, agentId, transcriptPath, metaPath, cursorDir, metaCache = new SubagentMetaCache(), sequenceBase = 0, maxReadBytes = DEFAULT_MAX_READ_BYTES, watchSinceMs, nowMs = Date.now() } = opts;
   await mkdir4(cursorDir, { recursive: true });
   const cursor = new SubagentCursor(cursorDir);
-  const startOffset = await cursor.read();
+  const { offset: startOffset, rereadSinceMs: storedRereadSinceMs } = await cursor.readState();
   const meta = await metaCache.get(metaPath);
   let events;
   let endOffset;
@@ -2882,6 +3012,7 @@ async function readSubagent(opts) {
     }
     throw err;
   }
+  markReplay(events, watchSinceMs, truncated ? nowMs : storedRereadSinceMs);
   return {
     events,
     // Whether committing would actually move this agent's cursor forward.
@@ -2894,7 +3025,7 @@ async function readSubagent(opts) {
     advanced: truncated || endOffset > startOffset,
     commit: async () => {
       if (truncated)
-        await cursor.reset();
+        await cursor.reset(nowMs);
       const current = await cursor.read();
       if (endOffset > current)
         await cursor.advance(endOffset);
@@ -2903,7 +3034,7 @@ async function readSubagent(opts) {
 }
 var MAX_SUBAGENT_DISCOVERY_DEPTH = 4;
 async function discoverSubagentTranscripts(sessionDir, onError) {
-  const root = join5(sessionDir, "subagents");
+  const root = join6(sessionDir, "subagents");
   try {
     if (!(await lstat2(root)).isDirectory())
       return [];
@@ -2926,7 +3057,7 @@ async function walkSubagentDir(dir, depthRemaining, onError) {
     return [];
   }
   const found = await Promise.all(entries.map(async (entry) => {
-    const full = join5(dir, entry.name);
+    const full = join6(dir, entry.name);
     const kind = await classifyDirent(full, entry);
     if (kind === "file" && entry.name.startsWith("agent-") && entry.name.endsWith(".jsonl")) {
       return [full];
@@ -2959,7 +3090,7 @@ function isValidSessionId(s) {
   return typeof s === "string" && SESSION_ID_RE.test(s);
 }
 function sessionCursorDir(stateDir, sessionId) {
-  return join5(stateDir, "sessions", sessionId);
+  return join6(stateDir, "sessions", sessionId);
 }
 function deriveSubagentCursorDir(sessCursorDir, subagentsRoot, subagentPath) {
   const agentId = basename(subagentPath, ".jsonl").slice("agent-".length);
@@ -2970,8 +3101,8 @@ function deriveSubagentCursorDir(sessCursorDir, subagentsRoot, subagentPath) {
   if (nestedDir === ".." || nestedDir.startsWith(".." + sep)) {
     return { ok: false, agentId, reason: `transcript outside subagents root: ${subagentPath}` };
   }
-  const cursorDir = nestedDir === "" ? join5(sessCursorDir, "subagents", agentId) : join5(sessCursorDir, "subagents", nestedDir, agentId);
-  const errorLabel = nestedDir === "" ? agentId : join5(nestedDir, agentId);
+  const cursorDir = nestedDir === "" ? join6(sessCursorDir, "subagents", agentId) : join6(sessCursorDir, "subagents", nestedDir, agentId);
+  const errorLabel = nestedDir === "" ? agentId : join6(nestedDir, agentId);
   return { ok: true, agentId, cursorDir, errorLabel };
 }
 function isAssistantRecord(r) {
@@ -3031,7 +3162,7 @@ function toApiRequestEvent(r, sessionId, sequence) {
     attrs.api_error_status = r.apiErrorStatus;
   }
   return {
-    event_uuid: randomUUID2(),
+    event_uuid: randomUUID3(),
     event_type: "api.request",
     session_id: sessionId,
     source: "transcript.tail",
@@ -3042,20 +3173,20 @@ function toApiRequestEvent(r, sessionId, sequence) {
 }
 
 // dist/shared/queue.mjs
-import { open as open5, stat as stat2 } from "node:fs/promises";
-import { join as join6 } from "node:path";
+import { open as open5, stat as stat3 } from "node:fs/promises";
+import { join as join7 } from "node:path";
 var Queue = class {
   dir;
   path;
   capBytes;
   constructor(dir, capBytes) {
     this.dir = dir;
-    this.path = join6(dir, "queue.ndjson");
+    this.path = join7(dir, "queue.ndjson");
     this.capBytes = capBytes;
   }
   async size() {
     try {
-      const s = await stat2(this.path);
+      const s = await stat3(this.path);
       return s.size;
     } catch (err) {
       if (err.code === "ENOENT")
@@ -3098,6 +3229,35 @@ init_credential_paths();
 import { createHash, createHmac } from "node:crypto";
 function sha256Hex(input) {
   return createHash("sha256").update(input, "utf8").digest("hex");
+}
+
+// dist/shared/types.mjs
+var REPLAY_MARKERS = ["none", "history_scan", "catch_up", "reread"];
+function isReplayMarker(value) {
+  return typeof value === "string" && REPLAY_MARKERS.includes(value);
+}
+var WORK_REF_FIELDS = ["system", "kind", "id", "scope", "source"];
+var MAX_REFS_PER_EVENT = 10;
+function workRefField(item, field) {
+  if (typeof item !== "object" || item === null)
+    return void 0;
+  return item[field];
+}
+function validateWorkRefList(value) {
+  if (!Array.isArray(value) || value.length < 2 || value.length > MAX_REFS_PER_EVENT)
+    return void 0;
+  const refs = [];
+  for (const item of value) {
+    const ref = {};
+    for (const field of WORK_REF_FIELDS) {
+      const fieldValue = workRefField(item, field);
+      if (typeof fieldValue !== "string" || fieldValue === "")
+        return void 0;
+      ref[field] = fieldValue;
+    }
+    refs.push(ref);
+  }
+  return refs;
 }
 
 // dist/shared/content-filter.mjs
@@ -3179,8 +3339,15 @@ function toolCallComplete(a) {
   if (refKeys.every((key) => typeof a[key] === "string" && a[key] !== "")) {
     for (const key of refKeys)
       out[key] = a[key];
+  } else {
+    const refs = filteredRefs(a.refs);
+    if (refs)
+      out.refs = refs;
   }
   return out;
+}
+function filteredRefs(v) {
+  return validateWorkRefList(v);
 }
 function toolCallFailed(a) {
   const rawInput = typeof a.tool_input_raw === "string" ? a.tool_input_raw : "";
@@ -3256,8 +3423,8 @@ var CACHED_SOURCE_SET = new Set(CACHED_IDENTITY_SOURCES);
 
 // dist/shared/health.mjs
 var import_proper_lockfile3 = __toESM(require_proper_lockfile(), 1);
-import { mkdir as mkdir5, readFile as readFile5, rename as rename4, writeFile as writeFile3 } from "node:fs/promises";
-import { join as join7 } from "node:path";
+import { mkdir as mkdir5, readFile as readFile6, rename as rename5, writeFile as writeFile4 } from "node:fs/promises";
+import { join as join8 } from "node:path";
 var DEFAULT = { dropped_event_count: 0 };
 var LOCK_RETRIES = {
   retries: 100,
@@ -3271,12 +3438,12 @@ var HealthState = class {
   tmp;
   constructor(dir) {
     this.dir = dir;
-    this.path = join7(dir, "health.json");
+    this.path = join8(dir, "health.json");
     this.tmp = `${this.path}.tmp`;
   }
   async read() {
     try {
-      return { ...DEFAULT, ...JSON.parse(await readFile5(this.path, "utf8")) };
+      return { ...DEFAULT, ...JSON.parse(await readFile6(this.path, "utf8")) };
     } catch {
       return { ...DEFAULT };
     }
@@ -3300,9 +3467,9 @@ var HealthState = class {
   async update(mutate) {
     await mkdir5(this.dir, { recursive: true });
     try {
-      await readFile5(this.path);
+      await readFile6(this.path);
     } catch {
-      await writeFile3(this.path, "{}", "utf8");
+      await writeFile4(this.path, "{}", "utf8");
     }
     const release = await import_proper_lockfile3.default.lock(this.path, {
       retries: LOCK_RETRIES,
@@ -3311,8 +3478,8 @@ var HealthState = class {
     try {
       const h = await this.read();
       mutate(h);
-      await writeFile3(this.tmp, JSON.stringify(h), "utf8");
-      await rename4(this.tmp, this.path);
+      await writeFile4(this.tmp, JSON.stringify(h), "utf8");
+      await rename5(this.tmp, this.path);
     } finally {
       await release();
     }
@@ -3349,11 +3516,18 @@ function serializeForQueue(event) {
   if (typeof event.event_uuid !== "string" || event.event_uuid.length === 0) {
     throw new Error(`event_uuid must be non-empty before enqueue (event_type=${event.event_type}, source=${event.source})`);
   }
+  if (event.replay !== void 0 && !isReplayMarker(event.replay)) {
+    throw new Error(`replay must be one of ${REPLAY_MARKERS.join(", ")} (event_type=${event.event_type}, replay=${String(event.replay)})`);
+  }
+  if (event.replay === void 0) {
+    throw new Error(`replay is required before enqueue (event_type=${event.event_type}, source=${event.source})`);
+  }
   return JSON.stringify({
     event_uuid: event.event_uuid,
     event_type: event.event_type,
     session_id: event.session_id,
     source: event.source,
+    replay: event.replay,
     sequence: event.sequence,
     timestamp_ns: event.timestamp_ns.toString(),
     attributes: event.attributes
@@ -3380,9 +3554,9 @@ async function enqueueEvents(queue, events) {
 // dist/shared/backfill/scan.mjs
 var MAX_ITERATIONS_PER_TRANSCRIPT = 1e4;
 async function runBackfillScan(opts) {
-  const transcriptRoot = opts.transcriptRoot ?? join8(homedir4(), ".claude", "projects");
-  const stateDir = join8(opts.dataDir, "state");
-  const outboundDir = join8(opts.dataDir, "outbound");
+  const transcriptRoot = opts.transcriptRoot ?? join9(homedir4(), ".claude", "projects");
+  const stateDir = join9(opts.dataDir, "state");
+  const outboundDir = join9(opts.dataDir, "outbound");
   await mkdir6(outboundDir, { recursive: true, mode: 448 });
   const queue = new Queue(outboundDir, opts.queueCapBytes ?? QUEUE_CAP_BYTES);
   const maxReadBytes = opts.maxReadBytes ?? DEFAULT_MAX_READ_BYTES;
@@ -3411,10 +3585,11 @@ async function runBackfillScan(opts) {
     }
     summary.sessionsScanned++;
     try {
-      const subagentsRoot = join8(sessionDir, "subagents");
+      const sessCursorDir = sessionCursorDir(stateDir, sessionId);
+      const watchSinceMs = await readOrCreateWatchSince(sessCursorDir, Date.now(), (err) => logScanError(opts.errorLogPath, sessionId, "watch-since", err));
+      const subagentsRoot = join9(sessionDir, "subagents");
       const subagentPaths = await discoverSubagentTranscripts(sessionDir, (dir, err) => logScanError(opts.errorLogPath, sessionId, relative2(sessionDir, dir) || "subagents", err));
       const metaCache = new SubagentMetaCache();
-      const sessCursorDir = sessionCursorDir(stateDir, sessionId);
       for (const subagentPath of subagentPaths) {
         const derived = deriveSubagentCursorDir(sessCursorDir, subagentsRoot, subagentPath);
         if (!derived.ok) {
@@ -3431,6 +3606,7 @@ async function runBackfillScan(opts) {
           cursorDir,
           metaCache,
           maxReadBytes,
+          watchSinceMs,
           queue,
           policy,
           errorLogPath: opts.errorLogPath,
@@ -3457,7 +3633,7 @@ async function runBackfillScan(opts) {
   return summary;
 }
 async function drainSubagentTranscript(params) {
-  const { sessionId, agentId, subagentPath, metaPath, cursorDir, metaCache, maxReadBytes, queue, policy, errorLogPath, errorLabel } = params;
+  const { sessionId, agentId, subagentPath, metaPath, cursorDir, metaCache, maxReadBytes, watchSinceMs, queue, policy, errorLogPath, errorLabel } = params;
   let seq = 0;
   let enqueued = 0;
   let queueCapDropped = 0;
@@ -3473,7 +3649,8 @@ async function drainSubagentTranscript(params) {
         cursorDir,
         metaCache,
         sequenceBase: seq,
-        maxReadBytes
+        maxReadBytes,
+        watchSinceMs
       });
     } catch (err) {
       await logScanError(errorLogPath, sessionId, errorLabel, err);
@@ -3484,6 +3661,8 @@ async function drainSubagentTranscript(params) {
         const { filtered, dropped } = filterEvents(read.events, policy);
         filterDropped += dropped;
         if (filtered.length > 0) {
+          for (const ev of filtered)
+            ev.replay = "history_scan";
           const result = await enqueueEvents(queue, filtered);
           enqueued += result.written;
           queueCapDropped += result.dropped;
@@ -3526,7 +3705,7 @@ async function discoverSessionDirs(transcriptRoot, errorLogPath) {
   }
   const found = [];
   for (const proj of projectEntries) {
-    const projDir = join8(transcriptRoot, proj.name);
+    const projDir = join9(transcriptRoot, proj.name);
     if (await classifyDirent(projDir, proj) !== "dir")
       continue;
     let sessionEntries;
@@ -3539,7 +3718,7 @@ async function discoverSessionDirs(transcriptRoot, errorLogPath) {
     for (const entry of sessionEntries) {
       if (!isValidSessionId(entry.name))
         continue;
-      const sessionDir = join8(projDir, entry.name);
+      const sessionDir = join9(projDir, entry.name);
       if (await classifyDirent(sessionDir, entry) !== "dir")
         continue;
       found.push({ sessionId: entry.name, sessionDir });
@@ -3592,11 +3771,11 @@ async function scanThenDrain(args) {
     // rather than silently contained into nothing. Without this, scan.mts's
     // per-transcript containment had nowhere to write in production — only
     // tests (which pass errorLogPath directly) ever exercised it.
-    errorLogPath: join9(args.dataDir, "collect-error.log")
+    errorLogPath: join10(args.dataDir, "collect-error.log")
   });
   args.out(`Scan complete: ${summary.sessionsScanned} sessions scanned, ${summary.transcriptsTailed} transcripts tailed, ${summary.transcriptsFailed} failed (see collect-error.log), ${summary.eventsEnqueued} events enqueued, ${summary.skippedLocked} skipped (locked), ${summary.skippedFull + summary.skippedFiltered} dropped (queue full / filtered).
 `);
-  const queue = new Queue(join9(args.dataDir, "outbound"), QUEUE_CAP_BYTES);
+  const queue = new Queue(join10(args.dataDir, "outbound"), QUEUE_CAP_BYTES);
   if (await queue.size() === 0) {
     args.out("Queue is empty; nothing to upload.\n");
     return 0;
@@ -3634,8 +3813,8 @@ async function runAutoScan(opts) {
   const sleep = opts.sleep ?? defaultSleep;
   const jitterMs = opts.jitterMs ?? Math.floor(Math.random() * AUTO_SCAN_JITTER_MAX_MS);
   await sleep(jitterMs);
-  const stateDir = join10(opts.dataDir, "state");
-  const auditLogPath = join10(opts.dataDir, "auto-scan.log");
+  const stateDir = join11(opts.dataDir, "state");
+  const auditLogPath = join11(opts.dataDir, "auto-scan.log");
   const audit = (s) => {
     const line = `${(/* @__PURE__ */ new Date()).toISOString()} ${s.replace(/[\p{Cc}\p{Cf}]+/gu, " ").trim()}`.slice(0, 2e3) + "\n";
     try {
@@ -3676,7 +3855,7 @@ if (isMain) {
   void runAutoScan({ dataDir, credentialUserPath: credPath }).then((code) => process.exit(code)).catch(async (err) => {
     const msg = err instanceof Error ? err.stack ?? err.message : String(err);
     try {
-      await appendFile3(join10(dataDir, "collect-error.log"), `${(/* @__PURE__ */ new Date()).toISOString()} auto-scan: ${msg}
+      await appendFile3(join11(dataDir, "collect-error.log"), `${(/* @__PURE__ */ new Date()).toISOString()} auto-scan: ${msg}
 `);
     } catch {
     }

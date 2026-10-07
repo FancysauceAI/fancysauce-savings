@@ -96,6 +96,13 @@ function trimTrailingSlash(p) {
   return p.endsWith("/") || p.endsWith("\\") ? p.slice(0, -1) : p;
 }
 function deriveFromRegistry(root, home) {
+  const key = registryKey(root, home);
+  if (key === null)
+    return null;
+  const at = key.lastIndexOf("@");
+  return join2(home, ".claude", "plugins", "data", `${key.slice(0, at)}-${key.slice(at + 1)}`);
+}
+function registryKey(root, home) {
   try {
     const regPath = join2(home, ".claude", "plugins", "installed_plugins.json");
     const reg = JSON.parse(readFileSync(regPath, "utf8"));
@@ -114,9 +121,7 @@ function deriveFromRegistry(root, home) {
         const at = key.lastIndexOf("@");
         if (at <= 0 || at >= key.length - 1)
           continue;
-        const plugin = key.slice(0, at);
-        const alias = key.slice(at + 1);
-        return join2(home, ".claude", "plugins", "data", `${plugin}-${alias}`);
+        return key;
       }
     }
   } catch {
