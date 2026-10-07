@@ -116,6 +116,7 @@ var init_runner_env = __esm({
       "LC_CTYPE",
       "TZ",
       "TERM",
+      "CODEX_HOME",
       "VITEST",
       "CLAUDE_PLUGIN_DATA",
       "FANCYSAUCE_CREDENTIAL_PATHS",
@@ -1715,27 +1716,27 @@ var require_adapter = __commonJS({
 var require_proper_lockfile = __commonJS({
   "node_modules/proper-lockfile/index.js"(exports, module) {
     "use strict";
-    var lockfile5 = require_lockfile();
+    var lockfile6 = require_lockfile();
     var { toPromise, toSync, toSyncOptions } = require_adapter();
     async function lock(file, options) {
-      const release = await toPromise(lockfile5.lock)(file, options);
+      const release = await toPromise(lockfile6.lock)(file, options);
       return toPromise(release);
     }
     function lockSync(file, options) {
-      const release = toSync(lockfile5.lock)(file, toSyncOptions(options));
+      const release = toSync(lockfile6.lock)(file, toSyncOptions(options));
       return toSync(release);
     }
     function unlock(file, options) {
-      return toPromise(lockfile5.unlock)(file, options);
+      return toPromise(lockfile6.unlock)(file, options);
     }
     function unlockSync(file, options) {
-      return toSync(lockfile5.unlock)(file, toSyncOptions(options));
+      return toSync(lockfile6.unlock)(file, toSyncOptions(options));
     }
     function check(file, options) {
-      return toPromise(lockfile5.check)(file, options);
+      return toPromise(lockfile6.check)(file, options);
     }
     function checkSync(file, options) {
-      return toSync(lockfile5.check)(file, toSyncOptions(options));
+      return toSync(lockfile6.check)(file, toSyncOptions(options));
     }
     module.exports = lock;
     module.exports.lock = lock;
@@ -1764,6 +1765,25 @@ function defaultPolicy() {
   const keepLists = {
     "session.start": Object.freeze(["cwd_hash", "model", "permission_mode", "fancysauce.repo_url_hash"]),
     "session.end": Object.freeze(["reason", "duration_wall_s"]),
+    "session.recap": Object.freeze([
+      "recap_schema_version",
+      "recap_id",
+      "recap_source",
+      "recap_source_uuid",
+      "recap_created_at",
+      "recap_content_sha256",
+      "recap_total_bytes",
+      "recap_chunk_index",
+      "recap_chunk_count",
+      "recap_text",
+      "expected_tenant_id"
+    ]),
+    "session.name": Object.freeze([
+      "naming_schema_version",
+      "name",
+      "name_origin",
+      "expected_tenant_id"
+    ]),
     "prompt.submit": Object.freeze(["prompt_length", "slash_command"]),
     "tool_call.start": Object.freeze([
       "tool_name",
@@ -2396,9 +2416,9 @@ var LOCK_OPTIONS = {
   retries: { retries: 100, minTimeout: 5, maxTimeout: 100, factor: 1.5 },
   stale: 1e4
 };
-async function withDirLock(dir, fn) {
+async function withDirLock(dir, fn, retries = LOCK_OPTIONS.retries) {
   await mkdir3(dir, { recursive: true });
-  const release = await import_proper_lockfile.default.lock(dir, LOCK_OPTIONS);
+  const release = await import_proper_lockfile.default.lock(dir, { ...LOCK_OPTIONS, retries });
   try {
     return await fn();
   } finally {
@@ -3266,6 +3286,8 @@ function buildRules(policy) {
   return {
     "session.start": k("session.start"),
     "session.end": k("session.end"),
+    "session.recap": k("session.recap"),
+    "session.name": k("session.name"),
     "prompt.submit": promptSubmit,
     "tool_call.start": toolCallStart,
     "tool_call.complete": toolCallComplete,
@@ -3509,6 +3531,15 @@ var TMP_ORPHAN_MAX_AGE_MS = 60 * 60 * 1e3;
 // dist/shared/whoami/flags.mjs
 var PLUGIN_FLAGS_MAX_AGE_MS = 24 * 60 * 60 * 1e3;
 var NO_PLUGIN_FLAGS = Object.freeze({});
+
+// dist/shared/session-metadata/delivery.mjs
+var MAX_RECAP_BYTES = 4 * 1024 * 1024;
+
+// dist/shared/session-metadata/schedule.mjs
+init_runner_env();
+
+// dist/shared/session-metadata/state.mjs
+var import_proper_lockfile5 = __toESM(require_proper_lockfile(), 1);
 
 // dist/shared/run-collect.mjs
 var QUEUE_CAP_BYTES = 100 * 1024 * 1024;

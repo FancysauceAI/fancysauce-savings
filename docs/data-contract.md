@@ -1,6 +1,6 @@
 # What the fancysauce-savings plugin sends
 
-Generated from the plugin's content-filter keep-lists (`dist/shared/policy.mjs`) for version 0.19.0. Hooks receive the full tool input and prompt; the plugin emits only the fields below. Anything not listed is dropped before it is written to disk.
+Generated from the plugin's content-filter keep-lists (`dist/shared/policy.mjs`) for version 0.20.0. Hooks receive the full tool input and prompt; the plugin emits only the fields below. Anything not listed is dropped before it is written to disk.
 
 Kinds: **hash** is an unsalted SHA-256 of the named value, used to correlate equal values across events, not to conceal them: a short or guessable input can be recovered by guessing. **count** and **numeric** are numbers. **categorical** is one of a small fixed set of vendor-defined values. **scalar** is a short vendor-supplied value forwarded as text: a number, a version, or an enum token, never prose. **identifier** is an opaque id assigned by Claude Code or the API. **timestamp** is a point in time. **text** is marked explicitly and explained. **reference list** is a list of structured work references.
 
@@ -53,6 +53,35 @@ Source: hook `SessionEnd`. A session ended.
 |---|---|---|
 | `reason` | categorical | Session end reason, as Claude Code reports it. |
 | `duration_wall_s` | count | Wall-clock seconds from session start to session end. |
+
+## `session.recap`
+
+Source: transcript tail. A Claude Code `away_summary` recap captured from the local session transcript.
+
+| Attribute | Kind | What it is |
+|---|---|---|
+| `recap_schema_version` | numeric | Version of the recap wire shape. |
+| `recap_id` | identifier | Stable id assigned to the captured recap. |
+| `recap_source` | categorical | Source kind of the captured recap. |
+| `recap_source_uuid` | identifier | Source record id for the captured recap. |
+| `recap_created_at` | timestamp | When Claude Code created the captured recap. |
+| `recap_content_sha256` | hash | SHA-256 of the complete recap text. |
+| `recap_total_bytes` | count | UTF-8 byte length of the complete recap text. |
+| `recap_chunk_index` | count | Zero-based index of this recap chunk. |
+| `recap_chunk_count` | count | Number of chunks in the recap. |
+| `recap_text` | text | A chunk of the Claude Code `away_summary` recap. |
+| `expected_tenant_id` | identifier | Tenant id the source record was captured for, used for ingest binding. |
+
+## `session.name`
+
+Source: Codex thread database. The first nonempty native thread name captured from Codex's local session database.
+
+| Attribute | Kind | What it is |
+|---|---|---|
+| `naming_schema_version` | numeric | Version of the session-name wire shape. |
+| `name` | text | The native Codex thread name. |
+| `name_origin` | categorical | Source kind of the captured session name. |
+| `expected_tenant_id` | identifier | Tenant id the source record was captured for, used for ingest binding. |
 
 ## `prompt.submit`
 

@@ -2,6 +2,18 @@
 
 All public releases of `fancysauce-savings`. Most recent first.
 
+## v0.20.0 — 2026-10-07
+
+### Highlights
+
+- **Session names and recaps.** The plugin sends session metadata, Claude Code recaps, and Codex session names to fancysauce. The Node and Go collectors both send them. Tenant flags and grants control each send, so nothing goes out until the tenant turns it on. (FAN-1520..FAN-1525, #207)
+- **Grant changes are not lost.** Each grant change writes its own marker file. Before this release, a disable that a hook wrote during a fold was lost. The Node worker also reads the grant again at each capture, as the Go worker does. (#207)
+- **Replaced transcripts read in full.** The Node Claude Code reader confirms that the path still names the file that it opened. Before this release, a transcript that was replaced during a read lost its first records. (#207)
+
+### Features
+
+- feat: session naming V0 plugin, stack F combined (FAN-1520..FAN-1525) (#207)
+
 ## v0.19.0 — 2026-10-06
 
 ### Features

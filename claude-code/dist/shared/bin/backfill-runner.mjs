@@ -1622,6 +1622,25 @@ function defaultPolicy() {
   const keepLists = {
     "session.start": Object.freeze(["cwd_hash", "model", "permission_mode", "fancysauce.repo_url_hash"]),
     "session.end": Object.freeze(["reason", "duration_wall_s"]),
+    "session.recap": Object.freeze([
+      "recap_schema_version",
+      "recap_id",
+      "recap_source",
+      "recap_source_uuid",
+      "recap_created_at",
+      "recap_content_sha256",
+      "recap_total_bytes",
+      "recap_chunk_index",
+      "recap_chunk_count",
+      "recap_text",
+      "expected_tenant_id"
+    ]),
+    "session.name": Object.freeze([
+      "naming_schema_version",
+      "name",
+      "name_origin",
+      "expected_tenant_id"
+    ]),
     "prompt.submit": Object.freeze(["prompt_length", "slash_command"]),
     "tool_call.start": Object.freeze([
       "tool_name",
@@ -2251,9 +2270,9 @@ var LOCK_OPTIONS = {
   retries: { retries: 100, minTimeout: 5, maxTimeout: 100, factor: 1.5 },
   stale: 1e4
 };
-async function withDirLock(dir, fn) {
+async function withDirLock(dir, fn, retries = LOCK_OPTIONS.retries) {
   await mkdir2(dir, { recursive: true });
-  const release = await import_proper_lockfile.default.lock(dir, LOCK_OPTIONS);
+  const release = await import_proper_lockfile.default.lock(dir, { ...LOCK_OPTIONS, retries });
   try {
     return await fn();
   } finally {
@@ -2642,7 +2661,30 @@ function validateWorkRefList(value) {
   return refs;
 }
 
+// dist/shared/whoami/cache.mjs
+var SUCCESS_TTL_MS = 6 * 60 * 60 * 1e3;
+var ERROR_TTL_MS = 15 * 60 * 1e3;
+var TMP_ORPHAN_MAX_AGE_MS = 60 * 60 * 1e3;
+
+// dist/shared/whoami/flags.mjs
+var PLUGIN_FLAGS_MAX_AGE_MS = 24 * 60 * 60 * 1e3;
+var NO_PLUGIN_FLAGS = Object.freeze({});
+
+// dist/shared/session-metadata/delivery.mjs
+var MAX_ENCODED_LOG_RECORD_BYTES = 4096;
+var MAX_RECAP_BYTES = 4 * 1024 * 1024;
+var MAX_RECAP_CHUNKS = 4096;
+var MAX_NAME_CODE_POINTS = 120;
+
 // dist/shared/otlp-encoder.mjs
+var OtlpLogRecordSizeError = class extends Error {
+  eventUuid;
+  constructor(eventUuid) {
+    super(`Encoded log record exceeds 4096 bytes (event_uuid=${eventUuid})`);
+    this.eventUuid = eventUuid;
+    this.name = "OtlpLogRecordSizeError";
+  }
+};
 var ATTR_DENY = /* @__PURE__ */ new Set([
   "cwd",
   "agent_transcript_path",
@@ -2667,6 +2709,22 @@ var ATTR_TYPE = {
   // session.end
   reason: "string",
   duration_wall_s: "int",
+  // session.recap
+  recap_schema_version: "int",
+  recap_id: "string",
+  recap_source: "string",
+  recap_source_uuid: "string",
+  recap_created_at: "string",
+  recap_content_sha256: "string",
+  recap_total_bytes: "int",
+  recap_chunk_index: "int",
+  recap_chunk_count: "int",
+  recap_text: "string",
+  expected_tenant_id: "string",
+  // session.name
+  naming_schema_version: "int",
+  name: "string",
+  name_origin: "string",
   // prompt.submit
   prompt_length: "int",
   slash_command: "string",
@@ -2830,6 +2888,7 @@ function encodeResourceAttributes(r) {
   return out;
 }
 function encodeLogRecord(event, observedTimeUnixNano) {
+  validateSessionMetadataLimits(event);
   const attrs = [
     { key: "fancysauce.event_uuid", value: encodeAnyValue("fancysauce.event_uuid", event.event_uuid) },
     { key: "fancysauce.event_type", value: encodeAnyValue("fancysauce.event_type", event.event_type) },
@@ -2843,12 +2902,39 @@ function encodeLogRecord(event, observedTimeUnixNano) {
   for (const [key, val] of Object.entries(event.attributes)) {
     attrs.push({ key, value: encodeAnyValue(key, val) });
   }
-  return {
+  const record = {
     timeUnixNano: event.timestamp_ns.toString(),
     observedTimeUnixNano: observedTimeUnixNano.toString(),
     severityNumber: 9,
     attributes: attrs
   };
+  if ((event.event_type === "session.recap" || event.event_type === "session.name") && Buffer.byteLength(JSON.stringify(record), "utf8") > MAX_ENCODED_LOG_RECORD_BYTES) {
+    throw new OtlpLogRecordSizeError(event.event_uuid);
+  }
+  return record;
+}
+function validateSessionMetadataLimits(event) {
+  if (event.event_type === "session.name") {
+    const name = event.attributes.name;
+    if (typeof name !== "string" || Array.from(name).length < 1 || Array.from(name).length > MAX_NAME_CODE_POINTS) {
+      throw new Error(`session.name name must contain 1 to ${MAX_NAME_CODE_POINTS} Unicode code points`);
+    }
+    return;
+  }
+  if (event.event_type !== "session.recap")
+    return;
+  const text = event.attributes.recap_text;
+  if (typeof text === "string" && Buffer.byteLength(text, "utf8") > MAX_RECAP_BYTES) {
+    throw new Error(`session.recap content exceeds ${MAX_RECAP_BYTES} decoded bytes`);
+  }
+  const totalBytes = event.attributes.recap_total_bytes;
+  if (typeof totalBytes === "number" && totalBytes > MAX_RECAP_BYTES || typeof totalBytes === "bigint" && totalBytes > BigInt(MAX_RECAP_BYTES)) {
+    throw new Error(`session.recap content exceeds ${MAX_RECAP_BYTES} decoded bytes`);
+  }
+  const chunkCount = event.attributes.recap_chunk_count;
+  if (typeof chunkCount === "number" && chunkCount > MAX_RECAP_CHUNKS || typeof chunkCount === "bigint" && chunkCount > BigInt(MAX_RECAP_CHUNKS)) {
+    throw new Error(`session.recap contains more than ${MAX_RECAP_CHUNKS} chunks`);
+  }
 }
 function encodeAnyValue(key, v) {
   if (ATTR_DENY.has(key)) {

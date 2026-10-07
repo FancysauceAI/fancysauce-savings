@@ -516,12 +516,12 @@ function resolveCredentialSync(opts = {}) {
   const env = opts.env ?? process.env;
   const sys = readOneSync(paths.system);
   if (sys.kind === "ok")
-    return withFingerprint("system", sys.token, sys.apiEndpoint);
+    return withFingerprint("system", sys.token, sys.apiEndpoint, sys.ingestEndpoint);
   if (sys.kind === "malformed")
     return null;
   const usr = readOneSync(paths.user);
   if (usr.kind === "ok")
-    return withFingerprint("user", usr.token, usr.apiEndpoint);
+    return withFingerprint("user", usr.token, usr.apiEndpoint, usr.ingestEndpoint);
   if (usr.kind === "malformed")
     return null;
   const tenantKey = ingestTokenFromEnv(env);
@@ -535,8 +535,14 @@ function resolveCredentialSync(opts = {}) {
 function credentialFingerprint(opts = {}) {
   return resolveCredentialSync(opts)?.fingerprint ?? null;
 }
-function withFingerprint(tier, token, apiEndpoint) {
-  return { tier, token, apiEndpoint, fingerprint: sha256Hex(token).slice(0, FINGERPRINT_HEX_CHARS) };
+function withFingerprint(tier, token, apiEndpoint, ingestEndpoint) {
+  return {
+    tier,
+    token,
+    apiEndpoint,
+    fingerprint: sha256Hex(token).slice(0, FINGERPRINT_HEX_CHARS),
+    ...ingestEndpoint !== void 0 ? { ingestEndpoint } : {}
+  };
 }
 function readOneSync(path) {
   let raw;
@@ -564,7 +570,12 @@ function readOneSync(path) {
   const v = validateCredentialFile(parsed);
   if (v.kind !== "ok")
     return { kind: "malformed" };
-  return { kind: "ok", token: v.cred.credential, apiEndpoint: v.cred.api_endpoint ?? null };
+  return {
+    kind: "ok",
+    token: v.cred.credential,
+    apiEndpoint: v.cred.api_endpoint ?? null,
+    ...v.cred.endpoint !== void 0 ? { ingestEndpoint: v.cred.endpoint } : {}
+  };
 }
 
 // dist/shared/whoami/cache.mjs
@@ -625,6 +636,9 @@ function validateEntry(v) {
   const hasPluginFlagsTimestamp = o.plugin_flags_fetched_at !== void 0;
   const pluginFlagsFetchedAt = typeof o.plugin_flags_fetched_at === "number" ? o.plugin_flags_fetched_at : void 0;
   const pluginFlags = hasPluginFlagsTimestamp && pluginFlagsFetchedAt === void 0 ? void 0 : parsePluginFlags(o.plugin_flags);
+  const grantBinding = parseGrantBinding(o.grant_binding);
+  if (o.grant_binding !== void 0 && grantBinding === void 0)
+    return null;
   return {
     schema_version: WHOAMI_SCHEMA_VERSION,
     fetched_at: o.fetched_at,
@@ -634,7 +648,21 @@ function validateEntry(v) {
     ...pluginFlags !== void 0 ? {
       plugin_flags: pluginFlags,
       ...pluginFlagsFetchedAt !== void 0 ? { plugin_flags_fetched_at: pluginFlagsFetchedAt } : {}
-    } : {}
+    } : {},
+    ...grantBinding !== void 0 ? { grant_binding: grantBinding } : {}
+  };
+}
+function parseGrantBinding(value) {
+  if (typeof value !== "object" || value === null || Array.isArray(value))
+    return void 0;
+  const o = value;
+  if (typeof o.api_endpoint !== "string" || typeof o.ingest_endpoint !== "string" || typeof o.tenant_assertion !== "string") {
+    return void 0;
+  }
+  return {
+    api_endpoint: o.api_endpoint,
+    ingest_endpoint: o.ingest_endpoint,
+    tenant_assertion: o.tenant_assertion
   };
 }
 function parsePluginFlags(v) {

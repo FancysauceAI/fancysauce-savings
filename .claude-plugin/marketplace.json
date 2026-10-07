@@ -5,14 +5,14 @@
   },
   "metadata": {
     "description": "FancysauceAI team-build plugin for Claude Code",
-    "version": "0.19.0"
+    "version": "0.20.0"
   },
   "plugins": [
     {
       "name": "fancysauce-savings",
       "source": "./claude-code",
       "description": "Usage analytics for Claude Code (team build)",
-      "version": "0.19.0",
+      "version": "0.20.0",
       "author": {
         "name": "FancysauceAI"
       },
