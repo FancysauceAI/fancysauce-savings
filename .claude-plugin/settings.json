@@ -1,0 +1,7 @@
+{
+  "subagentStatusLine": {
+    "type": "command",
+    "command": "node ${CLAUDE_PLUGIN_ROOT}/dist/statusline/subagent-statusline.mjs",
+    "tokenSamples": 8
+  }
+}

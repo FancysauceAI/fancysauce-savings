@@ -1,0 +1,16 @@
+{
+  "last_updated": "2026-06-04",
+  "source_url": "https://claude.com/pricing",
+  "seats": {
+    "pro":       { "usd_per_month": 17,  "label": "Pro" },
+    "max-5x":    { "usd_per_month": 100, "label": "Max 5x" },
+    "max-20x":   { "usd_per_month": 200, "label": "Max 20x" },
+    "team-std":  { "usd_per_month": 20,  "label": "Team (Standard)" },
+    "team-prem": { "usd_per_month": 100, "label": "Team (Premium)", "includes_claude_code": true }
+  },
+  "enterprise_seat_usd_per_month": 20,
+  "sigma": { "low": 0.8, "mode": 1.0, "high": 1.3 },
+  "utilization": { "low": 0.6, "mode": 0.75, "high": 0.85 },
+  "self_id_percentile": { "light": 0.10, "representative": 0.50, "heavy": 0.90 },
+  "anthropic_reference": { "per_dev_month_low": 150, "per_dev_month_high": 250 }
+}
