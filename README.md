@@ -2,7 +2,7 @@
 
 Usage analytics for Claude Code and OpenAI Codex CLI.
 
-**Version:** 0.20.1
+**Version:** 0.20.2
 
 This repo is the canonical distribution for both the Claude Code plugin and the
 OpenAI Codex plugin. Each tool installs only its own plugin.

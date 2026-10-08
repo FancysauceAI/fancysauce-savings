@@ -6140,6 +6140,23 @@ import { homedir as homedir7 } from "node:os";
 import { join as join31 } from "node:path";
 
 // dist/shared/ref-extract.mjs
+function bashCommand(toolInput) {
+  const command = toolInput?.command;
+  return typeof command === "string" ? command : "";
+}
+function workItemRefAttributes(refs) {
+  if (refs.length === 1) {
+    const [ref] = refs;
+    return {
+      ref_system: ref.system,
+      ref_kind: ref.kind,
+      ref_id: ref.id,
+      ref_scope: ref.scope,
+      ref_source: ref.source
+    };
+  }
+  return refs.length > 1 ? { refs } : {};
+}
 var OWNER_REPO = "([A-Za-z0-9._-]{1,100})/([A-Za-z0-9._-]{1,100})";
 var HTTPS = "[hH][tT][tT][pP][sS]";
 var GITHUB = "[gG][iI][tT][hH][uU][bB]";
@@ -6679,10 +6696,6 @@ var TOOL_HOOKS = /* @__PURE__ */ new Set([
   "PostToolUse",
   "PostToolUseFailure"
 ]);
-function bashCommand(toolInput) {
-  const command = toolInput?.command;
-  return typeof command === "string" ? command : "";
-}
 function mapHookToEvent(input, sequence, opts = {}) {
   const pluginFlags = opts.pluginFlags ?? NO_PLUGIN_FLAGS;
   const eventType = HOOK_TO_EVENT_TYPE[input.hook_event_name];
@@ -6711,17 +6724,7 @@ function mapHookToEvent(input, sequence, opts = {}) {
       const toolResponseRaw = stableStringify(input.tool_response);
       attributes.tool_response_raw = toolResponseRaw;
       if (input.hook_event_name === "PostToolUse" && pluginFlagOn(pluginFlags, PLUGIN_FLAG_GITHUB_PR_REF)) {
-        const refs = extractWorkItemRefs(input.tool_name ?? "", bashCommand(input.tool_input), toolResponseRaw);
-        if (refs.length === 1) {
-          const [ref] = refs;
-          attributes.ref_system = ref.system;
-          attributes.ref_kind = ref.kind;
-          attributes.ref_id = ref.id;
-          attributes.ref_scope = ref.scope;
-          attributes.ref_source = ref.source;
-        } else if (refs.length > 1) {
-          attributes.refs = refs;
-        }
+        Object.assign(attributes, workItemRefAttributes(extractWorkItemRefs(input.tool_name ?? "", bashCommand(input.tool_input), toolResponseRaw)));
       }
     }
     if (input.tool_use_id)

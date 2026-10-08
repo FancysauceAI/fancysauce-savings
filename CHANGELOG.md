@@ -2,6 +2,12 @@
 
 All public releases of `fancysauce-savings`. Most recent first.
 
+## v0.20.2 — 2026-10-08
+
+### Fixes
+
+- **Codex sessions capture PR and MR refs.** When a Codex Bash command creates or changes a GitHub PR or a GitLab MR, the event now carries the work-item ref, as Claude Code events already do. Before this release, Codex sessions sent no refs, so work-item attribution missed every PR and MR that a Codex session made. The `fancytab-github-pr-ref` tenant flag controls the capture. The Node and Go collectors both capture the refs. (FAN-1754, #212)
+
 ## v0.20.1 — 2026-10-07
 
 ### Fixes

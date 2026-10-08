@@ -4098,6 +4098,7 @@ function parseKey(v) {
 }
 
 // dist/shared/whoami/flags.mjs
+var PLUGIN_FLAG_GITHUB_PR_REF = "fancytab-github-pr-ref";
 var PLUGIN_FLAG_SESSION_NAMING = "fancytab-session-naming";
 var PLUGIN_FLAGS_MAX_AGE_MS = 24 * 60 * 60 * 1e3;
 var NO_PLUGIN_FLAGS = Object.freeze({});
@@ -4136,6 +4137,9 @@ function matchesGrantBinding(entry, opts) {
   if (opts.expectedTenantId !== void 0 && entry.grant_binding.tenant_assertion !== opts.expectedTenantId)
     return false;
   return true;
+}
+function pluginFlagOn(flags, key) {
+  return flags[key] === true;
 }
 
 // dist/shared/session-metadata/delivery.mjs
@@ -6186,6 +6190,391 @@ ${err.stack ?? ""}` : String(err);
   return { stderr: stderrBuf };
 }
 
+// dist/shared/ref-extract.mjs
+function bashCommand(toolInput) {
+  const command = toolInput?.command;
+  return typeof command === "string" ? command : "";
+}
+function workItemRefAttributes(refs) {
+  if (refs.length === 1) {
+    const [ref] = refs;
+    return {
+      ref_system: ref.system,
+      ref_kind: ref.kind,
+      ref_id: ref.id,
+      ref_scope: ref.scope,
+      ref_source: ref.source
+    };
+  }
+  return refs.length > 1 ? { refs } : {};
+}
+var OWNER_REPO = "([A-Za-z0-9._-]{1,100})/([A-Za-z0-9._-]{1,100})";
+var HTTPS = "[hH][tT][tT][pP][sS]";
+var GITHUB = "[gG][iI][tT][hH][uU][bB]";
+var COM = "[cC][oO][mM]";
+var API = `[aA][pP][iI]\\.${GITHUB}\\.${COM}`;
+var REPOS = "[rR][eE][pP][oO][sS]";
+var PULL = "[pP][uU][lL][lL]";
+var PULLS = `${PULL}[sS]`;
+var GITLAB = "[gG][iI][tT][lL][aA][bB]";
+var MERGE_REQUESTS = "[mM][eE][rR][gG][eE]_[rR][eE][qQ][uU][eE][sS][tT][sS]";
+var GITLAB_PATH_SEGMENT = "[A-Za-z0-9_][A-Za-z0-9._-]{0,254}";
+var GITLAB_PATH = `(${GITLAB_PATH_SEGMENT}(?:/${GITLAB_PATH_SEGMENT}){1,20})`;
+var GITLAB_PATH_RE = new RegExp(`^${GITLAB_PATH}$`);
+var GITHUB_PR_URL = new RegExp(`${HTTPS}://${GITHUB}\\.${COM}/${OWNER_REPO}/${PULL}/([0-9]{1,9})(?![0-9])`, "g");
+var NOT_IN_A_NAME = "(?<![A-Za-z0-9._/-])";
+var GITHUB_PR_API_PATH = new RegExp(`(?:(?:${HTTPS}://|${NOT_IN_A_NAME}|(?<=\\\\[nrt]))${API}/|(?:${NOT_IN_A_NAME}|(?<=\\\\[nrt]))/?)${REPOS}/${OWNER_REPO}/${PULLS}/([0-9]{1,9})(?![0-9])`, "g");
+var GITLAB_MR_URL = new RegExp(`${HTTPS}://${GITLAB}\\.${COM}/${GITLAB_PATH}/-/${MERGE_REQUESTS}/([0-9]{1,9})(?![0-9])`, "g");
+var GITLAB_API_PROJECT = "((?:[A-Za-z0-9._-]|%2[fF])+)/";
+var GITLAB_API_URL = new RegExp(`${HTTPS}://${GITLAB}\\.${COM}/api/v4/projects/${GITLAB_API_PROJECT}${MERGE_REQUESTS}/([0-9]{1,9})(?![0-9])`, "g");
+var GITLAB_API_BARE_PATH = new RegExp(`/api/v4/projects/${GITLAB_API_PROJECT}${MERGE_REQUESTS}/([0-9]{1,9})(?![0-9])`, "g");
+function responseMatches(response) {
+  const matches = [];
+  for (const pattern of [GITHUB_PR_URL, GITHUB_PR_API_PATH]) {
+    pattern.lastIndex = 0;
+    for (const match of response.matchAll(pattern)) {
+      if (pattern === GITHUB_PR_API_PATH && !match[0].toLowerCase().startsWith("https://") && !apiPathBoundary(response, match.index ?? 0)) {
+        continue;
+      }
+      matches.push({
+        index: match.index ?? 0,
+        system: "github",
+        kind: "pull_request",
+        scope: `${match[1]}/${match[2]}`,
+        number: match[3]
+      });
+    }
+  }
+  GITLAB_MR_URL.lastIndex = 0;
+  for (const match of response.matchAll(GITLAB_MR_URL)) {
+    matches.push({ index: match.index ?? 0, system: "gitlab", kind: "merge_request", scope: match[1], number: match[2] });
+  }
+  for (const [pattern, hasHost] of [[GITLAB_API_URL, true], [GITLAB_API_BARE_PATH, false]]) {
+    pattern.lastIndex = 0;
+    for (const match of response.matchAll(pattern)) {
+      const start = match.index ?? 0;
+      if (!hasHost && !apiPathBoundary(response, start))
+        continue;
+      const scope = match[1].replace(/%2f/gi, "/");
+      if (!GITLAB_PATH_RE.test(scope))
+        continue;
+      matches.push({ index: start, system: "gitlab", kind: "merge_request", scope, number: match[2] });
+    }
+  }
+  return matches.sort((a, b) => a.index - b.index);
+}
+function apiPathBoundary(response, start) {
+  if (start === 0 || jsonEscapeBoundary(response, start))
+    return true;
+  return !/[A-Za-z0-9._/-]/.test(response[start - 1]);
+}
+function jsonEscapeBoundary(response, start) {
+  if (start < 2 || !"nrt".includes(response[start - 1]))
+    return false;
+  let backslashes = 0;
+  for (let i = start - 2; i >= 0 && response[i] === "\\"; i -= 1)
+    backslashes += 1;
+  return backslashes % 2 === 1;
+}
+var GH_PR_ACTION_VERBS = /* @__PURE__ */ new Set([
+  "create",
+  "edit",
+  "comment",
+  "merge",
+  "review",
+  "ready",
+  "close",
+  "reopen"
+]);
+var GL_MR_ACTION_VERBS = /* @__PURE__ */ new Set([
+  "create",
+  "update",
+  "note",
+  "merge",
+  "approve",
+  "revoke",
+  "close",
+  "reopen",
+  "ready",
+  "draft",
+  "rebase"
+]);
+var COMMAND_PREFIX_WORDS = /* @__PURE__ */ new Set([
+  "env",
+  "command",
+  "nohup",
+  "time",
+  "exec",
+  "!",
+  "{",
+  "if",
+  "then",
+  "else",
+  "elif",
+  "do",
+  "while",
+  "until"
+]);
+var GIT_OPTIONS_WITH_VALUE = /* @__PURE__ */ new Set([
+  "-C",
+  "-c",
+  "--git-dir",
+  "--work-tree",
+  "--namespace",
+  "--config-env"
+]);
+var ASSIGNMENT_WORD = /^[A-Za-z_][A-Za-z0-9_]*=/;
+var REDIRECT_OPERATOR = /^(?:\d*(?:>&|<&)|\d*(?:>>|>|<<|<)|&>>?|>&)$/;
+var REDIRECT_WORD = /^(\d*(?:>&|<&)|\d*(?:>>|>|<<|<)|&>>?|>&)(.+)$/;
+function redirectTargetIsValid(operator, target) {
+  if (target === "" || /^[<>&]/.test(target))
+    return false;
+  if (operator !== ">&" && (operator.endsWith(">&") || operator.endsWith("<&"))) {
+    return /^\d+$/.test(target) || target === "-";
+  }
+  return true;
+}
+function redirectWordIsValid(word) {
+  const match = REDIRECT_WORD.exec(word);
+  return match !== null && redirectTargetIsValid(match[1], match[2]);
+}
+function splitSimpleCommands(command) {
+  const segments = [];
+  let words = [];
+  let cur;
+  const pending = [];
+  const n = command.length;
+  let i = 0;
+  const endWord = () => {
+    if (cur !== void 0) {
+      words.push(cur);
+      cur = void 0;
+    }
+  };
+  const endSegment = () => {
+    endWord();
+    if (words.length > 0)
+      segments.push(words);
+    words = [];
+  };
+  const takeSingle = () => {
+    const start = i + 1;
+    const end = command.indexOf("'", start);
+    const j = end === -1 ? n : end;
+    const text = command.slice(start, j);
+    i = j + 1;
+    return text;
+  };
+  const takeDouble = () => {
+    let j = i + 1;
+    let text = "";
+    while (j < n && command[j] !== '"') {
+      if (command[j] === "\\" && j + 1 < n) {
+        text += command[j + 1];
+        j += 2;
+      } else {
+        text += command[j];
+        j += 1;
+      }
+    }
+    i = j + 1;
+    return text;
+  };
+  const readDelimiter = () => {
+    while (i < n && (command[i] === " " || command[i] === "	"))
+      i += 1;
+    let text = "";
+    while (i < n && !" 	\n;&|()<>`".includes(command[i])) {
+      if (command[i] === "'")
+        text += takeSingle();
+      else if (command[i] === '"')
+        text += takeDouble();
+      else if (command[i] === "\\") {
+        if (i + 1 < n)
+          text += command[i + 1];
+        i += 2;
+      } else {
+        text += command[i];
+        i += 1;
+      }
+    }
+    return text;
+  };
+  while (i < n) {
+    const c = command[i];
+    const next = command[i + 1];
+    if (c === "\\") {
+      if (next === "\n")
+        i += 2;
+      else {
+        if (next !== void 0)
+          cur = (cur ?? "") + next;
+        i += 2;
+      }
+    } else if (c === "'") {
+      cur = (cur ?? "") + takeSingle();
+    } else if (c === '"') {
+      cur = (cur ?? "") + takeDouble();
+    } else if (c === "#" && cur === void 0) {
+      const newline = command.indexOf("\n", i);
+      i = newline === -1 ? n : newline;
+    } else if (c === "<" && next === "<") {
+      endWord();
+      if (command[i + 2] === "<") {
+        i += 3;
+        continue;
+      }
+      i += 2;
+      let stripTabs = false;
+      if (command[i] === "-") {
+        stripTabs = true;
+        i += 1;
+      }
+      const delimiter = readDelimiter();
+      if (delimiter !== "")
+        pending.push({ delimiter, stripTabs });
+    } else if (c === "\n") {
+      endSegment();
+      i += 1;
+      for (const heredoc of pending) {
+        while (i <= n) {
+          const newline = command.indexOf("\n", i);
+          const end = newline === -1 ? n : newline;
+          const line = command.slice(i, end);
+          const bodyLine = heredoc.stripTabs ? line.replace(/^\t+/, "") : line;
+          i = newline === -1 ? n : newline + 1;
+          if (bodyLine === heredoc.delimiter || newline === -1)
+            break;
+        }
+      }
+      pending.length = 0;
+    } else if (c === " " || c === "	") {
+      endWord();
+      i += 1;
+    } else if (c === "&" && (command[i - 1] === "<" || command[i - 1] === ">" || next === ">")) {
+      cur = (cur ?? "") + c;
+      i += 1;
+    } else if (";&|()`".includes(c)) {
+      endSegment();
+      i += 1;
+    } else if (c === "$" && next === "(") {
+      endSegment();
+      i += 2;
+    } else {
+      cur = (cur ?? "") + c;
+      i += 1;
+    }
+  }
+  endSegment();
+  return segments;
+}
+function simpleCommandActsOnWorkItem(words) {
+  let k = 0;
+  while (k < words.length && (ASSIGNMENT_WORD.test(words[k]) || COMMAND_PREFIX_WORDS.has(words[k])))
+    k += 1;
+  if (k >= words.length)
+    return false;
+  const head = words[k].slice(words[k].lastIndexOf("/") + 1);
+  if (head === "gh") {
+    let j = k + 1;
+    if (words[j] !== "pr")
+      return false;
+    j += 1;
+    while (j < words.length) {
+      if (words[j] === "-R" || words[j] === "--repo")
+        j += 2;
+      else if (words[j].startsWith("--repo="))
+        j += 1;
+      else
+        break;
+    }
+    return j < words.length && GH_PR_ACTION_VERBS.has(words[j]);
+  }
+  if (head === "glab") {
+    let j = k + 1;
+    if (words[j] !== "mr")
+      return false;
+    j += 1;
+    while (j < words.length) {
+      if (words[j] === "-R" || words[j] === "--repo")
+        j += 2;
+      else if (words[j].startsWith("--repo="))
+        j += 1;
+      else
+        break;
+    }
+    return j < words.length && GL_MR_ACTION_VERBS.has(words[j]);
+  }
+  if (head === "git") {
+    let j = k + 1;
+    while (j < words.length && words[j].startsWith("-")) {
+      j += GIT_OPTIONS_WITH_VALUE.has(words[j]) ? 2 : 1;
+    }
+    return words[j] === "push";
+  }
+  return false;
+}
+function onlyRedirectWords(words, start) {
+  for (let k = start; k < words.length; k += 1) {
+    if (redirectWordIsValid(words[k]))
+      continue;
+    if (REDIRECT_OPERATOR.test(words[k])) {
+      const operator = words[k];
+      k += 1;
+      if (k >= words.length || !redirectTargetIsValid(operator, words[k]))
+        return false;
+      continue;
+    }
+    return false;
+  }
+  return true;
+}
+function simpleCommandIsShellSyntax(words) {
+  if (words.length > 0 && onlyRedirectWords(words, 0))
+    return true;
+  let k = 0;
+  while (k < words.length && (words[k] === "do" || words[k] === "then" || words[k] === "else"))
+    k += 1;
+  if (k === words.length)
+    return k > 0;
+  if (words[k] === "for")
+    return true;
+  if (words[k] === "done" || words[k] === "fi" || words[k] === "}")
+    return onlyRedirectWords(words, k + 1);
+  return words[k] === "{" && k + 1 === words.length;
+}
+function commandActsOnWorkItem(command) {
+  return splitSimpleCommands(command).some(simpleCommandActsOnWorkItem);
+}
+function commandIsOnlyActingCommands(command) {
+  const segments = splitSimpleCommands(command);
+  return segments.length > 0 && segments.every((words) => simpleCommandIsShellSyntax(words) || simpleCommandActsOnWorkItem(words));
+}
+function extractWorkItemRefs(toolName, command, toolResponseRaw) {
+  if (toolName !== "Bash" || !toolResponseRaw || !commandActsOnWorkItem(command))
+    return [];
+  const refs = /* @__PURE__ */ new Map();
+  for (const match of responseMatches(toolResponseRaw)) {
+    const id = String(Number(match.number));
+    if (id === "0")
+      continue;
+    const key = `${match.system}\0${match.scope.toLowerCase()}\0${id}`;
+    if (!refs.has(key))
+      refs.set(key, {
+        system: match.system,
+        kind: match.kind,
+        id,
+        scope: match.scope,
+        source: "tool_output"
+      });
+  }
+  if (refs.size > MAX_REFS_PER_EVENT)
+    return [];
+  if (refs.size > 1 && !commandIsOnlyActingCommands(command))
+    return [];
+  return [...refs.values()];
+}
+
 // dist/shared/stable-stringify.mjs
 function stableStringify(value) {
   if (value === null || typeof value !== "object")
@@ -6212,7 +6601,8 @@ var CODEX_HOOK_TO_EVENT_TYPE = {
   Stop: "stop"
 };
 var TOOL_HOOKS = /* @__PURE__ */ new Set(["PreToolUse", "PostToolUse"]);
-function mapHookToEvent(input, sequence) {
+function mapHookToEvent(input, sequence, opts = {}) {
+  const pluginFlags = opts.pluginFlags ?? NO_PLUGIN_FLAGS;
   const eventType = CODEX_HOOK_TO_EVENT_TYPE[input.hook_event_name];
   if (!eventType) {
     throw new Error(`Unknown Codex hook_event_name: ${String(input.hook_event_name)}`);
@@ -6225,7 +6615,11 @@ function mapHookToEvent(input, sequence) {
       attributes.tool_input_raw = stableStringify(input.tool_input);
     }
     if (input.tool_response !== void 0) {
-      attributes.tool_response_raw = stableStringify(input.tool_response);
+      const toolResponseRaw = stableStringify(input.tool_response);
+      attributes.tool_response_raw = toolResponseRaw;
+      if (input.hook_event_name === "PostToolUse" && pluginFlagOn(pluginFlags, PLUGIN_FLAG_GITHUB_PR_REF)) {
+        Object.assign(attributes, workItemRefAttributes(extractWorkItemRefs(input.tool_name ?? "", bashCommand(input.tool_input), toolResponseRaw)));
+      }
     }
     if (input.tool_use_id)
       attributes.correlation_id = input.tool_use_id;
@@ -7389,9 +7783,8 @@ async function logError(errorLogPath, path, err) {
 // dist/agents/codex/adapter.mjs
 var CodexAdapter = class {
   agent = "codex-cli";
-  // No Codex capture is flag-gated yet, so the context goes unread here.
-  mapHookEvent(input, _ctx) {
-    return Promise.resolve(mapHookToEvent(input, 0));
+  mapHookEvent(input, ctx) {
+    return Promise.resolve(mapHookToEvent(input, 0, { pluginFlags: ctx.pluginFlags }));
   }
   async tailTranscript(input, ctx, sink) {
     await tailCodexRollout(input, ctx, sink);
