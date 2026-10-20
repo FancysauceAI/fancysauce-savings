@@ -1611,7 +1611,7 @@ var require_proper_lockfile = __commonJS({
 
 // dist/shared/bin/backfill-runner.mjs
 import { writeFile as writeFile5 } from "node:fs/promises";
-import { join as join13 } from "node:path";
+import { join as join15 } from "node:path";
 
 // dist/shared/config.mjs
 import { join } from "node:path";
@@ -1641,6 +1641,7 @@ function defaultPolicy() {
       "name_origin",
       "expected_tenant_id"
     ]),
+    "session.metadata_worker_skipped": Object.freeze(["skip_reason"]),
     "prompt.submit": Object.freeze(["prompt_length", "slash_command"]),
     "tool_call.start": Object.freeze([
       "tool_name",
@@ -1805,6 +1806,7 @@ function defaultPolicy() {
       "model",
       "request_id",
       "transcript_message_uuid",
+      "cli_version",
       "subsession_id",
       "agent_type",
       "stop_reason",
@@ -2448,7 +2450,7 @@ var BackoffState = class {
 var import_proper_lockfile2 = __toESM(require_proper_lockfile(), 1);
 import { mkdir as mkdir4, readFile as readFile4, rename as rename4, writeFile as writeFile3 } from "node:fs/promises";
 import { join as join4 } from "node:path";
-var DEFAULT2 = { dropped_event_count: 0 };
+var DEFAULT2 = { dropped_event_count: 0, metadata_skip_counts: {} };
 var LOCK_RETRIES = {
   retries: 100,
   factor: 1.5,
@@ -2466,14 +2468,20 @@ var HealthState = class {
   }
   async read() {
     try {
-      return { ...DEFAULT2, ...JSON.parse(await readFile4(this.path, "utf8")) };
+      const parsed = JSON.parse(await readFile4(this.path, "utf8"));
+      return { ...DEFAULT2, ...parsed, metadata_skip_counts: { ...parsed.metadata_skip_counts } };
     } catch {
-      return { ...DEFAULT2 };
+      return { ...DEFAULT2, metadata_skip_counts: {} };
     }
   }
   async recordDrop(n) {
     await this.update((h) => {
       h.dropped_event_count += n;
+    });
+  }
+  async recordMetadataSkip(reason) {
+    await this.update((h) => {
+      h.metadata_skip_counts[reason] = (h.metadata_skip_counts[reason] ?? 0) + 1;
     });
   }
   async touch() {
@@ -2725,6 +2733,7 @@ var ATTR_TYPE = {
   naming_schema_version: "int",
   name: "string",
   name_origin: "string",
+  skip_reason: "string",
   // prompt.submit
   prompt_length: "int",
   slash_command: "string",
@@ -3382,29 +3391,49 @@ async function writeStatus(stateDir, s) {
 import { createHash as createHash2, randomUUID as randomUUID2 } from "node:crypto";
 import { execFile as execFile2 } from "node:child_process";
 import { open as open5, readFile as readFile8, rename as rename7, unlink as unlink3 } from "node:fs/promises";
-import { join as join12 } from "node:path";
+import { join as join13 } from "node:path";
 import { randomBytes as randomBytes4 } from "node:crypto";
 
 // dist/shared/data-dir.mjs
 import { readFileSync } from "node:fs";
-import { basename, join as join8, dirname as dirname3, relative, isAbsolute, sep } from "node:path";
+import { basename, join as join9, dirname as dirname3, relative, isAbsolute, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { homedir as homedir3 } from "node:os";
+
+// dist/shared/claude-paths.mjs
+import { join as join8 } from "node:path";
+function resolveClaudeHome(env, homeDir) {
+  return env.CLAUDE_CONFIG_DIR ? env.CLAUDE_CONFIG_DIR : join8(homeDir, ".claude");
+}
+function resolveClaudeConfigPaths(env, homeDir) {
+  const home = join8(homeDir, ".claude.json");
+  const dir = env.CLAUDE_CONFIG_DIR;
+  if (!dir)
+    return [home];
+  const scoped = join8(dir, ".claude.json");
+  return scoped === home ? [home] : [scoped, home];
+}
+
+// dist/shared/data-dir.mjs
 function defaultPluginRoot() {
   const here = dirname3(fileURLToPath(import.meta.url));
-  return join8(here, "..", "..", "..");
+  return join9(here, "..", "..", "..");
 }
 function trimTrailingSlash(p) {
   return p.endsWith("/") || p.endsWith("\\") ? p.slice(0, -1) : p;
 }
+function claudeConfigDir(opts) {
+  return opts.claudeConfigDir ?? process.env.CLAUDE_CONFIG_DIR;
+}
 function registeredPluginKey(opts = {}) {
   const home = opts.homeDir ?? homedir3();
+  const claudeHome = resolveClaudeHome({ CLAUDE_CONFIG_DIR: claudeConfigDir(opts) }, home);
   const root = trimTrailingSlash(opts.pluginRoot ?? defaultPluginRoot());
-  return registryKey(root, home);
+  return registryKey(root, claudeHome);
 }
-function registryKey(root, home) {
+function registryKey(root, claudeHome) {
   try {
-    const regPath = join8(home, ".claude", "plugins", "installed_plugins.json");
+    const regPath = join9(claudeHome, "plugins", "installed_plugins.json");
     const reg = JSON.parse(readFileSync(regPath, "utf8"));
     const plugins = reg?.plugins;
     if (typeof plugins !== "object" || plugins === null)
@@ -3519,7 +3548,7 @@ function seal(plaintext, key) {
 
 // dist/shared/server-key.mjs
 import { readFileSync as readFileSync2 } from "node:fs";
-import { join as join9 } from "node:path";
+import { join as join10 } from "node:path";
 var BAKED_SERVER_KEY = {
   keyid: "env-production-1",
   alg: "RSA-OAEP-256+A256GCM",
@@ -3537,7 +3566,7 @@ function loadServerKey(deps) {
   const ttl = deps.ttlMs ?? DEFAULT_TTL_MS;
   const read = deps.readFileImpl ?? ((p) => readFileSync2(p, "utf8"));
   try {
-    const parsed = JSON.parse(read(join9(deps.cacheDir, CACHE_FILE)));
+    const parsed = JSON.parse(read(join10(deps.cacheDir, CACHE_FILE)));
     if (!isServerKeyShape(parsed) || typeof parsed.fetched_at !== "number")
       return BAKED_SERVER_KEY;
     if (deps.now - parsed.fetched_at > ttl)
@@ -3551,8 +3580,18 @@ function loadServerKey(deps) {
 // dist/shared/native-identity.mjs
 import { readFileSync as readFileSync3 } from "node:fs";
 import { execFileSync } from "node:child_process";
-import { join as join10 } from "node:path";
 import { homedir as homedir4 } from "node:os";
+
+// dist/agents/codex/auth-claim.mjs
+import { join as join11 } from "node:path";
+function resolveCodexHome(env, homeDir) {
+  return env.CODEX_HOME && env.CODEX_HOME.length > 0 ? env.CODEX_HOME : join11(homeDir, ".codex");
+}
+function resolveCodexAuthPath(env, homeDir) {
+  return join11(resolveCodexHome(env, homeDir), "auth.json");
+}
+
+// dist/shared/native-identity.mjs
 var CLI_TIMEOUT_MS = 500;
 function defaultClaudeStatus() {
   try {
@@ -3572,27 +3611,29 @@ function pick(o, k) {
 function readNativeIdentity(agent, deps = {}) {
   const home = deps.home ?? homedir4();
   const read = deps.readFileImpl ?? ((p) => readFileSync3(p, "utf8"));
-  return agent === "claude-code" ? readClaude(home, read, deps.claudeStatus ?? defaultClaudeStatus) : readCodex(home, read);
+  return agent === "claude-code" ? readClaude(home, deps.env ?? process.env, read, deps.claudeStatus ?? defaultClaudeStatus) : readCodex(home, deps.env ?? process.env, read);
 }
-function readClaude(home, read, status) {
-  try {
-    const parsed = JSON.parse(read(join10(home, ".claude.json")));
-    const oa = parsed.oauthAccount;
-    if (oa && typeof oa === "object") {
-      const email = pick(oa, "emailAddress");
-      const account_id = pick(oa, "accountUuid");
-      if (email || account_id) {
-        return {
-          source: "native_claude",
-          ...email ? { email } : {},
-          ...account_id ? { account_id } : {},
-          ...pick(oa, "organizationUuid") ? { org_id: pick(oa, "organizationUuid") } : {},
-          ...pick(oa, "organizationName") ? { org_name: pick(oa, "organizationName") } : {},
-          ...pick(oa, "organizationType") ? { plan: pick(oa, "organizationType") } : {}
-        };
+function readClaude(home, env, read, status) {
+  for (const path of resolveClaudeConfigPaths(env, home)) {
+    try {
+      const parsed = JSON.parse(read(path));
+      const oa = parsed.oauthAccount;
+      if (oa && typeof oa === "object") {
+        const email = pick(oa, "emailAddress");
+        const account_id = pick(oa, "accountUuid");
+        if (email || account_id) {
+          return {
+            source: "native_claude",
+            ...email ? { email } : {},
+            ...account_id ? { account_id } : {},
+            ...pick(oa, "organizationUuid") ? { org_id: pick(oa, "organizationUuid") } : {},
+            ...pick(oa, "organizationName") ? { org_name: pick(oa, "organizationName") } : {},
+            ...pick(oa, "organizationType") ? { plan: pick(oa, "organizationType") } : {}
+          };
+        }
       }
+    } catch {
     }
-  } catch {
   }
   const raw = status();
   if (!raw)
@@ -3616,10 +3657,10 @@ function readClaude(home, read, status) {
     return null;
   }
 }
-function readCodex(home, read) {
+function readCodex(home, env, read) {
   let auth;
   try {
-    auth = JSON.parse(read(join10(home, ".codex", "auth.json")));
+    auth = JSON.parse(read(resolveCodexAuthPath(env, home)));
   } catch {
     return null;
   }
@@ -3667,8 +3708,8 @@ function decodeJwtPayload(token) {
 
 // dist/shared/identity-cache.mjs
 import { readFileSync as readFileSync4, writeFileSync } from "node:fs";
-import { join as join11 } from "node:path";
-var CACHE_FILE2 = "identity-cache.json";
+import { join as join12 } from "node:path";
+var cacheFile = (agent) => `identity-cache-v2-${agent}.json`;
 var DEFAULT_TTL_MS2 = 12 * 60 * 60 * 1e3;
 var CACHED_IDENTITY_SOURCES = [
   "native_claude",
@@ -3681,7 +3722,7 @@ function readIdentityCache(deps) {
   const ttl = deps.ttlMs ?? DEFAULT_TTL_MS2;
   const read = deps.readFileImpl ?? ((p) => readFileSync4(p, "utf8"));
   try {
-    const parsed = JSON.parse(read(join11(deps.dir, CACHE_FILE2)));
+    const parsed = JSON.parse(read(join12(deps.dir, cacheFile(deps.agent))));
     if (typeof parsed !== "object" || parsed === null)
       return { fresh: false };
     const entry = parsed;
@@ -3697,6 +3738,10 @@ function readIdentityCache(deps) {
     const source = identity.source;
     if (typeof source !== "string" || !CACHED_SOURCE_SET.has(source))
       return { fresh: false };
+    if (source === "native_claude" && deps.agent !== "claude-code")
+      return { fresh: false };
+    if (source === "native_codex" && deps.agent !== "codex-cli")
+      return { fresh: false };
     return { fresh: true, identity };
   } catch {
     return { fresh: false };
@@ -3706,7 +3751,7 @@ function writeIdentityCache(deps) {
   const write = deps.writeFileImpl ?? ((p, data) => writeFileSync(p, data, { mode: 384 }));
   try {
     const entry = { identity: deps.identity, fetched_at: deps.now };
-    write(join11(deps.dir, CACHE_FILE2), JSON.stringify(entry));
+    write(join12(deps.dir, cacheFile(deps.agent)), JSON.stringify(entry));
   } catch {
   }
 }
@@ -3719,7 +3764,7 @@ var IdentityResolver = class {
   git;
   constructor(dir, git = defaultGitAccess()) {
     this.dir = dir;
-    this.installPath = join12(dir, "install.json");
+    this.installPath = join13(dir, "install.json");
     this.git = git;
   }
   async resolve(cwd, opts) {
@@ -3850,41 +3895,39 @@ function toResourceAttributes(id, opts) {
 }
 async function resolveIdentityRecord({ dataDir, cwd, opts }) {
   const hint = opts.identity_hint;
-  if (hint?.source === "mdm_file" && (hint.user_email || hint.user_upn)) {
-    return {
-      source: "mdm_file",
-      ...hint.user_email ? { email: hint.user_email } : {},
-      ...hint.user_upn ? { upn: hint.user_upn } : {}
-    };
-  }
-  if (hint?.source === "plugin_login" && (hint.email || hint.account_id || hint.user_id || hint.org_id || hint.org_name || hint.plan)) {
-    return {
-      source: "plugin_login",
-      ...hint.email ? { email: hint.email } : {},
-      ...hint.account_id ? { account_id: hint.account_id } : {},
-      ...hint.user_id ? { user_id: hint.user_id } : {},
-      ...hint.org_id ? { org_id: hint.org_id } : {},
-      ...hint.org_name ? { org_name: hint.org_name } : {},
-      ...hint.plan ? { plan: hint.plan } : {}
-    };
-  }
   const now = opts.now ?? Date.now();
-  const hit = readIdentityCache({ dir: dataDir, now });
+  const hit = readIdentityCache({ dir: dataDir, agent: opts.agent, now });
   let cached;
   if (hit.fresh) {
     cached = hit.identity;
   } else {
     cached = await probeMachineScopedIdentity(opts);
-    writeIdentityCache({ dir: dataDir, now, identity: cached });
+    writeIdentityCache({ dir: dataDir, agent: opts.agent, now, identity: cached });
   }
+  if (cached?.source === "native_claude" || cached?.source === "native_codex") {
+    const assertion = hintRecord(hint);
+    return assertion ? { ...cached, asserted_identity: assertion } : cached;
+  }
+  const asserted = hintRecord(hint);
+  if (asserted)
+    return asserted;
   if (cached)
     return cached;
   const git = await (opts.identitySources?.gitEmail ?? readGitConfigEmail)(cwd);
   return git ? { source: "git_config", email: git.email, scope: git.scope } : null;
 }
+function hintRecord(hint) {
+  if (hint?.source === "mdm_file" && (hint.user_email || hint.user_upn)) {
+    return { source: "mdm_file", ...hint.user_email ? { email: hint.user_email } : {}, ...hint.user_upn ? { upn: hint.user_upn } : {} };
+  }
+  if (hint?.source === "plugin_login" && hint.email)
+    return { source: "plugin_login", email: hint.email };
+  return null;
+}
 async function probeMachineScopedIdentity(opts) {
   const native = (opts.nativeReader ?? readNativeIdentity)(opts.agent);
-  if (native)
+  const expectedSource = opts.agent === "claude-code" ? "native_claude" : "native_codex";
+  if (native?.source === expectedSource)
     return native;
   const dscl = await (opts.identitySources?.dsclEmail ?? readMacOsDsclEmail)();
   if (dscl)
@@ -3912,6 +3955,24 @@ function gitRead(args) {
 
 // dist/shared/schema-version.mjs
 var SCHEMA_VERSION = "1.2.1";
+
+// dist/shared/plugin-version.mjs
+import { readFileSync as readFileSync5 } from "node:fs";
+import { join as join14 } from "node:path";
+function pluginVersion() {
+  for (const path of [
+    join14(import.meta.dirname, "../../package.json"),
+    join14(import.meta.dirname, "../../../package.json")
+  ]) {
+    try {
+      const value = JSON.parse(readFileSync5(path, "utf8"));
+      if (typeof value.version === "string" && value.version !== "")
+        return value.version;
+    } catch {
+    }
+  }
+  return "0.0.0";
+}
 
 // dist/shared/is-main-module.mjs
 import { fileURLToPath as fileURLToPath2 } from "node:url";
@@ -3944,8 +4005,8 @@ var BATCH_BUDGET_MS = 5e3;
 var POST_BATCH_SLEEP_MS = 50;
 var EMPTY_READ_THRESHOLD = 3;
 async function runBackfill(opts) {
-  const stateDir = join13(opts.dataDir, "state");
-  const outboundDir = join13(opts.dataDir, "outbound");
+  const stateDir = join15(opts.dataDir, "state");
+  const outboundDir = join15(opts.dataDir, "outbound");
   const acquire = await acquirePidGuard(stateDir);
   if (acquire.kind === "already-running") {
     return { kind: "error", reason: `another runner is active (pid ${acquire.pid})` };
@@ -3993,7 +4054,7 @@ async function runBackfill(opts) {
   }
   const identity = await new IdentityResolver(opts.dataDir).resolve(opts.dataDir);
   const resource = opts.resource ?? toResourceAttributes(identity, {
-    pluginVersion: "0.5.0",
+    pluginVersion: pluginVersion(),
     schemaVersion: SCHEMA_VERSION,
     agent: "claude-code"
   });
@@ -4076,7 +4137,7 @@ function sleep(ms) {
   return new Promise((res) => setTimeout(res, ms));
 }
 async function writeRenewalMarker(stateDir) {
-  const path = join13(stateDir, "credential-needs-renewal.backfill");
+  const path = join15(stateDir, "credential-needs-renewal.backfill");
   await writeFile5(path, JSON.stringify({ noticed_at: (/* @__PURE__ */ new Date()).toISOString() }), { mode: 384 }).catch(() => {
   });
 }

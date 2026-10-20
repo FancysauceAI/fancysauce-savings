@@ -3,7 +3,7 @@ import { createRequire as __cr } from 'node:module'; const require = __cr(import
 
 // dist/shared/bin/reset.mjs
 import { readFile, rm, stat } from "node:fs/promises";
-import { join as join3 } from "node:path";
+import { join as join4 } from "node:path";
 import { createInterface } from "node:readline";
 
 // dist/shared/credential-paths.mjs
@@ -64,20 +64,29 @@ function parseCredentialPathsEnv() {
 
 // dist/shared/data-dir.mjs
 import { readFileSync } from "node:fs";
-import { basename, join as join2, dirname as dirname2, relative, isAbsolute, sep } from "node:path";
+import { basename, join as join3, dirname as dirname2, relative, isAbsolute, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { homedir as homedir3 } from "node:os";
+
+// dist/shared/claude-paths.mjs
+import { join as join2 } from "node:path";
+function resolveClaudeHome(env, homeDir) {
+  return env.CLAUDE_CONFIG_DIR ? env.CLAUDE_CONFIG_DIR : join2(homeDir, ".claude");
+}
+
+// dist/shared/data-dir.mjs
 function resolveDataDir(opts = {}) {
   if (opts.override)
     return opts.override;
   if (process.env.CLAUDE_PLUGIN_DATA)
     return process.env.CLAUDE_PLUGIN_DATA;
   const home = opts.homeDir ?? homedir3();
+  const claudeHome = resolveClaudeHome({ CLAUDE_CONFIG_DIR: claudeConfigDir(opts) }, home);
   const root = trimTrailingSlash(opts.pluginRoot ?? defaultPluginRoot());
-  const fromRegistry = deriveFromRegistry(root, home);
+  const fromRegistry = deriveFromRegistry(root, claudeHome);
   if (fromRegistry !== null)
     return fromRegistry;
-  const fromMarketplaces = deriveFromMarketplaces(root, home);
+  const fromMarketplaces = deriveFromMarketplaces(root, claudeHome);
   if (fromMarketplaces !== null)
     return fromMarketplaces;
   const fromCodexCache = deriveFromCodexCache(root, home);
@@ -86,25 +95,28 @@ function resolveDataDir(opts = {}) {
   const fromCodexMarketplaces = deriveFromCodexMarketplaces(root, home);
   if (fromCodexMarketplaces !== null)
     return fromCodexMarketplaces;
-  return join2(home, ".claude-plugin-data");
+  return join3(home, ".claude-plugin-data");
 }
 function defaultPluginRoot() {
   const here = dirname2(fileURLToPath(import.meta.url));
-  return join2(here, "..", "..", "..");
+  return join3(here, "..", "..", "..");
 }
 function trimTrailingSlash(p) {
   return p.endsWith("/") || p.endsWith("\\") ? p.slice(0, -1) : p;
 }
-function deriveFromRegistry(root, home) {
-  const key = registryKey(root, home);
+function claudeConfigDir(opts) {
+  return opts.claudeConfigDir ?? process.env.CLAUDE_CONFIG_DIR;
+}
+function deriveFromRegistry(root, claudeHome) {
+  const key = registryKey(root, claudeHome);
   if (key === null)
     return null;
   const at = key.lastIndexOf("@");
-  return join2(home, ".claude", "plugins", "data", `${key.slice(0, at)}-${key.slice(at + 1)}`);
+  return join3(claudeHome, "plugins", "data", `${key.slice(0, at)}-${key.slice(at + 1)}`);
 }
-function registryKey(root, home) {
+function registryKey(root, claudeHome) {
   try {
-    const regPath = join2(home, ".claude", "plugins", "installed_plugins.json");
+    const regPath = join3(claudeHome, "plugins", "installed_plugins.json");
     const reg = JSON.parse(readFileSync(regPath, "utf8"));
     const plugins = reg?.plugins;
     if (typeof plugins !== "object" || plugins === null)
@@ -128,9 +140,9 @@ function registryKey(root, home) {
   }
   return null;
 }
-function deriveFromMarketplaces(root, home) {
+function deriveFromMarketplaces(root, claudeHome) {
   try {
-    const kmPath = join2(home, ".claude", "plugins", "known_marketplaces.json");
+    const kmPath = join3(claudeHome, "plugins", "known_marketplaces.json");
     const km = JSON.parse(readFileSync(kmPath, "utf8"));
     let alias = null;
     for (const [k, v] of Object.entries(km)) {
@@ -142,17 +154,17 @@ function deriveFromMarketplaces(root, home) {
     }
     if (alias === null)
       return null;
-    const manifest = JSON.parse(readFileSync(join2(root, ".claude-plugin", "marketplace.json"), "utf8"));
+    const manifest = JSON.parse(readFileSync(join3(root, ".claude-plugin", "marketplace.json"), "utf8"));
     const plugin = manifest.plugins?.[0]?.name;
     if (typeof plugin !== "string" || plugin.length === 0)
       return null;
-    return join2(home, ".claude", "plugins", "data", `${plugin}-${alias}`);
+    return join3(claudeHome, "plugins", "data", `${plugin}-${alias}`);
   } catch {
     return null;
   }
 }
 function deriveFromCodexCache(root, home) {
-  const prefix = trimTrailingSlash(join2(home, ".codex", "plugins", "cache"));
+  const prefix = trimTrailingSlash(join3(home, ".codex", "plugins", "cache"));
   const rel = relative(prefix, root);
   if (rel === "" || rel.startsWith("..") || isAbsolute(rel))
     return null;
@@ -161,19 +173,19 @@ function deriveFromCodexCache(root, home) {
   const plugin = parts[1];
   if (!alias || !plugin)
     return null;
-  return join2(home, ".codex", "plugins", "data", `${plugin}-${alias}`);
+  return join3(home, ".codex", "plugins", "data", `${plugin}-${alias}`);
 }
 function deriveFromCodexMarketplaces(root, home) {
   try {
     const plugin = readCodexPluginName(root) ?? basename(root);
     if (plugin.length === 0)
       return null;
-    const configPath = join2(home, ".codex", "config.toml");
+    const configPath = join3(home, ".codex", "config.toml");
     const marketplaces = parseCodexMarketplaces(readFileSync(configPath, "utf8"));
     for (const marketplace of marketplaces) {
-      const expectedRoot = trimTrailingSlash(join2(marketplace.source, "plugins", plugin));
+      const expectedRoot = trimTrailingSlash(join3(marketplace.source, "plugins", plugin));
       if (expectedRoot === root) {
-        return join2(home, ".codex", "plugins", "data", `${plugin}-${marketplace.alias}`);
+        return join3(home, ".codex", "plugins", "data", `${plugin}-${marketplace.alias}`);
       }
     }
   } catch {
@@ -183,7 +195,7 @@ function deriveFromCodexMarketplaces(root, home) {
 }
 function readCodexPluginName(root) {
   try {
-    const manifest = JSON.parse(readFileSync(join2(root, ".codex-plugin", "plugin.json"), "utf8"));
+    const manifest = JSON.parse(readFileSync(join3(root, ".codex-plugin", "plugin.json"), "utf8"));
     return typeof manifest.name === "string" && manifest.name.length > 0 ? manifest.name : null;
   } catch {
     return null;
@@ -256,7 +268,7 @@ function parseArgs(argv) {
 }
 async function isBackfillActive(stateDir) {
   try {
-    const pidStr = await readFile(join3(stateDir, "backfill.pid"), "utf8");
+    const pidStr = await readFile(join4(stateDir, "backfill.pid"), "utf8");
     const pid = Number(pidStr.trim());
     if (!Number.isFinite(pid) || pid <= 0)
       return null;
@@ -282,7 +294,7 @@ async function prompt(question, expected) {
 async function main(argv = process.argv.slice(2)) {
   const args = parseArgs(argv);
   const dataDir = resolveDataDir();
-  const stateDir = join3(dataDir, "state");
+  const stateDir = join4(dataDir, "state");
   const activePid = await isBackfillActive(stateDir);
   if (activePid !== null) {
     process.stderr.write(`backfill in progress (pid ${activePid}); stop it with kill ${activePid} first.
@@ -298,16 +310,16 @@ async function main(argv = process.argv.slice(2)) {
     }
   }
   if (args.queueOnly) {
-    await rm(join3(dataDir, "outbound"), { recursive: true, force: true });
+    await rm(join4(dataDir, "outbound"), { recursive: true, force: true });
     process.stderr.write("queue and cursors removed.\n");
     return 0;
   }
-  await rm(join3(dataDir, "sessions"), { recursive: true, force: true });
-  await rm(join3(dataDir, "session-index.json"), { force: true });
-  await rm(join3(dataDir, "outbound"), { recursive: true, force: true });
+  await rm(join4(dataDir, "sessions"), { recursive: true, force: true });
+  await rm(join4(dataDir, "session-index.json"), { force: true });
+  await rm(join4(dataDir, "outbound"), { recursive: true, force: true });
   await rm(stateDir, { recursive: true, force: true });
   if (args.all) {
-    await rm(join3(dataDir, "install.json"), { force: true });
+    await rm(join4(dataDir, "install.json"), { force: true });
     const envPaths = parseCredentialPathsEnv();
     const paths = envPaths ? { system: envPaths.system, user: envPaths.user } : credentialPaths();
     await rm(paths.user, { force: true });

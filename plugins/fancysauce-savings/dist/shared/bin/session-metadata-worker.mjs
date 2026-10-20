@@ -99,7 +99,7 @@ var require_polyfills = __commonJS({
       }
       if (platform === "win32") {
         fs.rename = typeof fs.rename !== "function" ? fs.rename : (function(fs$rename) {
-          function rename4(from, to, cb) {
+          function rename5(from, to, cb) {
             var start = Date.now();
             var backoff = 0;
             fs$rename(from, to, function CB(er) {
@@ -119,8 +119,8 @@ var require_polyfills = __commonJS({
               if (cb) cb(er);
             });
           }
-          if (Object.setPrototypeOf) Object.setPrototypeOf(rename4, fs$rename);
-          return rename4;
+          if (Object.setPrototypeOf) Object.setPrototypeOf(rename5, fs$rename);
+          return rename5;
         })(fs.rename);
       }
       fs.read = typeof fs.read !== "function" ? fs.read : (function(fs$read) {
@@ -524,8 +524,8 @@ var require_graceful_fs = __commonJS({
       fs2.createReadStream = createReadStream;
       fs2.createWriteStream = createWriteStream;
       var fs$readFile = fs2.readFile;
-      fs2.readFile = readFile4;
-      function readFile4(path, options, cb) {
+      fs2.readFile = readFile6;
+      function readFile6(path, options, cb) {
         if (typeof options === "function")
           cb = options, options = null;
         return go$readFile(path, options, cb);
@@ -541,8 +541,8 @@ var require_graceful_fs = __commonJS({
         }
       }
       var fs$writeFile = fs2.writeFile;
-      fs2.writeFile = writeFile2;
-      function writeFile2(path, data, options, cb) {
+      fs2.writeFile = writeFile4;
+      function writeFile4(path, data, options, cb) {
         if (typeof options === "function")
           cb = options, options = null;
         return go$writeFile(path, data, options, cb);
@@ -596,9 +596,9 @@ var require_graceful_fs = __commonJS({
         }
       }
       var fs$readdir = fs2.readdir;
-      fs2.readdir = readdir4;
+      fs2.readdir = readdir5;
       var noReaddirOptionVersions = /^v[0-5]\./;
-      function readdir4(path, options, cb) {
+      function readdir5(path, options, cb) {
         if (typeof options === "function")
           cb = options, options = null;
         var go$readdir = noReaddirOptionVersions.test(process.version) ? function go$readdir2(path2, options2, cb2, startTime) {
@@ -701,7 +701,7 @@ var require_graceful_fs = __commonJS({
       }
       function ReadStream$open() {
         var that = this;
-        open5(that.path, that.flags, that.mode, function(err, fd) {
+        open7(that.path, that.flags, that.mode, function(err, fd) {
           if (err) {
             if (that.autoClose)
               that.destroy();
@@ -721,7 +721,7 @@ var require_graceful_fs = __commonJS({
       }
       function WriteStream$open() {
         var that = this;
-        open5(that.path, that.flags, that.mode, function(err, fd) {
+        open7(that.path, that.flags, that.mode, function(err, fd) {
           if (err) {
             that.destroy();
             that.emit("error", err);
@@ -738,8 +738,8 @@ var require_graceful_fs = __commonJS({
         return new fs2.WriteStream(path, options);
       }
       var fs$open = fs2.open;
-      fs2.open = open5;
-      function open5(path, flags, mode, cb) {
+      fs2.open = open7;
+      function open7(path, flags, mode, cb) {
         if (typeof mode === "function")
           cb = mode, mode = null;
         return go$open(path, flags, mode, cb);
@@ -1237,11 +1237,11 @@ var require_mtime_precision = __commonJS({
     function probe(file, fs, callback) {
       const cachedPrecision = fs[cacheSymbol];
       if (cachedPrecision) {
-        return fs.stat(file, (err, stat2) => {
+        return fs.stat(file, (err, stat3) => {
           if (err) {
             return callback(err);
           }
-          callback(null, stat2.mtime, cachedPrecision);
+          callback(null, stat3.mtime, cachedPrecision);
         });
       }
       const mtime = new Date(Math.ceil(Date.now() / 1e3) * 1e3 + 5);
@@ -1249,13 +1249,13 @@ var require_mtime_precision = __commonJS({
         if (err) {
           return callback(err);
         }
-        fs.stat(file, (err2, stat2) => {
+        fs.stat(file, (err2, stat3) => {
           if (err2) {
             return callback(err2);
           }
-          const precision = stat2.mtime.getTime() % 1e3 === 0 ? "s" : "ms";
+          const precision = stat3.mtime.getTime() % 1e3 === 0 ? "s" : "ms";
           Object.defineProperty(fs, cacheSymbol, { value: precision });
-          callback(null, stat2.mtime, precision);
+          callback(null, stat3.mtime, precision);
         });
       });
     }
@@ -1309,14 +1309,14 @@ var require_lockfile = __commonJS({
         if (options.stale <= 0) {
           return callback(Object.assign(new Error("Lock file is already being held"), { code: "ELOCKED", file }));
         }
-        options.fs.stat(lockfilePath, (err2, stat2) => {
+        options.fs.stat(lockfilePath, (err2, stat3) => {
           if (err2) {
             if (err2.code === "ENOENT") {
               return acquireLock(file, { ...options, stale: 0 }, callback);
             }
             return callback(err2);
           }
-          if (!isLockStale(stat2, options)) {
+          if (!isLockStale(stat3, options)) {
             return callback(Object.assign(new Error("Lock file is already being held"), { code: "ELOCKED", file }));
           }
           removeLock(file, options, (err3) => {
@@ -1328,8 +1328,8 @@ var require_lockfile = __commonJS({
         });
       });
     }
-    function isLockStale(stat2, options) {
-      return stat2.mtime.getTime() < Date.now() - options.stale;
+    function isLockStale(stat3, options) {
+      return stat3.mtime.getTime() < Date.now() - options.stale;
     }
     function removeLock(file, options, callback) {
       options.fs.rmdir(getLockFile(file, options), (err) => {
@@ -1347,7 +1347,7 @@ var require_lockfile = __commonJS({
       lock2.updateDelay = lock2.updateDelay || options.update;
       lock2.updateTimeout = setTimeout(() => {
         lock2.updateTimeout = null;
-        options.fs.stat(lock2.lockfilePath, (err, stat2) => {
+        options.fs.stat(lock2.lockfilePath, (err, stat3) => {
           const isOverThreshold = lock2.lastUpdate + options.stale < Date.now();
           if (err) {
             if (err.code === "ENOENT" || isOverThreshold) {
@@ -1356,7 +1356,7 @@ var require_lockfile = __commonJS({
             lock2.updateDelay = 1e3;
             return updateLock(file, options);
           }
-          const isMtimeOurs = lock2.mtime.getTime() === stat2.mtime.getTime();
+          const isMtimeOurs = lock2.mtime.getTime() === stat3.mtime.getTime();
           if (!isMtimeOurs) {
             return setLockAsCompromised(
               file,
@@ -1481,11 +1481,11 @@ var require_lockfile = __commonJS({
         if (err) {
           return callback(err);
         }
-        options.fs.stat(getLockFile(file2, options), (err2, stat2) => {
+        options.fs.stat(getLockFile(file2, options), (err2, stat3) => {
           if (err2) {
             return err2.code === "ENOENT" ? callback(null, false) : callback(err2);
           }
-          return callback(null, !isLockStale(stat2, options));
+          return callback(null, !isLockStale(stat3, options));
         });
       });
     }
@@ -1577,27 +1577,27 @@ var require_adapter = __commonJS({
 var require_proper_lockfile = __commonJS({
   "node_modules/proper-lockfile/index.js"(exports, module) {
     "use strict";
-    var lockfile4 = require_lockfile();
+    var lockfile6 = require_lockfile();
     var { toPromise, toSync, toSyncOptions } = require_adapter();
     async function lock(file, options) {
-      const release = await toPromise(lockfile4.lock)(file, options);
+      const release = await toPromise(lockfile6.lock)(file, options);
       return toPromise(release);
     }
     function lockSync(file, options) {
-      const release = toSync(lockfile4.lock)(file, toSyncOptions(options));
+      const release = toSync(lockfile6.lock)(file, toSyncOptions(options));
       return toSync(release);
     }
     function unlock(file, options) {
-      return toPromise(lockfile4.unlock)(file, options);
+      return toPromise(lockfile6.unlock)(file, options);
     }
     function unlockSync(file, options) {
-      return toSync(lockfile4.unlock)(file, toSyncOptions(options));
+      return toSync(lockfile6.unlock)(file, toSyncOptions(options));
     }
     function check(file, options) {
-      return toPromise(lockfile4.check)(file, options);
+      return toPromise(lockfile6.check)(file, options);
     }
     function checkSync(file, options) {
-      return toSync(lockfile4.check)(file, toSyncOptions(options));
+      return toSync(lockfile6.check)(file, toSyncOptions(options));
     }
     module.exports = lock;
     module.exports.lock = lock;
@@ -1610,7 +1610,7 @@ var require_proper_lockfile = __commonJS({
 });
 
 // dist/shared/bin/session-metadata-worker.mjs
-import { appendFile, mkdir as mkdir5, open as open4, readdir as readdir3 } from "node:fs/promises";
+import { appendFile, mkdir as mkdir7, open as open6, readdir as readdir4 } from "node:fs/promises";
 
 // dist/shared/lease.mjs
 import { closeSync, ftruncateSync, openSync, readFileSync, rmSync, statSync, futimesSync, writeSync } from "node:fs";
@@ -1642,9 +1642,9 @@ function releaseLeaseIfHolder(path, pid) {
 }
 
 // dist/shared/bin/session-metadata-worker.mjs
-var import_proper_lockfile3 = __toESM(require_proper_lockfile(), 1);
+var import_proper_lockfile5 = __toESM(require_proper_lockfile(), 1);
 import { homedir as homedir3 } from "node:os";
-import { join as join9 } from "node:path";
+import { join as join12 } from "node:path";
 
 // dist/shared/config.mjs
 import { join } from "node:path";
@@ -2321,54 +2321,236 @@ function parseKey(v) {
 var PLUGIN_FLAG_SESSION_NAMING = "fancytab-session-naming";
 var PLUGIN_FLAGS_MAX_AGE_MS = 24 * 60 * 60 * 1e3;
 var NO_PLUGIN_FLAGS = Object.freeze({});
-function readPluginFlags(opts = {}) {
+function metadataGrantSkipReason(opts = {}) {
   const resolved = resolveCredentialSync({
     ...opts.paths !== void 0 ? { paths: opts.paths } : {},
     ...opts.env !== void 0 ? { env: opts.env } : {}
   });
   if (resolved === null)
-    return NO_PLUGIN_FLAGS;
+    return "no_credential";
+  if (opts.credentialFingerprint !== void 0 && resolved.fingerprint !== opts.credentialFingerprint)
+    return "credential_changed";
   const cacheOpts = opts.dir !== void 0 ? { dir: opts.dir } : {};
   const entry = readWhoamiCacheAnyAge(resolved.fingerprint, cacheOpts);
-  if (!matchesGrantBinding(entry, opts))
-    return NO_PLUGIN_FLAGS;
-  const fetchedAt = entry?.plugin_flags_fetched_at;
-  if (entry?.plugin_flags === void 0 || fetchedAt === void 0)
-    return NO_PLUGIN_FLAGS;
+  const tenant = opts.expectedTenantId ?? entry?.result?.tenant_id ?? entry?.grant_binding?.tenant_assertion;
+  if (!tenant)
+    return "no_tenant";
+  if (resolved.ingestEndpoint !== void 0 && opts.ingestEndpoint !== void 0 && resolved.ingestEndpoint !== opts.ingestEndpoint)
+    return "grant_unbound";
+  if (entry?.grant_binding === void 0 || opts.apiEndpoint !== void 0 && entry.grant_binding.api_endpoint !== opts.apiEndpoint || opts.ingestEndpoint !== void 0 && entry.grant_binding.ingest_endpoint !== opts.ingestEndpoint)
+    return "grant_unbound";
+  if (entry.result !== void 0 && entry.grant_binding.tenant_assertion !== entry.result.tenant_id || opts.expectedTenantId !== void 0 && entry.grant_binding.tenant_assertion !== opts.expectedTenantId)
+    return "tenant_mismatch";
+  const fetchedAt = entry.plugin_flags_fetched_at;
   const now = opts.now ?? Date.now();
-  if (!Number.isFinite(fetchedAt) || fetchedAt > now || now - fetchedAt > PLUGIN_FLAGS_MAX_AGE_MS) {
-    return NO_PLUGIN_FLAGS;
-  }
-  return entry.plugin_flags;
+  if (entry.plugin_flags === void 0 || fetchedAt === void 0 || !Number.isFinite(fetchedAt) || fetchedAt > now || now - fetchedAt > PLUGIN_FLAGS_MAX_AGE_MS || entry.plugin_flags[PLUGIN_FLAG_SESSION_NAMING] !== true)
+    return "flag_off";
+  return null;
 }
-function matchesGrantBinding(entry, opts) {
-  const bound = opts.apiEndpoint !== void 0 || opts.ingestEndpoint !== void 0 || opts.expectedTenantId !== void 0;
-  if (!bound)
-    return true;
-  if (entry?.grant_binding === void 0)
-    return false;
-  if (opts.apiEndpoint !== void 0 && entry.grant_binding.api_endpoint !== opts.apiEndpoint)
-    return false;
-  if (opts.ingestEndpoint !== void 0 && entry.grant_binding.ingest_endpoint !== opts.ingestEndpoint)
-    return false;
-  if (entry.result !== void 0 && entry.grant_binding.tenant_assertion !== entry.result.tenant_id)
-    return false;
-  if (opts.expectedTenantId !== void 0 && entry.grant_binding.tenant_assertion !== opts.expectedTenantId)
-    return false;
-  return true;
+
+// dist/shared/session-metadata/skip.mjs
+var import_proper_lockfile3 = __toESM(require_proper_lockfile(), 1);
+import { randomUUID } from "node:crypto";
+import { mkdir as mkdir4, readdir, readFile as readFile3, writeFile as writeFile3, unlink, open as open2 } from "node:fs/promises";
+import { join as join5 } from "node:path";
+
+// dist/shared/health.mjs
+var import_proper_lockfile2 = __toESM(require_proper_lockfile(), 1);
+import { mkdir as mkdir3, readFile as readFile2, rename as rename2, writeFile as writeFile2 } from "node:fs/promises";
+import { join as join3 } from "node:path";
+var DEFAULT2 = { dropped_event_count: 0, metadata_skip_counts: {} };
+var LOCK_RETRIES = {
+  retries: 100,
+  factor: 1.5,
+  minTimeout: 5,
+  maxTimeout: 50
+};
+var HealthState = class {
+  dir;
+  path;
+  tmp;
+  constructor(dir) {
+    this.dir = dir;
+    this.path = join3(dir, "health.json");
+    this.tmp = `${this.path}.tmp`;
+  }
+  async read() {
+    try {
+      const parsed = JSON.parse(await readFile2(this.path, "utf8"));
+      return { ...DEFAULT2, ...parsed, metadata_skip_counts: { ...parsed.metadata_skip_counts } };
+    } catch {
+      return { ...DEFAULT2, metadata_skip_counts: {} };
+    }
+  }
+  async recordDrop(n) {
+    await this.update((h) => {
+      h.dropped_event_count += n;
+    });
+  }
+  async recordMetadataSkip(reason) {
+    await this.update((h) => {
+      h.metadata_skip_counts[reason] = (h.metadata_skip_counts[reason] ?? 0) + 1;
+    });
+  }
+  async touch() {
+    await this.update((h) => {
+      h.last_hook_at = Date.now();
+    });
+  }
+  async recordFlush(result) {
+    await this.update((h) => {
+      h.last_flush_at = Date.now();
+      h.last_flush_result = result;
+    });
+  }
+  async update(mutate) {
+    await mkdir3(this.dir, { recursive: true });
+    try {
+      await readFile2(this.path);
+    } catch {
+      await writeFile2(this.path, "{}", "utf8");
+    }
+    const release = await import_proper_lockfile2.default.lock(this.path, {
+      retries: LOCK_RETRIES,
+      realpath: false
+    });
+    try {
+      const h = await this.read();
+      mutate(h);
+      await writeFile2(this.tmp, JSON.stringify(h), "utf8");
+      await rename2(this.tmp, this.path);
+    } finally {
+      await release();
+    }
+  }
+};
+
+// dist/shared/queue.mjs
+import { open, stat } from "node:fs/promises";
+import { join as join4 } from "node:path";
+var Queue = class {
+  dir;
+  path;
+  capBytes;
+  constructor(dir, capBytes) {
+    this.dir = dir;
+    this.path = join4(dir, "queue.ndjson");
+    this.capBytes = capBytes;
+  }
+  async size() {
+    try {
+      const s = await stat(this.path);
+      return s.size;
+    } catch (err) {
+      if (err.code === "ENOENT")
+        return 0;
+      throw err;
+    }
+  }
+  async append(lines) {
+    if (lines.length === 0) {
+      return { written: 0, dropped: 0, sizeAfter: await this.size() };
+    }
+    return withDirLock(this.dir, async () => {
+      const fh = await open(this.path, "a", 384);
+      let written = 0;
+      let dropped = 0;
+      let currentSize = (await fh.stat()).size;
+      try {
+        for (const line of lines) {
+          const bytes = Buffer.byteLength(line, "utf8") + 1;
+          if (currentSize + bytes > this.capBytes) {
+            dropped++;
+            continue;
+          }
+          await fh.write(line + "\n", null, "utf8");
+          written++;
+          currentSize += bytes;
+        }
+      } finally {
+        await fh.close();
+      }
+      return { written, dropped, sizeAfter: currentSize };
+    });
+  }
+};
+
+// dist/shared/session-metadata/skip.mjs
+var DAY = 24 * 60 * 60 * 1e3;
+var WEEK = 7 * DAY;
+var CAP = 100 * 1024 * 1024;
+async function recordMetadataSkip(opts) {
+  const now = opts.now ?? Date.now();
+  const at = new Date(now).toISOString();
+  const root = join5(opts.dataDir, "session-metadata", ".skipped");
+  const dir = join5(root, opts.agent);
+  await mkdir4(dir, { recursive: true, mode: 448 });
+  const path = join5(dir, `${opts.sessionId}.json`);
+  const lockSeed = await open2(path, "a", 384);
+  await lockSeed.close();
+  const release = await import_proper_lockfile3.default.lock(path, { realpath: false, retries: 100, stale: 1e4 });
+  try {
+    let old = null;
+    try {
+      old = JSON.parse(await readFile3(path, "utf8"));
+    } catch {
+    }
+    const sentAt = old?.event_sent_at?.[opts.reason];
+    const sentMs = sentAt === void 0 ? Number.NaN : Date.parse(sentAt);
+    const send = !Number.isFinite(sentMs) || now - sentMs >= DAY;
+    const next = {
+      last_reason: opts.reason,
+      last_at: at,
+      event_sent_at: { ...old?.event_sent_at ?? {}, ...send ? { [opts.reason]: at } : {} }
+    };
+    await writeFile3(path, JSON.stringify(next), { encoding: "utf8", mode: 384 });
+    await new HealthState(opts.dataDir).recordMetadataSkip(opts.reason);
+    if (send) {
+      const event = {
+        event_uuid: randomUUID(),
+        event_type: "session.metadata_worker_skipped",
+        session_id: opts.sessionId,
+        source: "session_metadata",
+        replay: "none",
+        sequence: 0,
+        timestamp_ns: BigInt(now) * 1000000n,
+        attributes: { skip_reason: opts.reason }
+      };
+      const line = JSON.stringify({ ...event, timestamp_ns: event.timestamp_ns.toString() });
+      await new Queue(join5(opts.dataDir, "outbound"), CAP).append([line]);
+    }
+  } finally {
+    await release();
+  }
+  for (const agent of await readdir(root, { withFileTypes: true }).catch(() => [])) {
+    if (!agent.isDirectory())
+      continue;
+    const oldDir = join5(root, agent.name);
+    for (const file of await readdir(oldDir).catch(() => [])) {
+      if (!file.endsWith(".json"))
+        continue;
+      const candidate = join5(oldDir, file);
+      try {
+        const record = JSON.parse(await readFile3(candidate, "utf8"));
+        if (now - Date.parse(record.last_at) > WEEK)
+          await unlink(candidate);
+      } catch {
+      }
+    }
+  }
 }
 
 // dist/agents/codex/auth-claim.mjs
-import { join as join3 } from "node:path";
+import { join as join6 } from "node:path";
 function resolveCodexHome(env, homeDir) {
-  return env.CODEX_HOME && env.CODEX_HOME.length > 0 ? env.CODEX_HOME : join3(homeDir, ".codex");
+  return env.CODEX_HOME && env.CODEX_HOME.length > 0 ? env.CODEX_HOME : join6(homeDir, ".codex");
 }
 
 // dist/agents/codex/thread-name-reader.mjs
 import { execFile } from "node:child_process";
 import { promisify as promisify2 } from "node:util";
 import { existsSync } from "node:fs";
-import { dirname as dirname2, join as join5, resolve } from "node:path";
+import { dirname as dirname2, join as join8, resolve } from "node:path";
 import { fileURLToPath as fileURLToPath2 } from "node:url";
 
 // dist/shared/types.mjs
@@ -2518,6 +2700,7 @@ var ATTR_TYPE = {
   naming_schema_version: "int",
   name: "string",
   name_origin: "string",
+  skip_reason: "string",
   // prompt.submit
   prompt_length: "int",
   slash_command: "string",
@@ -2776,7 +2959,7 @@ function encodeAnyValue(key, v) {
 
 // dist/shared/session-metadata/claude-reader.mjs
 import { createHash as createHash3 } from "node:crypto";
-import { open, stat } from "node:fs/promises";
+import { open as open3, stat as stat2 } from "node:fs/promises";
 
 // dist/shared/session-metadata/identity.mjs
 import { createHash as createHash2 } from "node:crypto";
@@ -2786,11 +2969,11 @@ var SCHEMA_VERSION = "1.2.1";
 
 // dist/shared/plugin-version.mjs
 import { readFileSync as readFileSync4 } from "node:fs";
-import { join as join4 } from "node:path";
+import { join as join7 } from "node:path";
 function pluginVersion() {
   for (const path of [
-    join4(import.meta.dirname, "../../package.json"),
-    join4(import.meta.dirname, "../../../package.json")
+    join7(import.meta.dirname, "../../package.json"),
+    join7(import.meta.dirname, "../../../package.json")
   ]) {
     try {
       const value = JSON.parse(readFileSync4(path, "utf8"));
@@ -2911,7 +3094,7 @@ async function readClaudeTranscript(state, diagnostic) {
 }
 async function inspectSource(path, offset) {
   try {
-    const metadata = await stat(path);
+    const metadata = await stat2(path);
     if (offset === void 0 || metadata.size < offset) {
       return { fileId: `${metadata.dev}:${metadata.ino}`, size: metadata.size };
     }
@@ -2929,7 +3112,7 @@ async function readClaudeLines(input) {
   let fh = null;
   try {
     try {
-      fh = await open(input.path, "r");
+      fh = await open3(input.path, "r");
     } catch (error) {
       if (error.code === "ENOENT") {
         return { endOffset: input.startOffset };
@@ -3027,7 +3210,7 @@ async function readCheckpoint(fh, offset, size) {
   };
 }
 async function readCheckpointFromPath(path, offset, size) {
-  const fh = await open(path, "r");
+  const fh = await open3(path, "r");
   try {
     return await readCheckpoint(fh, offset, size);
   } finally {
@@ -3185,6 +3368,7 @@ function makeEvent(input, text, chunkIndex, chunkCount) {
     event_type: "session.recap",
     session_id: input.state.session_id,
     source: "transcript.tail",
+    replay: "none",
     sequence: chunkIndex,
     timestamp_ns: input.timestampNanoseconds,
     attributes
@@ -3253,7 +3437,7 @@ function createCodexThreadNameReader(options) {
         return;
       const names = await readNamesWithHelper({
         helperPath,
-        databasePath: join5(options.codexHome, "state_5.sqlite"),
+        databasePath: join8(options.codexHome, "state_5.sqlite"),
         threads: pending.map(({ id, rolloutPath }) => ({ id, rolloutPath })),
         nodeVersion
       }, diagnostic);
@@ -3284,7 +3468,7 @@ async function readCodexThreadName(state, codexHome, helperPath, nodeVersion, di
   const key = lookupKey(state.session_id, state.source_file_identity);
   const name = batchResults?.has(key) ? batchResults.get(key) ?? null : await readNamesWithHelper({
     helperPath,
-    databasePath: join5(codexHome, "state_5.sqlite"),
+    databasePath: join8(codexHome, "state_5.sqlite"),
     threads: [{ id: state.session_id, rolloutPath: state.source_file_identity }],
     nodeVersion
   }, diagnostic).then((names) => names.get(key) ?? null);
@@ -3391,6 +3575,7 @@ function buildNamePayload(state, name, observedTime) {
     event_type: "session.name",
     session_id: state.session_id,
     source: "import",
+    replay: "none",
     sequence: 0,
     timestamp_ns: observedTime,
     attributes: {
@@ -3411,15 +3596,15 @@ function buildNamePayload(state, name, observedTime) {
 function resolveHelperPath() {
   const moduleDir = dirname2(fileURLToPath2(import.meta.url));
   const candidates = [
-    join5(moduleDir, "codex-thread-name-reader.mjs"),
+    join8(moduleDir, "codex-thread-name-reader.mjs"),
     resolve(moduleDir, "../../../dist/shared/bin/codex-thread-name-reader.mjs")
   ];
   return candidates.find((path) => existsSync(path)) ?? candidates[0];
 }
 
 // dist/shared/session-metadata/outbox.mjs
-import { mkdir as mkdir3, open as open2, readFile as readFile2, readdir, rename as rename2, rmdir, unlink } from "node:fs/promises";
-import { dirname as dirname3, join as join6 } from "node:path";
+import { mkdir as mkdir5, open as open4, readFile as readFile4, readdir as readdir2, rename as rename3, rmdir, unlink as unlink2 } from "node:fs/promises";
+import { dirname as dirname3, join as join9 } from "node:path";
 import { randomBytes } from "node:crypto";
 var METADATA_OUTBOX_MAX_BYTES = 100 * 1024 * 1024;
 var METADATA_REJECTED_MAX_BYTES = 10 * 1024 * 1024;
@@ -3470,7 +3655,7 @@ var MetadataOutboxCapacity = class {
 };
 async function mergeMetadataOutbox(incomingDir, heldDir, afterEntryMergedForTest) {
   try {
-    await rename2(incomingDir, heldDir);
+    await rename3(incomingDir, heldDir);
     await syncDirectory(dirname3(incomingDir));
     return;
   } catch (error) {
@@ -3480,15 +3665,15 @@ async function mergeMetadataOutbox(incomingDir, heldDir, afterEntryMergedForTest
       throw error;
   }
   while (true) {
-    const entries = await readdir(incomingDir, { withFileTypes: true });
+    const entries = await readdir2(incomingDir, { withFileTypes: true });
     if (entries.length === 0)
       break;
     entries.sort((left, right) => left.name.localeCompare(right.name));
     for (const entry of entries) {
-      const incomingPath = join6(incomingDir, entry.name);
-      const heldPath = join6(heldDir, entry.name);
+      const incomingPath = join9(incomingDir, entry.name);
+      const heldPath = join9(heldDir, entry.name);
       if (!await pathExists(heldPath)) {
-        await rename2(incomingPath, heldPath);
+        await rename3(incomingPath, heldPath);
         await syncDirectory(incomingDir);
         await syncDirectory(heldDir);
         continue;
@@ -3501,7 +3686,7 @@ async function mergeMetadataOutbox(incomingDir, heldDir, afterEntryMergedForTest
         await mergePayloadFiles(incomingPath, heldPath);
       }
       await afterEntryMergedForTest?.(entry.name);
-      await unlink(incomingPath);
+      await unlink2(incomingPath);
       await syncDirectory(incomingDir);
     }
   }
@@ -3521,16 +3706,16 @@ var MetadataOutbox = class {
     this.capacityDir = capacityDir;
     this.rejectedCapBytes = rejectedCapBytes;
     this.capacity = capacity;
-    this.pendingPath = join6(dir, PENDING_FILE);
-    this.rejectedPath = join6(dir, REJECTED_FILE);
+    this.pendingPath = join9(dir, PENDING_FILE);
+    this.rejectedPath = join9(dir, REJECTED_FILE);
     this.capBytes = capBytes;
   }
   async append(payloads) {
     if (payloads.length === 0)
       return { written: 0, dropped: 0, sizeAfter: await this.size() };
     return this.capacity.account(async (capacity) => {
-      await mkdir3(this.capacityDir, { recursive: true, mode: 448 });
-      await mkdir3(this.dir, { recursive: true, mode: 448 });
+      await mkdir5(this.capacityDir, { recursive: true, mode: 448 });
+      await mkdir5(this.dir, { recursive: true, mode: 448 });
       await syncDirectory(this.capacityDir);
       await syncDirectory(this.dir);
       const sizeBeforeRepair = await fileSize(this.pendingPath);
@@ -3546,7 +3731,7 @@ var MetadataOutbox = class {
         return { written: 0, dropped: additions.length, sizeAfter: currentSize };
       }
       if (additions.length > 0) {
-        const fh = await open2(this.pendingPath, "a", 384);
+        const fh = await open4(this.pendingPath, "a", 384);
         try {
           for (const item of additions)
             await fh.writeFile(JSON.stringify(item) + "\n", "utf8");
@@ -3604,7 +3789,7 @@ var MetadataOutbox = class {
 async function readPayloadFile(path) {
   let raw;
   try {
-    raw = await readFile2(path, "utf8");
+    raw = await readFile4(path, "utf8");
   } catch {
     return [];
   }
@@ -3638,7 +3823,7 @@ async function mergePayloadFiles(incomingPath, heldPath) {
 async function repairTrailingLine(path) {
   let raw;
   try {
-    raw = await readFile2(path);
+    raw = await readFile4(path);
   } catch {
     return;
   }
@@ -3649,7 +3834,7 @@ async function repairTrailingLine(path) {
   try {
     const parsed = JSON.parse(trailing.toString("utf8"));
     if (isPayload(parsed)) {
-      const fh2 = await open2(path, "a");
+      const fh2 = await open4(path, "a");
       try {
         await fh2.write("\n", null, "utf8");
         await fh2.sync();
@@ -3661,14 +3846,14 @@ async function repairTrailingLine(path) {
   } catch {
   }
   const quarantine = `${path}.corrupt.${process.pid}.${randomBytes(4).toString("hex")}`;
-  const quarantineFh = await open2(quarantine, "wx", 384);
+  const quarantineFh = await open4(quarantine, "wx", 384);
   try {
     await quarantineFh.writeFile(trailing);
     await quarantineFh.sync();
   } finally {
     await quarantineFh.close();
   }
-  const fh = await open2(path, "r+");
+  const fh = await open4(path, "r+");
   try {
     await fh.truncate(lastNewline + 1);
     await fh.sync();
@@ -3750,7 +3935,7 @@ function isNodeError(error, code) {
 }
 async function fileSize(path) {
   try {
-    const fh = await open2(path, "r");
+    const fh = await open4(path, "r");
     try {
       return (await fh.stat()).size;
     } finally {
@@ -3762,7 +3947,7 @@ async function fileSize(path) {
 }
 async function pathExists(path) {
   try {
-    const fh = await open2(path, "r");
+    const fh = await open4(path, "r");
     await fh.close();
     return true;
   } catch {
@@ -3771,7 +3956,7 @@ async function pathExists(path) {
 }
 async function directoryExists(path) {
   try {
-    await readdir(path);
+    await readdir2(path);
     return true;
   } catch {
     return false;
@@ -3787,12 +3972,12 @@ async function scanCapacity(root) {
   return snapshot;
 }
 async function scanCapacityDirectory(root, snapshot) {
-  const entries = await readdir(root, { withFileTypes: true, encoding: "utf8" }).catch(() => null);
+  const entries = await readdir2(root, { withFileTypes: true, encoding: "utf8" }).catch(() => null);
   if (entries === null)
     return;
   entries.sort((left, right) => left.name.localeCompare(right.name));
   for (const entry of entries) {
-    const path = join6(root, entry.name);
+    const path = join9(root, entry.name);
     if (entry.isDirectory()) {
       await scanCapacityDirectory(path, snapshot);
     } else if (entry.name === PENDING_FILE) {
@@ -3812,11 +3997,11 @@ async function scanCapacityDirectory(root, snapshot) {
   }
 }
 async function replacePayloadFile(path, payloads) {
-  await mkdir3(dirname3(path), { recursive: true, mode: 448 });
+  await mkdir5(dirname3(path), { recursive: true, mode: 448 });
   const tmp = `${path}.${process.pid}.${randomBytes(4).toString("hex")}.tmp`;
   let renamed = false;
   try {
-    const fh = await open2(tmp, "wx", 384);
+    const fh = await open4(tmp, "wx", 384);
     try {
       await fh.writeFile(payloads.length === 0 ? "" : `${payloads.map((item) => JSON.stringify(item)).join("\n")}
 `, "utf8");
@@ -3824,18 +4009,18 @@ async function replacePayloadFile(path, payloads) {
     } finally {
       await fh.close();
     }
-    await rename2(tmp, path);
+    await rename3(tmp, path);
     renamed = true;
     await syncDirectory(dirname3(path));
   } finally {
     if (!renamed)
-      await unlink(tmp).catch(() => {
+      await unlink2(tmp).catch(() => {
       });
   }
 }
 async function syncDirectory(path) {
   try {
-    const fh = await open2(path, "r");
+    const fh = await open4(path, "r");
     try {
       await fh.sync();
     } finally {
@@ -3849,12 +4034,12 @@ async function syncDirectory(path) {
 
 // dist/shared/session-metadata/schedule.mjs
 import { createHash as createHash4 } from "node:crypto";
-import { dirname as dirname5, join as join8 } from "node:path";
+import { dirname as dirname5, join as join11 } from "node:path";
 
 // dist/shared/session-metadata/state.mjs
-var import_proper_lockfile2 = __toESM(require_proper_lockfile(), 1);
-import { mkdir as mkdir4, open as open3, readFile as readFile3, readdir as readdir2, rename as rename3, unlink as unlink2 } from "node:fs/promises";
-import { basename, dirname as dirname4, join as join7 } from "node:path";
+var import_proper_lockfile4 = __toESM(require_proper_lockfile(), 1);
+import { mkdir as mkdir6, open as open5, readFile as readFile5, readdir as readdir3, rename as rename4, unlink as unlink3 } from "node:fs/promises";
+import { basename, dirname as dirname4, join as join10 } from "node:path";
 import { randomBytes as randomBytes2 } from "node:crypto";
 var SESSION_METADATA_SCHEMA_VERSION = 1;
 var PENDING_GRANT_TRANSITION_FILE = "grant-transition.pending.ndjson";
@@ -3875,9 +4060,9 @@ function transitionGrant(state, enabled, at) {
   if (enabled) {
     nextIntervals.push({ started_at: at });
   } else {
-    const open5 = nextIntervals[nextIntervals.length - 1];
-    if (open5 !== void 0 && open5.ended_at === void 0)
-      open5.ended_at = at;
+    const open7 = nextIntervals[nextIntervals.length - 1];
+    if (open7 !== void 0 && open7.ended_at === void 0)
+      open7.ended_at = at;
   }
   return {
     ...state,
@@ -3896,10 +4081,10 @@ async function foldPendingGrantTransitions(dir) {
   if (paths.length === 0)
     return;
   const claimed = paths.filter((path) => basename(path) !== PENDING_GRANT_TRANSITION_FILE);
-  const pendingPath = join7(dir, PENDING_GRANT_TRANSITION_FILE);
+  const pendingPath = join10(dir, PENDING_GRANT_TRANSITION_FILE);
   const processingPath = `${pendingPath}.processing.${unixNanosecondClaim()}.${process.pid}.${randomBytes2(4).toString("hex")}`;
   try {
-    await rename3(pendingPath, processingPath);
+    await rename4(pendingPath, processingPath);
     const firstMarker = claimed.findIndex((path) => basename(path).startsWith(`${PENDING_GRANT_TRANSITION_FILE}.marker.`));
     claimed.splice(firstMarker < 0 ? claimed.length : firstMarker, 0, processingPath);
     await syncDirectory2(dir);
@@ -3924,7 +4109,7 @@ async function foldPendingGrantTransitions(dir) {
   if (next !== current)
     await store.write(next);
   for (const path of claimed) {
-    await unlink2(path).catch((error) => {
+    await unlink3(path).catch((error) => {
       if (!isNodeError2(error, "ENOENT"))
         throw error;
     });
@@ -3936,10 +4121,10 @@ async function foldPendingSessionRegistrations(dir) {
   if (paths.length === 0)
     return;
   const claimed = paths.filter((path) => basename(path) !== PENDING_SESSION_REGISTRATION_FILE);
-  const pendingPath = join7(dir, PENDING_SESSION_REGISTRATION_FILE);
+  const pendingPath = join10(dir, PENDING_SESSION_REGISTRATION_FILE);
   const processingPath = `${pendingPath}.processing.${unixNanosecondClaim()}.${process.pid}.${randomBytes2(4).toString("hex")}`;
   try {
-    await rename3(pendingPath, processingPath);
+    await rename4(pendingPath, processingPath);
     claimed.push(processingPath);
     await syncDirectory2(dir);
   } catch (error) {
@@ -3975,7 +4160,7 @@ async function foldPendingSessionRegistrations(dir) {
   if (next !== current && next !== null)
     await store.write(next);
   for (const path of claimed) {
-    await unlink2(path).catch((error) => {
+    await unlink3(path).catch((error) => {
       if (!isNodeError2(error, "ENOENT"))
         throw error;
     });
@@ -3983,11 +4168,11 @@ async function foldPendingSessionRegistrations(dir) {
   await syncDirectory2(dir);
 }
 async function withSessionWorkerLock(dir, work, retries = 0) {
-  const workerLockDir = join7(dir, "worker-lock");
-  await mkdir4(workerLockDir, { recursive: true, mode: 448 });
+  const workerLockDir = join10(dir, "worker-lock");
+  await mkdir6(workerLockDir, { recursive: true, mode: 448 });
   let release;
   try {
-    release = await import_proper_lockfile2.default.lock(workerLockDir, { realpath: false, retries, stale: 1e4 });
+    release = await import_proper_lockfile4.default.lock(workerLockDir, { realpath: false, retries, stale: 1e4 });
   } catch (error) {
     if (isNodeError2(error, "ELOCKED"))
       return null;
@@ -4004,23 +4189,23 @@ async function withSessionWorkerLock(dir, work, retries = 0) {
 async function pendingSessionRegistrationPaths(dir) {
   let entries;
   try {
-    entries = await readdir2(dir, { withFileTypes: true });
+    entries = await readdir3(dir, { withFileTypes: true });
   } catch (error) {
     if (isNodeError2(error, "ENOENT"))
       return [];
     throw error;
   }
   const processingPrefix = `${PENDING_SESSION_REGISTRATION_FILE}.processing.`;
-  const processing = entries.filter((entry) => entry.isFile() && entry.name.startsWith(processingPrefix) && !entry.name.includes(".corrupt.")).map((entry) => join7(dir, entry.name)).sort();
+  const processing = entries.filter((entry) => entry.isFile() && entry.name.startsWith(processingPrefix) && !entry.name.includes(".corrupt.")).map((entry) => join10(dir, entry.name)).sort();
   if (entries.some((entry) => entry.isFile() && entry.name === PENDING_SESSION_REGISTRATION_FILE)) {
-    processing.push(join7(dir, PENDING_SESSION_REGISTRATION_FILE));
+    processing.push(join10(dir, PENDING_SESSION_REGISTRATION_FILE));
   }
   return processing;
 }
 async function pendingGrantTransitionPaths(dir) {
   let entries;
   try {
-    entries = await readdir2(dir, { withFileTypes: true });
+    entries = await readdir3(dir, { withFileTypes: true });
   } catch (error) {
     if (isNodeError2(error, "ENOENT"))
       return [];
@@ -4028,10 +4213,10 @@ async function pendingGrantTransitionPaths(dir) {
   }
   const processingPrefix = `${PENDING_GRANT_TRANSITION_FILE}.processing.`;
   const markerPrefix = `${PENDING_GRANT_TRANSITION_FILE}.marker.`;
-  const processing = entries.filter((entry) => entry.isFile() && entry.name.startsWith(processingPrefix) && !entry.name.includes(".corrupt.")).map((entry) => join7(dir, entry.name)).sort();
-  const markers = entries.filter((entry) => entry.isFile() && entry.name.startsWith(markerPrefix) && !entry.name.includes(".corrupt.")).map((entry) => join7(dir, entry.name)).sort();
+  const processing = entries.filter((entry) => entry.isFile() && entry.name.startsWith(processingPrefix) && !entry.name.includes(".corrupt.")).map((entry) => join10(dir, entry.name)).sort();
+  const markers = entries.filter((entry) => entry.isFile() && entry.name.startsWith(markerPrefix) && !entry.name.includes(".corrupt.")).map((entry) => join10(dir, entry.name)).sort();
   if (entries.some((entry) => entry.isFile() && entry.name === PENDING_GRANT_TRANSITION_FILE)) {
-    processing.push(join7(dir, PENDING_GRANT_TRANSITION_FILE));
+    processing.push(join10(dir, PENDING_GRANT_TRANSITION_FILE));
   }
   return [...processing, ...markers];
 }
@@ -4040,7 +4225,7 @@ async function readPendingGrantTransitions(paths, quarantineInvalid = false) {
   for (const path of paths) {
     let raw;
     try {
-      raw = await readFile3(path);
+      raw = await readFile5(path);
     } catch (error) {
       if (isNodeError2(error, "ENOENT"))
         continue;
@@ -4073,7 +4258,7 @@ async function readPendingSessionRegistrations(paths, quarantineInvalid = false)
   for (const path of paths) {
     let raw;
     try {
-      raw = await readFile3(path);
+      raw = await readFile5(path);
     } catch (error) {
       if (isNodeError2(error, "ENOENT"))
         continue;
@@ -4107,9 +4292,10 @@ async function appendCorruptGrantTransitions(path, raw) {
   const name = basename(path);
   const prefix = name.startsWith(processingPrefix) ? processingPrefix : markerPrefix;
   const suffix = name.slice(prefix.length);
-  const claim = suffix.slice(0, suffix.indexOf("."));
+  const separator = suffix.indexOf(".");
+  const claim = (separator === -1 ? suffix : suffix.slice(0, separator)) || unixNanosecondClaim();
   const quarantine = `${path}.corrupt.${claim}`;
-  const fh = await open3(quarantine, "a", 384);
+  const fh = await open5(quarantine, "a", 384);
   try {
     await fh.writeFile(raw);
     await fh.sync();
@@ -4121,9 +4307,10 @@ async function appendCorruptGrantTransitions(path, raw) {
 async function appendCorruptSessionRegistrations(path, raw) {
   const processingPrefix = `${PENDING_SESSION_REGISTRATION_FILE}.processing.`;
   const suffix = basename(path).slice(processingPrefix.length);
-  const claim = suffix.slice(0, suffix.indexOf("."));
+  const separator = suffix.indexOf(".");
+  const claim = (separator === -1 ? suffix : suffix.slice(0, separator)) || unixNanosecondClaim();
   const quarantine = `${path}.corrupt.${claim}`;
-  const fh = await open3(quarantine, "a", 384);
+  const fh = await open5(quarantine, "a", 384);
   try {
     await fh.writeFile(raw);
     await fh.sync();
@@ -4134,12 +4321,16 @@ async function appendCorruptSessionRegistrations(path, raw) {
 }
 function parsePendingGrantTransition(lineBytes) {
   let parsed;
+  let line;
   try {
-    parsed = JSON.parse(lineBytes.toString("utf8"));
+    line = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(lineBytes);
+    parsed = JSON.parse(line);
   } catch {
     return null;
   }
   if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed))
+    return null;
+  if (hasDuplicateObjectKeys(line))
     return null;
   const marker = parsed;
   const keys = Object.keys(marker);
@@ -4147,10 +4338,41 @@ function parsePendingGrantTransition(lineBytes) {
     return null;
   if (typeof marker.at !== "string" || marker.at === "" || typeof marker.enabled !== "boolean")
     return null;
-  const normalized = { at: marker.at, enabled: marker.enabled };
-  if (!Buffer.from(JSON.stringify(normalized)).equals(lineBytes))
-    return null;
-  return normalized;
+  return { at: marker.at, enabled: marker.enabled };
+}
+function hasDuplicateObjectKeys(line) {
+  const keys = /* @__PURE__ */ new Set();
+  let depth = 0;
+  for (let index = 0; index < line.length; ) {
+    const char = line[index];
+    if (char === '"') {
+      const start = index++;
+      while (index < line.length) {
+        if (line[index] === "\\")
+          index += 2;
+        else if (line[index++] === '"')
+          break;
+      }
+      if (depth === 1) {
+        let next = index;
+        while (/\s/.test(line[next] ?? ""))
+          next += 1;
+        if (line[next] === ":") {
+          const key = JSON.parse(line.slice(start, index));
+          if (keys.has(key))
+            return true;
+          keys.add(key);
+        }
+      }
+      continue;
+    }
+    if (char === "{" || char === "[")
+      depth += 1;
+    else if (char === "}" || char === "]")
+      depth -= 1;
+    index += 1;
+  }
+  return false;
 }
 function parsePendingSessionRegistration(lineBytes) {
   let parsed;
@@ -4212,12 +4434,12 @@ var SessionMetadataStateStore = class {
   path;
   constructor(dir) {
     this.dir = dir;
-    this.path = join7(dir, STATE_FILE);
+    this.path = join10(dir, STATE_FILE);
   }
   async read() {
     let raw;
     try {
-      raw = await readFile3(this.path, "utf8");
+      raw = await readFile5(this.path, "utf8");
     } catch {
       return null;
     }
@@ -4231,23 +4453,23 @@ var SessionMetadataStateStore = class {
   async write(state) {
     assertState(state);
     await withDirLock(this.dir, async () => {
-      await mkdir4(this.dir, { recursive: true, mode: 448 });
+      await mkdir6(this.dir, { recursive: true, mode: 448 });
       const tmp = `${this.path}.${process.pid}.${randomBytes2(4).toString("hex")}.tmp`;
       let renamed = false;
       try {
-        const fh = await open3(tmp, "wx", 384);
+        const fh = await open5(tmp, "wx", 384);
         try {
           await fh.writeFile(JSON.stringify(state));
           await fh.sync();
         } finally {
           await fh.close();
         }
-        await rename3(tmp, this.path);
+        await rename4(tmp, this.path);
         renamed = true;
         await syncDirectory2(this.dir);
       } finally {
         if (!renamed)
-          await unlink2(tmp).catch(() => {
+          await unlink3(tmp).catch(() => {
           });
       }
     });
@@ -4255,7 +4477,7 @@ var SessionMetadataStateStore = class {
 };
 async function syncDirectory2(path) {
   try {
-    const fh = await open3(path, "r");
+    const fh = await open5(path, "r");
     try {
       await fh.sync();
     } finally {
@@ -4311,6 +4533,7 @@ function parseState(value) {
   if (o.first_name_observation !== void 0 && first === null)
     return null;
   return {
+    ...Object.fromEntries(Object.entries(o).filter(([key]) => !STATE_FIELDS.has(key))),
     schema_version: 1,
     tenant_id: o.tenant_id,
     credential_fingerprint: o.credential_fingerprint,
@@ -4330,6 +4553,25 @@ function parseState(value) {
     pending_payload_ids: [...o.pending_payload_ids]
   };
 }
+var STATE_FIELDS = /* @__PURE__ */ new Set([
+  "schema_version",
+  "tenant_id",
+  "credential_fingerprint",
+  "endpoint_identity",
+  "install_id",
+  "agent",
+  "session_id",
+  "codex_home",
+  "capture_started_at",
+  "source_file_identity",
+  "byte_offset",
+  "source_file_id",
+  "source_continuity_checkpoint",
+  "grant_transitions",
+  "enabled_capture_intervals",
+  "first_name_observation",
+  "pending_payload_ids"
+]);
 function parseOptionalString(value) {
   return value === void 0 ? null : typeof value === "string" ? value : null;
 }
@@ -4411,7 +4653,7 @@ function metadataBindingKey(input) {
   ])).digest("hex");
 }
 function metadataWorkerLeasePath(input) {
-  return join8(input.dataDir, "session-metadata", ".workers", `${metadataBindingKey(input)}.lock`);
+  return join11(input.dataDir, "session-metadata", ".workers", `${metadataBindingKey(input)}.lock`);
 }
 var METADATA_WORKER_MAX_LEASE_AGE_MS = 6e4;
 
@@ -4420,10 +4662,14 @@ async function runSessionMetadataWorker(opts) {
   const scheduledLeasePath = metadataWorkerLeasePath(opts);
   const resolved = resolveCredentialSync();
   if (resolved === null) {
+    await recordMetadataSkip({ dataDir: opts.dataDir, agent: opts.agent, sessionId: opts.sessionId, reason: "no_credential" }).catch(() => {
+    });
     releaseLeaseIfHolder(scheduledLeasePath, process.pid);
     return { captured: 0, published: 0, held: false };
   }
   if (opts.credentialFingerprint !== void 0 && opts.credentialFingerprint !== resolved.fingerprint) {
+    await recordMetadataSkip({ dataDir: opts.dataDir, agent: opts.agent, sessionId: opts.sessionId, reason: "credential_changed" }).catch(() => {
+    });
     releaseLeaseIfHolder(scheduledLeasePath, process.pid);
     return { captured: 0, published: 0, held: true };
   }
@@ -4432,38 +4678,36 @@ async function runSessionMetadataWorker(opts) {
   const cache = readWhoamiCacheAnyAge(fingerprint);
   const tenantId = opts.expectedTenantId ?? cache?.result?.tenant_id ?? cache?.grant_binding?.tenant_assertion;
   if (!tenantId) {
+    await recordMetadataSkip({ dataDir: opts.dataDir, agent: opts.agent, sessionId: opts.sessionId, reason: "no_tenant" }).catch(() => {
+    });
     releaseLeaseIfHolder(scheduledLeasePath, process.pid);
     return { captured: 0, published: 0, held: false };
   }
+  let grantSkipReason = null;
   const grant = () => {
     const current = resolveCredentialSync();
-    if (current === null || current.fingerprint !== fingerprint)
-      return null;
-    if ((current.apiEndpoint ?? API_ENDPOINT) !== apiEndpoint)
-      return null;
-    if (current.ingestEndpoint !== void 0 && current.ingestEndpoint !== opts.endpoint)
-      return null;
-    const currentCache = readWhoamiCacheAnyAge(fingerprint);
-    const currentTenant = currentCache?.result?.tenant_id ?? currentCache?.grant_binding?.tenant_assertion;
-    if (currentTenant !== tenantId)
-      return null;
-    const currentFlags = readPluginFlags({
+    const reason = metadataGrantSkipReason({
       apiEndpoint,
       ingestEndpoint: opts.endpoint,
-      expectedTenantId: tenantId
+      expectedTenantId: tenantId,
+      credentialFingerprint: fingerprint
     });
-    if (currentFlags[PLUGIN_FLAG_SESSION_NAMING] !== true)
+    if (reason !== null)
+      grantSkipReason = reason;
+    if (current === null || reason !== null)
       return null;
     return { resolved: current };
   };
   const initialGrant = grant();
   if (initialGrant === null) {
+    await recordMetadataSkip({ dataDir: opts.dataDir, agent: opts.agent, sessionId: opts.sessionId, reason: grantSkipReason ?? "flag_off" }).catch(() => {
+    });
     releaseLeaseIfHolder(scheduledLeasePath, process.pid);
     return { captured: 0, published: 0, held: cache?.grant_binding !== void 0 };
   }
-  const bindingDir = join9(opts.dataDir, "session-metadata", opts.agent, opts.sessionId);
+  const bindingDir = join12(opts.dataDir, "session-metadata", opts.agent, opts.sessionId);
   const effectiveCodexHome = resolveCodexHome(process.env, opts.runtimeHome ?? homedir3());
-  await mkdir5(bindingDir, { recursive: true, mode: 448 });
+  await mkdir7(bindingDir, { recursive: true, mode: 448 });
   const bindingIdentity = {
     dataDir: opts.dataDir,
     installId: opts.installId,
@@ -4472,15 +4716,15 @@ async function runSessionMetadataWorker(opts) {
     endpoint: opts.endpoint
   };
   const workerLeasePath = metadataWorkerLeasePath(bindingIdentity);
-  const workerLockDir = join9(bindingDir, "worker-lock");
-  const metadataDir = join9(opts.dataDir, "session-metadata");
+  const workerLockDir = join12(bindingDir, "worker-lock");
+  const metadataDir = join12(opts.dataDir, "session-metadata");
   const capacity = new MetadataOutboxCapacity(metadataDir, opts.testHooks?.onCapacityScan, opts.testHooks?.capacityLockRetries);
   let leaseHeartbeat;
   let releaseWorkerLock;
   try {
-    await mkdir5(workerLockDir, { recursive: true, mode: 448 });
+    await mkdir7(workerLockDir, { recursive: true, mode: 448 });
     try {
-      releaseWorkerLock = await import_proper_lockfile3.default.lock(workerLockDir, { realpath: false, retries: 0, stale: 1e4 });
+      releaseWorkerLock = await import_proper_lockfile5.default.lock(workerLockDir, { realpath: false, retries: 0, stale: 1e4 });
     } catch {
       return { captured: 0, published: 0, held: false };
     }
@@ -4494,6 +4738,8 @@ async function runSessionMetadataWorker(opts) {
     const observedAt = opts.grantObservedAt ?? (/* @__PURE__ */ new Date()).toISOString();
     const currentGrant = grant();
     if (currentGrant === null) {
+      await recordMetadataSkip({ dataDir: opts.dataDir, agent: opts.agent, sessionId: opts.sessionId, reason: grantSkipReason ?? "flag_off" }).catch(() => {
+      });
       if (existing === null) {
         return { captured: 0, published: 0, held: cache?.grant_binding !== void 0 };
       }
@@ -4529,7 +4775,7 @@ async function runSessionMetadataWorker(opts) {
     const enabled = transitionGrant(withOriginHome, true, observedAt);
     if (enabled !== initial || existing === null)
       await state.write(enabled);
-    const outbox = new MetadataOutbox(join9(bindingDir, "outbox"), void 0, metadataDir, void 0, capacity);
+    const outbox = new MetadataOutbox(join12(bindingDir, "outbox"), void 0, metadataDir, void 0, capacity);
     const claudeReader = createClaudeMetadataReader();
     const codexReaders = /* @__PURE__ */ new Map();
     const codexReaderForHome = (codexHome) => {
@@ -4554,6 +4800,7 @@ async function runSessionMetadataWorker(opts) {
     leaseHeartbeat = startLeaseHeartbeat(scheduledLeasePath);
     try {
       let capturedCount = 0;
+      let currentSessionCaptured = 0;
       const isCaptureGrantValid = () => grant() !== null;
       const sourceStates = [];
       for (const source of sources) {
@@ -4603,6 +4850,8 @@ async function runSessionMetadataWorker(opts) {
               return;
             }
             capturedCount += captured.staged;
+            if (source.sessionDir === bindingDir)
+              currentSessionCaptured += captured.staged;
           }
         });
       } catch (error) {
@@ -4610,8 +4859,12 @@ async function runSessionMetadataWorker(opts) {
           return { captured: 0, published: 0, held: true };
         throw error;
       }
-      if (grantInvalid || !isCaptureGrantValid())
+      if (grantInvalid || !isCaptureGrantValid()) {
+        if (grantSkipReason !== null)
+          await recordMetadataSkip({ dataDir: opts.dataDir, agent: opts.agent, sessionId: opts.sessionId, reason: grantSkipReason }).catch(() => {
+          });
         return { captured: capturedCount, published: 0, held: true };
+      }
       const publish = opts.publish ?? ((payload) => {
         const currentGrant2 = grant();
         if (currentGrant2 === null)
@@ -4623,13 +4876,32 @@ async function runSessionMetadataWorker(opts) {
       if (backoffSnapshot.nextRetryAt !== void 0 && backoffSnapshot.nextRetryAt > Date.now()) {
         return { captured: capturedCount, published: 0, held: false };
       }
-      const published = await deliverBoundOutboxes({
+      let published = await deliverBoundOutboxes({
         sources,
         currentSessionDir: bindingDir,
         publish,
         isGrantValid: () => grant() !== null,
         backoff
       });
+      const afterDeliveryBackoff = await backoff.read();
+      if (opts.settle === true && opts.agent === "claude-code" && currentSessionCaptured === 0 && afterDeliveryBackoff.nextRetryAt === void 0 && grant() !== null) {
+        const settled = await settleCurrentSession({
+          source: sources[0],
+          reader: opts.reader ?? readerForState(await state.read() ?? initial),
+          capacity,
+          publish,
+          isGrantValid: () => grant() !== null,
+          backoff,
+          diagnostic: (kind, count) => emitDiagnostic(opts.dataDir, kind, count),
+          intervalMs: opts.testHooks?.settleIntervalMs ?? 500,
+          windowMs: opts.testHooks?.settleWindowMs ?? 5e3
+        });
+        capturedCount += settled.captured;
+        published += settled.published;
+      }
+      if (grantSkipReason !== null)
+        await recordMetadataSkip({ dataDir: opts.dataDir, agent: opts.agent, sessionId: opts.sessionId, reason: grantSkipReason }).catch(() => {
+        });
       return { captured: capturedCount, published, held: false };
     } finally {
       if (leaseHeartbeat !== void 0)
@@ -4657,7 +4929,7 @@ async function rebindSession(input) {
     expectedTenantId: input.existing.tenant_id,
     endpoint: input.existing.endpoint_identity
   });
-  await mergeMetadataOutbox(join9(input.bindingDir, "outbox"), join9(input.bindingDir, `outbox.held.${oldBindingKey}`), input.afterHeldOutboxEntryMergedForTest);
+  await mergeMetadataOutbox(join12(input.bindingDir, "outbox"), join12(input.bindingDir, `outbox.held.${oldBindingKey}`), input.afterHeldOutboxEntryMergedForTest);
   const closed = transitionGrant(input.existing, false, input.observedAt);
   const rebound = transitionGrant({
     ...closed,
@@ -4703,6 +4975,51 @@ async function deliverBoundOutboxes(input) {
   }
   return published;
 }
+async function settleCurrentSession(input) {
+  if (input.source === void 0 || input.reader === void 0)
+    return { captured: 0, published: 0 };
+  const maxReads = Math.ceil(input.windowMs / input.intervalMs);
+  let capturedCount = 0;
+  let publishedCount = 0;
+  for (let attempt = 0; attempt < maxReads; attempt++) {
+    await new Promise((resolve2) => setTimeout(resolve2, input.intervalMs));
+    if (!input.isGrantValid())
+      break;
+    const source = input.source;
+    const reader = input.reader;
+    if (source === void 0 || reader === void 0)
+      break;
+    let captured;
+    try {
+      captured = await input.capacity.run(() => captureMetadata({
+        state: source.state,
+        outbox: source.outbox,
+        reader,
+        isBindingValid: input.isGrantValid,
+        diagnostic: input.diagnostic
+      }));
+    } catch (error) {
+      if (isNodeError3(error, "ELOCKED"))
+        break;
+      throw error;
+    }
+    if (captured.kind === "grant-invalid")
+      break;
+    capturedCount += captured.staged;
+    if (captured.staged === 0)
+      continue;
+    const published = await deliverBoundOutboxes({
+      sources: [source],
+      currentSessionDir: source.sessionDir,
+      publish: input.publish,
+      isGrantValid: input.isGrantValid,
+      backoff: input.backoff
+    });
+    publishedCount += published;
+    break;
+  }
+  return { captured: capturedCount, published: publishedCount };
+}
 async function pruneSettledPayloadIds(source) {
   const state = await source.state.read();
   if (state === null || state.pending_payload_ids.length === 0)
@@ -4714,18 +5031,18 @@ async function pruneSettledPayloadIds(source) {
   await source.state.write({ ...state, pending_payload_ids: pendingPayloadIds });
 }
 async function registeredSources(metadataDir, binding, capacity) {
-  const root = join9(metadataDir);
+  const root = join12(metadataDir);
   const sources = [];
-  const agentEntries = await readdir3(root, { withFileTypes: true }).catch(() => []);
+  const agentEntries = await readdir4(root, { withFileTypes: true }).catch(() => []);
   for (const agentEntry of agentEntries) {
     if (!agentEntry.isDirectory() || agentEntry.name !== "claude-code" && agentEntry.name !== "codex-cli")
       continue;
-    const agentDir = join9(root, agentEntry.name);
-    const sessionEntries = await readdir3(agentDir, { withFileTypes: true }).catch(() => []);
+    const agentDir = join12(root, agentEntry.name);
+    const sessionEntries = await readdir4(agentDir, { withFileTypes: true }).catch(() => []);
     for (const sessionEntry of sessionEntries) {
       if (!sessionEntry.isDirectory())
         continue;
-      const sessionDir = join9(agentDir, sessionEntry.name);
+      const sessionDir = join12(agentDir, sessionEntry.name);
       const stateStore = new SessionMetadataStateStore(sessionDir);
       const state = await stateStore.read();
       if (state === null)
@@ -4735,7 +5052,7 @@ async function registeredSources(metadataDir, binding, capacity) {
       sources.push({
         sessionDir,
         state: stateStore,
-        outbox: new MetadataOutbox(join9(sessionDir, "outbox"), void 0, metadataDir, void 0, capacity)
+        outbox: new MetadataOutbox(join12(sessionDir, "outbox"), void 0, metadataDir, void 0, capacity)
       });
     }
   }
@@ -4751,15 +5068,15 @@ function startLeaseHeartbeat(path) {
   return timer;
 }
 function bindingBackoffDir(binding) {
-  return join9(binding.dataDir, "session-metadata", ".bindings", metadataBindingKey(binding));
+  return join12(binding.dataDir, "session-metadata", ".bindings", metadataBindingKey(binding));
 }
 async function emitDiagnostic(dataDir, kind, count = 1) {
   if (kind === "codex-name-capture-unavailable") {
-    const markerDir = join9(dataDir, "session-metadata", ".diagnostics");
-    const markerPath = join9(markerDir, "codex-name-capture-unavailable");
-    await mkdir5(markerDir, { recursive: true, mode: 448 });
+    const markerDir = join12(dataDir, "session-metadata", ".diagnostics");
+    const markerPath = join12(markerDir, "codex-name-capture-unavailable");
+    await mkdir7(markerDir, { recursive: true, mode: 448 });
     try {
-      const marker = await open4(markerPath, "wx", 384);
+      const marker = await open6(markerPath, "wx", 384);
       await marker.close();
     } catch (error) {
       if (error.code === "EEXIST")
@@ -4767,7 +5084,7 @@ async function emitDiagnostic(dataDir, kind, count = 1) {
     }
   }
   const label = kind === "codex-name-capture-unavailable" ? "codex name capture unavailable on this Node version" : kind;
-  await appendFile(join9(dataDir, "collect-error.log"), `${(/* @__PURE__ */ new Date()).toISOString()} fancysauce: session metadata ${label} count=${count}
+  await appendFile(join12(dataDir, "collect-error.log"), `${(/* @__PURE__ */ new Date()).toISOString()} fancysauce: session metadata ${label} count=${count}
 `);
 }
 function initialState(opts, fingerprint, tenantId, captureStartedAt, effectiveCodexHome) {
@@ -4828,7 +5145,8 @@ function argsFromProcess(argv) {
     endpoint,
     ...get("--credential-fingerprint") ? { credentialFingerprint: get("--credential-fingerprint") } : {},
     ...get("--expected-tenant-id") ? { expectedTenantId: get("--expected-tenant-id") } : {},
-    ...get("--grant-observed-at") ? { grantObservedAt: get("--grant-observed-at") } : {}
+    ...get("--grant-observed-at") ? { grantObservedAt: get("--grant-observed-at") } : {},
+    ...argv.includes("--settle") ? { settle: true } : {}
   };
 }
 var isMain = isMainModule(import.meta.url, process.argv[1]);
@@ -4841,7 +5159,7 @@ if (isMain) {
   void runSessionMetadataWorker(options).then(() => process.exit(0)).catch(async (error) => {
     const message = error instanceof Error ? error.stack ?? error.message : String(error);
     try {
-      await appendFile(join9(options.dataDir, "collect-error.log"), `${(/* @__PURE__ */ new Date()).toISOString()} session metadata: ${message}
+      await appendFile(join12(options.dataDir, "collect-error.log"), `${(/* @__PURE__ */ new Date()).toISOString()} session metadata: ${message}
 `);
     } catch {
     }

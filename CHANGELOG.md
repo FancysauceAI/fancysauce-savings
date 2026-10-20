@@ -2,6 +2,29 @@
 
 All public releases of `fancysauce-savings`. Most recent first.
 
+## v0.21.0 — 2026-10-20
+
+### Highlights
+
+- **Native identity stays native.** The collector keeps the native Claude Code or Codex identity at the top level. It sends a login or MDM email only as an `asserted_identity` hint. The server does not use an asserted email as an identity anchor or to link a sign-up (fancysauce #1964). The Node and Go collectors both send it. (FAN-2053, #236)
+- **`CLAUDE_CONFIG_DIR` works.** Both collectors read every Claude Code path through `CLAUDE_CONFIG_DIR` when it is set. Before this release, a developer who set the variable sent no transcript events, no subagent history, and no native identity. (FAN-591, #209)
+- **Smaller savings install.** The `fancysauce-savings` dist repo no longer ships the Go binaries in `claude-code/bin/`. The Node plugin does not use them. The plugin folder is now small enough for Claude Desktop (Cowork) to add the marketplace. (FAN-2135, #240)
+
+### Features
+
+- **Google Drive and artifact refs.** The collector records a work-item ref when a Drive MCP tool creates or edits a Google Doc, Sheet, or Slides file, and when a Claude artifact is published. It sends the file id only. The `fancytab-github-pr-ref` tenant flag controls the capture. (FAN-2044, #234)
+- **Claude Code version on `api.request`.** Claude Code `api.request` events carry `cli_version` when the transcript has a version. (FAN-1986, #231)
+- **Build version from backfills.** Backfill batches report the build version of their runner, as the live flush does. (FAN-1559, #235)
+
+### Fixes
+
+- **Recap and name events are marked as replay.** `session.recap` and `session.name` events from a replay carry `fancysauce.replay`. (FAN-2059, #239)
+- **The history scan creates its watch stamp.** Before this release, the replay history scan read the stamp but never wrote it. (FAN-2060, #238)
+- **Transcripts are read again after the pre-recap hook.** Both collectors re-read the Claude Code transcript for a short time after the pre-recap hook, so the recap sees the last turn. (FAN-1902, #217; FAN-1903, #218)
+- **A replay fails on a collect error.** A replay fails when a fire writes `collect-error.log`, and it prints the slow fires. (FAN-1906, #216)
+- **Node and Go parse session metadata the same way.** Edge cases in session-metadata parsing now match between the two collectors. (FAN-1608, #215)
+- **The session-naming worker logs why it exits.** The worker records the reason when it exits without a capture. (FAN-1752, #214)
+
 ## v0.20.2 — 2026-10-08
 
 ### Fixes

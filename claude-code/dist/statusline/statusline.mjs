@@ -2,7 +2,7 @@ import { createRequire as __cr } from 'node:module'; const require = __cr(import
 
 // dist/statusline/statusline.mjs
 import { readFileSync as readFileSync5, writeFileSync as writeFileSync2, mkdirSync as mkdirSync2, readdirSync as readdirSync2, openSync as openSync2, readSync, closeSync as closeSync2, statSync as statSync3 } from "node:fs";
-import { join as join4 } from "node:path";
+import { join as join5 } from "node:path";
 import { homedir as homedir3 } from "node:os";
 
 // dist/statusline/config.mjs
@@ -78,6 +78,15 @@ function loadStatusLineConfig(dataDir) {
   } catch {
     return defaults();
   }
+}
+
+// dist/shared/claude-paths.mjs
+import { join as join2 } from "node:path";
+function resolveClaudeHome(env, homeDir) {
+  return env.CLAUDE_CONFIG_DIR ? env.CLAUDE_CONFIG_DIR : join2(homeDir, ".claude");
+}
+function resolveClaudePluginsDataDir(env, homeDir) {
+  return join2(resolveClaudeHome(env, homeDir), "plugins", "data");
 }
 
 // dist/shared/plugin-commands.mjs
@@ -303,11 +312,11 @@ function fitLineToWidth(segments, maxWidth, dropPriority) {
 
 // dist/statusline/cumulative.mjs
 import { readFileSync as readFileSync2, writeFileSync } from "node:fs";
-import { join as join2 } from "node:path";
+import { join as join3 } from "node:path";
 var FILENAME = "cumulative-tokens.json";
 function readState(sessionDir) {
   try {
-    const raw = readFileSync2(join2(sessionDir, FILENAME), "utf-8");
+    const raw = readFileSync2(join3(sessionDir, FILENAME), "utf-8");
     const parsed = JSON.parse(raw);
     if (!parsed || typeof parsed !== "object")
       return null;
@@ -325,7 +334,7 @@ function readState(sessionDir) {
   }
 }
 function writeState(sessionDir, state) {
-  writeFileSync(join2(sessionDir, FILENAME), JSON.stringify(state));
+  writeFileSync(join3(sessionDir, FILENAME), JSON.stringify(state));
 }
 function usageEqual(a, b) {
   return a.input_tokens === b.input_tokens && a.output_tokens === b.output_tokens && a.cache_creation_input_tokens === b.cache_creation_input_tokens && a.cache_read_input_tokens === b.cache_read_input_tokens;
@@ -375,7 +384,7 @@ function credentialPaths() {
 }
 
 // dist/shared/config.mjs
-import { join as join3 } from "node:path";
+import { join as join4 } from "node:path";
 import { homedir as homedir2 } from "node:os";
 
 // dist/shared/credential-file.mjs
@@ -469,7 +478,7 @@ function ingestTokenFromEnv(env) {
 }
 
 // dist/shared/config.mjs
-var DEFAULT_LOGIN_STATE_DIR = join3(homedir2(), ".config", "fancysauce");
+var DEFAULT_LOGIN_STATE_DIR = join4(homedir2(), ".config", "fancysauce");
 function parseCredentialPathsEnv() {
   if (process.env.VITEST !== "true")
     return null;
@@ -779,7 +788,7 @@ var TRANSCRIPT_TAIL_BYTES = 65536;
 var SEPARATOR = "  ";
 function readCacheExpiry(sessionDir, ttlSec) {
   try {
-    const raw = readFileSync5(join4(sessionDir, "cache-last-hit"), "utf-8").trim();
+    const raw = readFileSync5(join5(sessionDir, "cache-last-hit"), "utf-8").trim();
     const epoch = Number(raw);
     if (Number.isNaN(epoch))
       return null;
@@ -842,22 +851,22 @@ function updateCacheTracking(sessionDir, currentCacheTokens) {
   if (currentCacheTokens === 0)
     return;
   try {
-    const raw = readFileSync5(join4(sessionDir, "cache-last-tokens"), "utf-8").trim();
+    const raw = readFileSync5(join5(sessionDir, "cache-last-tokens"), "utf-8").trim();
     const lastTokens = Number(raw);
     if (currentCacheTokens !== lastTokens) {
       const now = Math.floor(Date.now() / 1e3);
-      writeFileSync2(join4(sessionDir, "cache-last-hit"), String(now));
-      writeFileSync2(join4(sessionDir, "cache-last-tokens"), String(currentCacheTokens));
+      writeFileSync2(join5(sessionDir, "cache-last-hit"), String(now));
+      writeFileSync2(join5(sessionDir, "cache-last-tokens"), String(currentCacheTokens));
     }
   } catch {
     const now = Math.floor(Date.now() / 1e3);
-    writeFileSync2(join4(sessionDir, "cache-last-hit"), String(now));
-    writeFileSync2(join4(sessionDir, "cache-last-tokens"), String(currentCacheTokens));
+    writeFileSync2(join5(sessionDir, "cache-last-hit"), String(now));
+    writeFileSync2(join5(sessionDir, "cache-last-tokens"), String(currentCacheTokens));
   }
 }
 function readPrevInputTokens(sessionDir) {
   try {
-    const raw = readFileSync5(join4(sessionDir, "prev-input-tokens"), "utf-8").trim();
+    const raw = readFileSync5(join5(sessionDir, "prev-input-tokens"), "utf-8").trim();
     const n = Number(raw);
     return Number.isNaN(n) ? 0 : n;
   } catch {
@@ -865,12 +874,12 @@ function readPrevInputTokens(sessionDir) {
   }
 }
 function writePrevInputTokens(sessionDir, n) {
-  writeFileSync2(join4(sessionDir, "prev-input-tokens"), String(n));
+  writeFileSync2(join5(sessionDir, "prev-input-tokens"), String(n));
 }
 function renderStatusLine(input, dataDir) {
   const config = loadStatusLineConfig(dataDir);
   const native = input;
-  const sessionDir = join4(dataDir, "status", native.session_id);
+  const sessionDir = join5(dataDir, "status", native.session_id);
   try {
     mkdirSync2(sessionDir, { recursive: true });
   } catch {
@@ -934,10 +943,10 @@ function discoverDataDir() {
   if (fromEnv)
     return fromEnv;
   try {
-    const pluginsData = join4(homedir3(), ".claude", "plugins", "data");
+    const pluginsData = resolveClaudePluginsDataDir(process.env, homedir3());
     const entries = readdirSync2(pluginsData, { withFileTypes: true });
     const match = entries.find((e) => e.isDirectory() && e.name.startsWith("fancysauce"));
-    return match ? join4(pluginsData, match.name) : null;
+    return match ? join5(pluginsData, match.name) : null;
   } catch {
     return null;
   }

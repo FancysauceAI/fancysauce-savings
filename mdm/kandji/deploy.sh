@@ -42,11 +42,11 @@ set -eo pipefail
 # --- configuration (edit before uploading to Kandji) ----------------------
 INGEST_TOKEN="fs_ingest_REPLACE_ME" # from your fancysauce dashboard
 IDENTITY_TYPE="full"
-CODEX_TAG="v0.20.1"                 # pinned plugin release for Codex telemetry
-CODEX_SHA="e9fd9dde9a1e46bb650f33fbf1270e023b2238d2"   # commit sha of CODEX_TAG
+CODEX_TAG="v0.20.2"                 # pinned plugin release for Codex telemetry
+CODEX_SHA="501e1e3e96df90adead5d54205608bb969547323"   # commit sha of CODEX_TAG
 CC_MODE="managed-hooks"             # plugin | managed-hooks
-CC_TAG="v0.20.1"                    # pinned plugin release for Claude Code telemetry
-CC_SHA="e9fd9dde9a1e46bb650f33fbf1270e023b2238d2"   # commit sha of CC_TAG
+CC_TAG="v0.20.2"                    # pinned plugin release for Claude Code telemetry
+CC_SHA="501e1e3e96df90adead5d54205608bb969547323"   # commit sha of CC_TAG
 # SessionEnd hooks share a 1.5s budget, which the collector's own 1800ms
 # self-budget already overruns. Claude Code raises the shared budget to the
 # longest per-hook timeout, so this one field is what keeps the end-of-session

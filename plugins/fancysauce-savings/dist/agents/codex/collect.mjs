@@ -558,8 +558,8 @@ var require_graceful_fs = __commonJS({
       fs2.createReadStream = createReadStream;
       fs2.createWriteStream = createWriteStream;
       var fs$readFile = fs2.readFile;
-      fs2.readFile = readFile18;
-      function readFile18(path, options, cb) {
+      fs2.readFile = readFile19;
+      function readFile19(path, options, cb) {
         if (typeof options === "function")
           cb = options, options = null;
         return go$readFile(path, options, cb);
@@ -575,8 +575,8 @@ var require_graceful_fs = __commonJS({
         }
       }
       var fs$writeFile = fs2.writeFile;
-      fs2.writeFile = writeFile14;
-      function writeFile14(path, data, options, cb) {
+      fs2.writeFile = writeFile15;
+      function writeFile15(path, data, options, cb) {
         if (typeof options === "function")
           cb = options, options = null;
         return go$writeFile(path, data, options, cb);
@@ -630,9 +630,9 @@ var require_graceful_fs = __commonJS({
         }
       }
       var fs$readdir = fs2.readdir;
-      fs2.readdir = readdir2;
+      fs2.readdir = readdir3;
       var noReaddirOptionVersions = /^v[0-5]\./;
-      function readdir2(path, options, cb) {
+      function readdir3(path, options, cb) {
         if (typeof options === "function")
           cb = options, options = null;
         var go$readdir = noReaddirOptionVersions.test(process.version) ? function go$readdir2(path2, options2, cb2, startTime) {
@@ -735,7 +735,7 @@ var require_graceful_fs = __commonJS({
       }
       function ReadStream$open() {
         var that = this;
-        open9(that.path, that.flags, that.mode, function(err, fd) {
+        open10(that.path, that.flags, that.mode, function(err, fd) {
           if (err) {
             if (that.autoClose)
               that.destroy();
@@ -755,7 +755,7 @@ var require_graceful_fs = __commonJS({
       }
       function WriteStream$open() {
         var that = this;
-        open9(that.path, that.flags, that.mode, function(err, fd) {
+        open10(that.path, that.flags, that.mode, function(err, fd) {
           if (err) {
             that.destroy();
             that.emit("error", err);
@@ -772,8 +772,8 @@ var require_graceful_fs = __commonJS({
         return new fs2.WriteStream(path, options);
       }
       var fs$open = fs2.open;
-      fs2.open = open9;
-      function open9(path, flags, mode, cb) {
+      fs2.open = open10;
+      function open10(path, flags, mode, cb) {
         if (typeof mode === "function")
           cb = mode, mode = null;
         return go$open(path, flags, mode, cb);
@@ -1611,27 +1611,27 @@ var require_adapter = __commonJS({
 var require_proper_lockfile = __commonJS({
   "node_modules/proper-lockfile/index.js"(exports, module) {
     "use strict";
-    var lockfile6 = require_lockfile();
+    var lockfile7 = require_lockfile();
     var { toPromise, toSync, toSyncOptions } = require_adapter();
     async function lock(file, options) {
-      const release = await toPromise(lockfile6.lock)(file, options);
+      const release = await toPromise(lockfile7.lock)(file, options);
       return toPromise(release);
     }
     function lockSync(file, options) {
-      const release = toSync(lockfile6.lock)(file, toSyncOptions(options));
+      const release = toSync(lockfile7.lock)(file, toSyncOptions(options));
       return toSync(release);
     }
     function unlock(file, options) {
-      return toPromise(lockfile6.unlock)(file, options);
+      return toPromise(lockfile7.unlock)(file, options);
     }
     function unlockSync(file, options) {
-      return toSync(lockfile6.unlock)(file, toSyncOptions(options));
+      return toSync(lockfile7.unlock)(file, toSyncOptions(options));
     }
     function check(file, options) {
-      return toPromise(lockfile6.check)(file, options);
+      return toPromise(lockfile7.check)(file, options);
     }
     function checkSync(file, options) {
-      return toSync(lockfile6.check)(file, toSyncOptions(options));
+      return toSync(lockfile7.check)(file, toSyncOptions(options));
     }
     module.exports = lock;
     module.exports.lock = lock;
@@ -1670,6 +1670,7 @@ var init_runner_env = __esm({
       "TZ",
       "TERM",
       "CODEX_HOME",
+      "CLAUDE_CONFIG_DIR",
       "VITEST",
       "CLAUDE_PLUGIN_DATA",
       "FANCYSAUCE_CREDENTIAL_PATHS",
@@ -1687,12 +1688,12 @@ __export(pid_guard_exports, {
   isBackfillActive: () => isBackfillActive,
   releasePidGuard: () => releasePidGuard
 });
-import { readFile as readFile11, rm as rm2, mkdir as mkdir9, open as open6, link, stat as stat3 } from "node:fs/promises";
-import { join as join20 } from "node:path";
-import { randomUUID as randomUUID2 } from "node:crypto";
+import { readFile as readFile12, rm as rm2, mkdir as mkdir10, open as open7, link, stat as stat3 } from "node:fs/promises";
+import { join as join21 } from "node:path";
+import { randomUUID as randomUUID3 } from "node:crypto";
 async function readPidGuard(stateDir) {
   try {
-    const raw = await readFile11(join20(stateDir, "backfill.pid"), "utf8");
+    const raw = await readFile12(join21(stateDir, "backfill.pid"), "utf8");
     const pid = Number(raw.trim());
     return { raw, pid: Number.isFinite(pid) && pid > 0 ? pid : null };
   } catch {
@@ -1711,7 +1712,7 @@ function isPidLive(pid) {
 }
 async function tryAcquireRecoveryLock(lockPath) {
   try {
-    await mkdir9(lockPath, { mode: 448 });
+    await mkdir10(lockPath, { mode: 448 });
     return true;
   } catch (err) {
     if (err.code !== "EEXIST")
@@ -1722,7 +1723,7 @@ async function tryAcquireRecoveryLock(lockPath) {
     if (Date.now() - lockStat.mtimeMs <= RECOVERY_LOCK_MAX_AGE_MS)
       return false;
     await rm2(lockPath, { recursive: true, force: true });
-    await mkdir9(lockPath, { mode: 448 });
+    await mkdir10(lockPath, { mode: 448 });
     return true;
   } catch (err) {
     if (err.code === "EEXIST" || err.code === "ENOENT")
@@ -1735,12 +1736,12 @@ async function isBackfillActive(stateDir) {
   return isPidLive(guard?.pid ?? null) ? guard.pid : null;
 }
 async function acquirePidGuard(stateDir) {
-  await mkdir9(stateDir, { recursive: true });
-  const path = join20(stateDir, "backfill.pid");
-  const recoveryLockPath = join20(stateDir, "backfill.pid.recover");
-  const tempPath = join20(stateDir, `backfill.pid.${process.pid}.${randomUUID2()}.tmp`);
+  await mkdir10(stateDir, { recursive: true });
+  const path = join21(stateDir, "backfill.pid");
+  const recoveryLockPath = join21(stateDir, "backfill.pid.recover");
+  const tempPath = join21(stateDir, `backfill.pid.${process.pid}.${randomUUID3()}.tmp`);
   try {
-    const fh = await open6(tempPath, "wx", 384);
+    const fh = await open7(tempPath, "wx", 384);
     try {
       await fh.writeFile(String(process.pid));
       await fh.sync();
@@ -1781,7 +1782,7 @@ async function acquirePidGuard(stateDir) {
   }
 }
 async function releasePidGuard(stateDir) {
-  await rm2(join20(stateDir, "backfill.pid"), { force: true });
+  await rm2(join21(stateDir, "backfill.pid"), { force: true });
 }
 var RECOVERY_LOCK_MAX_AGE_MS;
 var init_pid_guard = __esm({
@@ -1799,10 +1800,10 @@ __export(runner_spawn_exports, {
   spawnBackfillRunner: () => spawnBackfillRunner
 });
 import { spawn as spawn2 } from "node:child_process";
-import { join as join21, dirname as dirname7 } from "node:path";
+import { join as join22, dirname as dirname7 } from "node:path";
 import { fileURLToPath as fileURLToPath3 } from "node:url";
 function resolveDistBinPath(containerDir, binName) {
-  return join21(containerDir, "..", "..", "shared", "bin", binName);
+  return join22(containerDir, "..", "..", "shared", "bin", binName);
 }
 async function spawnBackfillRunner(input) {
   const here = dirname7(fileURLToPath3(import.meta.url));
@@ -1853,21 +1854,21 @@ __export(scan_once_exports, {
   claimScanOnce: () => claimScanOnce,
   hasScanOnceMarker: () => hasScanOnceMarker
 });
-import { readFile as readFile12, writeFile as writeFile7, mkdir as mkdir10 } from "node:fs/promises";
-import { join as join22 } from "node:path";
+import { readFile as readFile13, writeFile as writeFile8, mkdir as mkdir11 } from "node:fs/promises";
+import { join as join23 } from "node:path";
 async function hasScanOnceMarker(stateDir) {
   try {
-    await readFile12(join22(stateDir, MARKER_NAME));
+    await readFile13(join23(stateDir, MARKER_NAME));
     return true;
   } catch {
     return false;
   }
 }
 async function claimScanOnce(stateDir, pluginVersion2) {
-  await mkdir10(stateDir, { recursive: true, mode: 448 });
+  await mkdir11(stateDir, { recursive: true, mode: 448 });
   const marker = { spawned_at: (/* @__PURE__ */ new Date()).toISOString(), plugin_version: pluginVersion2 };
   try {
-    await writeFile7(join22(stateDir, MARKER_NAME), JSON.stringify(marker), { encoding: "utf8", flag: "wx" });
+    await writeFile8(join23(stateDir, MARKER_NAME), JSON.stringify(marker), { encoding: "utf8", flag: "wx" });
     return true;
   } catch (err) {
     if (err?.code === "EEXIST")
@@ -1889,24 +1890,24 @@ __export(status_exports, {
   readStatus: () => readStatus,
   writeStatus: () => writeStatus
 });
-import { readFile as readFile13, open as open7, rename as rename10, mkdir as mkdir11, unlink as unlink4 } from "node:fs/promises";
-import { join as join23, dirname as dirname8 } from "node:path";
+import { readFile as readFile14, open as open8, rename as rename10, mkdir as mkdir12, unlink as unlink5 } from "node:fs/promises";
+import { join as join24, dirname as dirname8 } from "node:path";
 import { randomBytes as randomBytes5 } from "node:crypto";
 async function readStatus(stateDir) {
   try {
-    const raw = await readFile13(join23(stateDir, "backfill.status"), "utf8");
+    const raw = await readFile14(join24(stateDir, "backfill.status"), "utf8");
     return JSON.parse(raw);
   } catch {
     return null;
   }
 }
 async function writeStatus(stateDir, s) {
-  const path = join23(stateDir, "backfill.status");
-  await mkdir11(dirname8(path), { recursive: true });
+  const path = join24(stateDir, "backfill.status");
+  await mkdir12(dirname8(path), { recursive: true });
   const tmp = `${path}.${process.pid}.${randomBytes5(4).toString("hex")}.tmp`;
   let renamed = false;
   try {
-    const fh = await open7(tmp, "wx", 384);
+    const fh = await open8(tmp, "wx", 384);
     try {
       await fh.writeFile(JSON.stringify(s));
       await fh.sync();
@@ -1918,7 +1919,7 @@ async function writeStatus(stateDir, s) {
   } finally {
     if (!renamed) {
       try {
-        await unlink4(tmp);
+        await unlink5(tmp);
       } catch {
       }
     }
@@ -1932,15 +1933,15 @@ var init_status = __esm({
 
 // dist/agents/codex/collect.mjs
 import { readFileSync as readFileSync10 } from "node:fs";
-import { dirname as dirname10, join as join32 } from "node:path";
+import { dirname as dirname10, join as join33 } from "node:path";
 import { fileURLToPath as fileURLToPath7 } from "node:url";
 
 // dist/shared/run-collect.mjs
 import { existsSync } from "node:fs";
-import { randomUUID as randomUUID3 } from "node:crypto";
-import { mkdir as mkdir12, writeFile as writeFile8, appendFile as appendFile3, stat as stat4, rm as rm3 } from "node:fs/promises";
+import { randomUUID as randomUUID4 } from "node:crypto";
+import { mkdir as mkdir13, writeFile as writeFile9, appendFile as appendFile3, stat as stat4, rm as rm3 } from "node:fs/promises";
 import { homedir as homedir5 } from "node:os";
-import { join as join24 } from "node:path";
+import { join as join25 } from "node:path";
 
 // dist/shared/config.mjs
 import { join } from "node:path";
@@ -1970,6 +1971,7 @@ function defaultPolicy() {
       "name_origin",
       "expected_tenant_id"
     ]),
+    "session.metadata_worker_skipped": Object.freeze(["skip_reason"]),
     "prompt.submit": Object.freeze(["prompt_length", "slash_command"]),
     "tool_call.start": Object.freeze([
       "tool_name",
@@ -2134,6 +2136,7 @@ function defaultPolicy() {
       "model",
       "request_id",
       "transcript_message_uuid",
+      "cli_version",
       "subsession_id",
       "agent_type",
       "stop_reason",
@@ -2574,20 +2577,37 @@ function defaultUnknownEnvVarHandler(_name, _value) {
 
 // dist/shared/data-dir.mjs
 import { readFileSync } from "node:fs";
-import { basename, join as join2, dirname as dirname2, relative, isAbsolute, sep } from "node:path";
+import { basename, join as join3, dirname as dirname2, relative, isAbsolute, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { homedir as homedir3 } from "node:os";
+
+// dist/shared/claude-paths.mjs
+import { join as join2 } from "node:path";
+function resolveClaudeHome(env, homeDir) {
+  return env.CLAUDE_CONFIG_DIR ? env.CLAUDE_CONFIG_DIR : join2(homeDir, ".claude");
+}
+function resolveClaudeConfigPaths(env, homeDir) {
+  const home = join2(homeDir, ".claude.json");
+  const dir = env.CLAUDE_CONFIG_DIR;
+  if (!dir)
+    return [home];
+  const scoped = join2(dir, ".claude.json");
+  return scoped === home ? [home] : [scoped, home];
+}
+
+// dist/shared/data-dir.mjs
 function resolveDataDir(opts = {}) {
   if (opts.override)
     return opts.override;
   if (process.env.CLAUDE_PLUGIN_DATA)
     return process.env.CLAUDE_PLUGIN_DATA;
   const home = opts.homeDir ?? homedir3();
+  const claudeHome = resolveClaudeHome({ CLAUDE_CONFIG_DIR: claudeConfigDir(opts) }, home);
   const root = trimTrailingSlash(opts.pluginRoot ?? defaultPluginRoot());
-  const fromRegistry = deriveFromRegistry(root, home);
+  const fromRegistry = deriveFromRegistry(root, claudeHome);
   if (fromRegistry !== null)
     return fromRegistry;
-  const fromMarketplaces = deriveFromMarketplaces(root, home);
+  const fromMarketplaces = deriveFromMarketplaces(root, claudeHome);
   if (fromMarketplaces !== null)
     return fromMarketplaces;
   const fromCodexCache = deriveFromCodexCache(root, home);
@@ -2596,30 +2616,34 @@ function resolveDataDir(opts = {}) {
   const fromCodexMarketplaces = deriveFromCodexMarketplaces(root, home);
   if (fromCodexMarketplaces !== null)
     return fromCodexMarketplaces;
-  return join2(home, ".claude-plugin-data");
+  return join3(home, ".claude-plugin-data");
 }
 function defaultPluginRoot() {
   const here = dirname2(fileURLToPath(import.meta.url));
-  return join2(here, "..", "..", "..");
+  return join3(here, "..", "..", "..");
 }
 function trimTrailingSlash(p) {
   return p.endsWith("/") || p.endsWith("\\") ? p.slice(0, -1) : p;
 }
+function claudeConfigDir(opts) {
+  return opts.claudeConfigDir ?? process.env.CLAUDE_CONFIG_DIR;
+}
 function registeredPluginKey(opts = {}) {
   const home = opts.homeDir ?? homedir3();
+  const claudeHome = resolveClaudeHome({ CLAUDE_CONFIG_DIR: claudeConfigDir(opts) }, home);
   const root = trimTrailingSlash(opts.pluginRoot ?? defaultPluginRoot());
-  return registryKey(root, home);
+  return registryKey(root, claudeHome);
 }
-function deriveFromRegistry(root, home) {
-  const key = registryKey(root, home);
+function deriveFromRegistry(root, claudeHome) {
+  const key = registryKey(root, claudeHome);
   if (key === null)
     return null;
   const at = key.lastIndexOf("@");
-  return join2(home, ".claude", "plugins", "data", `${key.slice(0, at)}-${key.slice(at + 1)}`);
+  return join3(claudeHome, "plugins", "data", `${key.slice(0, at)}-${key.slice(at + 1)}`);
 }
-function registryKey(root, home) {
+function registryKey(root, claudeHome) {
   try {
-    const regPath = join2(home, ".claude", "plugins", "installed_plugins.json");
+    const regPath = join3(claudeHome, "plugins", "installed_plugins.json");
     const reg = JSON.parse(readFileSync(regPath, "utf8"));
     const plugins = reg?.plugins;
     if (typeof plugins !== "object" || plugins === null)
@@ -2643,9 +2667,9 @@ function registryKey(root, home) {
   }
   return null;
 }
-function deriveFromMarketplaces(root, home) {
+function deriveFromMarketplaces(root, claudeHome) {
   try {
-    const kmPath = join2(home, ".claude", "plugins", "known_marketplaces.json");
+    const kmPath = join3(claudeHome, "plugins", "known_marketplaces.json");
     const km = JSON.parse(readFileSync(kmPath, "utf8"));
     let alias = null;
     for (const [k, v] of Object.entries(km)) {
@@ -2657,17 +2681,17 @@ function deriveFromMarketplaces(root, home) {
     }
     if (alias === null)
       return null;
-    const manifest = JSON.parse(readFileSync(join2(root, ".claude-plugin", "marketplace.json"), "utf8"));
+    const manifest = JSON.parse(readFileSync(join3(root, ".claude-plugin", "marketplace.json"), "utf8"));
     const plugin = manifest.plugins?.[0]?.name;
     if (typeof plugin !== "string" || plugin.length === 0)
       return null;
-    return join2(home, ".claude", "plugins", "data", `${plugin}-${alias}`);
+    return join3(claudeHome, "plugins", "data", `${plugin}-${alias}`);
   } catch {
     return null;
   }
 }
 function deriveFromCodexCache(root, home) {
-  const prefix = trimTrailingSlash(join2(home, ".codex", "plugins", "cache"));
+  const prefix = trimTrailingSlash(join3(home, ".codex", "plugins", "cache"));
   const rel = relative(prefix, root);
   if (rel === "" || rel.startsWith("..") || isAbsolute(rel))
     return null;
@@ -2676,19 +2700,19 @@ function deriveFromCodexCache(root, home) {
   const plugin = parts[1];
   if (!alias || !plugin)
     return null;
-  return join2(home, ".codex", "plugins", "data", `${plugin}-${alias}`);
+  return join3(home, ".codex", "plugins", "data", `${plugin}-${alias}`);
 }
 function deriveFromCodexMarketplaces(root, home) {
   try {
     const plugin = readCodexPluginName(root) ?? basename(root);
     if (plugin.length === 0)
       return null;
-    const configPath = join2(home, ".codex", "config.toml");
+    const configPath = join3(home, ".codex", "config.toml");
     const marketplaces = parseCodexMarketplaces(readFileSync(configPath, "utf8"));
     for (const marketplace of marketplaces) {
-      const expectedRoot = trimTrailingSlash(join2(marketplace.source, "plugins", plugin));
+      const expectedRoot = trimTrailingSlash(join3(marketplace.source, "plugins", plugin));
       if (expectedRoot === root) {
-        return join2(home, ".codex", "plugins", "data", `${plugin}-${marketplace.alias}`);
+        return join3(home, ".codex", "plugins", "data", `${plugin}-${marketplace.alias}`);
       }
     }
   } catch {
@@ -2698,7 +2722,7 @@ function deriveFromCodexMarketplaces(root, home) {
 }
 function readCodexPluginName(root) {
   try {
-    const manifest = JSON.parse(readFileSync(join2(root, ".codex-plugin", "plugin.json"), "utf8"));
+    const manifest = JSON.parse(readFileSync(join3(root, ".codex-plugin", "plugin.json"), "utf8"));
     return typeof manifest.name === "string" && manifest.name.length > 0 ? manifest.name : null;
   } catch {
     return null;
@@ -2793,6 +2817,7 @@ function buildRules(policy) {
     "session.end": k("session.end"),
     "session.recap": k("session.recap"),
     "session.name": k("session.name"),
+    "session.metadata_worker_skipped": k("session.metadata_worker_skipped"),
     "prompt.submit": promptSubmit,
     "tool_call.start": toolCallStart,
     "tool_call.complete": toolCallComplete,
@@ -2938,8 +2963,8 @@ function filterEvent(raw, policy) {
 // dist/shared/identity-resolver.mjs
 import { createHash as createHash2, randomUUID } from "node:crypto";
 import { execFile as execFile2 } from "node:child_process";
-import { open as open2, readFile as readFile2, rename as rename2, unlink as unlink2 } from "node:fs/promises";
-import { join as join6 } from "node:path";
+import { open as open2, readFile as readFile3, rename as rename2, unlink as unlink2 } from "node:fs/promises";
+import { join as join7 } from "node:path";
 import { randomBytes as randomBytes3 } from "node:crypto";
 
 // dist/shared/locking.mjs
@@ -3050,7 +3075,7 @@ function seal(plaintext, key) {
 
 // dist/shared/server-key.mjs
 import { readFileSync as readFileSync2 } from "node:fs";
-import { join as join3 } from "node:path";
+import { join as join4 } from "node:path";
 var BAKED_SERVER_KEY = {
   keyid: "env-production-1",
   alg: "RSA-OAEP-256+A256GCM",
@@ -3068,7 +3093,7 @@ function loadServerKey(deps) {
   const ttl = deps.ttlMs ?? DEFAULT_TTL_MS;
   const read = deps.readFileImpl ?? ((p) => readFileSync2(p, "utf8"));
   try {
-    const parsed = JSON.parse(read(join3(deps.cacheDir, CACHE_FILE)));
+    const parsed = JSON.parse(read(join4(deps.cacheDir, CACHE_FILE)));
     if (!isServerKeyShape(parsed) || typeof parsed.fetched_at !== "number")
       return BAKED_SERVER_KEY;
     if (deps.now - parsed.fetched_at > ttl)
@@ -3082,8 +3107,71 @@ function loadServerKey(deps) {
 // dist/shared/native-identity.mjs
 import { readFileSync as readFileSync3 } from "node:fs";
 import { execFileSync } from "node:child_process";
-import { join as join4 } from "node:path";
 import { homedir as homedir4 } from "node:os";
+
+// dist/agents/codex/auth-claim.mjs
+import { readFile as readFile2 } from "node:fs/promises";
+import { join as join5 } from "node:path";
+function resolveCodexHome(env, homeDir) {
+  return env.CODEX_HOME && env.CODEX_HOME.length > 0 ? env.CODEX_HOME : join5(homeDir, ".codex");
+}
+function resolveCodexAuthPath(env, homeDir) {
+  return join5(resolveCodexHome(env, homeDir), "auth.json");
+}
+function decodeJwtPayload(idToken) {
+  const parts = idToken.split(".");
+  if (parts.length !== 3)
+    return void 0;
+  let json;
+  try {
+    json = Buffer.from(parts[1], "base64url").toString("utf8");
+  } catch {
+    return void 0;
+  }
+  let payload;
+  try {
+    payload = JSON.parse(json);
+  } catch {
+    return void 0;
+  }
+  if (typeof payload !== "object" || payload === null)
+    return void 0;
+  return payload;
+}
+async function readPlanClaim(path) {
+  let raw;
+  try {
+    raw = await readFile2(path, "utf8");
+  } catch {
+    return void 0;
+  }
+  let doc;
+  try {
+    doc = JSON.parse(raw);
+  } catch {
+    return void 0;
+  }
+  if (typeof doc === "object" && doc !== null) {
+    const d = doc;
+    const tokens = typeof d.tokens === "object" && d.tokens !== null ? d.tokens : void 0;
+    const idToken = tokens?.id_token ?? d.id_token;
+    if (typeof idToken === "string") {
+      const payload = decodeJwtPayload(idToken);
+      if (payload) {
+        const auth = payload["https://api.openai.com/auth"];
+        if (typeof auth === "object" && auth !== null) {
+          const planType = auth.chatgpt_plan_type;
+          if (typeof planType === "string" && planType.length > 0) {
+            return planType;
+          }
+        }
+      }
+    }
+  }
+  return void 0;
+}
+
+// dist/shared/native-identity.mjs
 var CLI_TIMEOUT_MS = 500;
 function defaultClaudeStatus() {
   try {
@@ -3103,27 +3191,29 @@ function pick(o, k) {
 function readNativeIdentity(agent, deps = {}) {
   const home = deps.home ?? homedir4();
   const read = deps.readFileImpl ?? ((p) => readFileSync3(p, "utf8"));
-  return agent === "claude-code" ? readClaude(home, read, deps.claudeStatus ?? defaultClaudeStatus) : readCodex(home, read);
+  return agent === "claude-code" ? readClaude(home, deps.env ?? process.env, read, deps.claudeStatus ?? defaultClaudeStatus) : readCodex(home, deps.env ?? process.env, read);
 }
-function readClaude(home, read, status) {
-  try {
-    const parsed = JSON.parse(read(join4(home, ".claude.json")));
-    const oa = parsed.oauthAccount;
-    if (oa && typeof oa === "object") {
-      const email = pick(oa, "emailAddress");
-      const account_id = pick(oa, "accountUuid");
-      if (email || account_id) {
-        return {
-          source: "native_claude",
-          ...email ? { email } : {},
-          ...account_id ? { account_id } : {},
-          ...pick(oa, "organizationUuid") ? { org_id: pick(oa, "organizationUuid") } : {},
-          ...pick(oa, "organizationName") ? { org_name: pick(oa, "organizationName") } : {},
-          ...pick(oa, "organizationType") ? { plan: pick(oa, "organizationType") } : {}
-        };
+function readClaude(home, env, read, status) {
+  for (const path of resolveClaudeConfigPaths(env, home)) {
+    try {
+      const parsed = JSON.parse(read(path));
+      const oa = parsed.oauthAccount;
+      if (oa && typeof oa === "object") {
+        const email = pick(oa, "emailAddress");
+        const account_id = pick(oa, "accountUuid");
+        if (email || account_id) {
+          return {
+            source: "native_claude",
+            ...email ? { email } : {},
+            ...account_id ? { account_id } : {},
+            ...pick(oa, "organizationUuid") ? { org_id: pick(oa, "organizationUuid") } : {},
+            ...pick(oa, "organizationName") ? { org_name: pick(oa, "organizationName") } : {},
+            ...pick(oa, "organizationType") ? { plan: pick(oa, "organizationType") } : {}
+          };
+        }
       }
+    } catch {
     }
-  } catch {
   }
   const raw = status();
   if (!raw)
@@ -3147,10 +3237,10 @@ function readClaude(home, read, status) {
     return null;
   }
 }
-function readCodex(home, read) {
+function readCodex(home, env, read) {
   let auth;
   try {
-    auth = JSON.parse(read(join4(home, ".codex", "auth.json")));
+    auth = JSON.parse(read(resolveCodexAuthPath(env, home)));
   } catch {
     return null;
   }
@@ -3158,7 +3248,7 @@ function readCodex(home, read) {
   const idToken = tokens?.id_token;
   if (typeof idToken !== "string")
     return null;
-  const payload = decodeJwtPayload(idToken);
+  const payload = decodeJwtPayload2(idToken);
   if (!payload)
     return null;
   const claims = payload["https://api.openai.com/auth"];
@@ -3183,7 +3273,7 @@ function readCodex(home, read) {
     ...plan ? { plan } : {}
   };
 }
-function decodeJwtPayload(token) {
+function decodeJwtPayload2(token) {
   const parts = token.split(".");
   if (parts.length !== 3)
     return null;
@@ -3198,8 +3288,8 @@ function decodeJwtPayload(token) {
 
 // dist/shared/identity-cache.mjs
 import { readFileSync as readFileSync4, writeFileSync } from "node:fs";
-import { join as join5 } from "node:path";
-var CACHE_FILE2 = "identity-cache.json";
+import { join as join6 } from "node:path";
+var cacheFile = (agent) => `identity-cache-v2-${agent}.json`;
 var DEFAULT_TTL_MS2 = 12 * 60 * 60 * 1e3;
 var CACHED_IDENTITY_SOURCES = [
   "native_claude",
@@ -3212,7 +3302,7 @@ function readIdentityCache(deps) {
   const ttl = deps.ttlMs ?? DEFAULT_TTL_MS2;
   const read = deps.readFileImpl ?? ((p) => readFileSync4(p, "utf8"));
   try {
-    const parsed = JSON.parse(read(join5(deps.dir, CACHE_FILE2)));
+    const parsed = JSON.parse(read(join6(deps.dir, cacheFile(deps.agent))));
     if (typeof parsed !== "object" || parsed === null)
       return { fresh: false };
     const entry = parsed;
@@ -3228,6 +3318,10 @@ function readIdentityCache(deps) {
     const source = identity.source;
     if (typeof source !== "string" || !CACHED_SOURCE_SET.has(source))
       return { fresh: false };
+    if (source === "native_claude" && deps.agent !== "claude-code")
+      return { fresh: false };
+    if (source === "native_codex" && deps.agent !== "codex-cli")
+      return { fresh: false };
     return { fresh: true, identity };
   } catch {
     return { fresh: false };
@@ -3237,7 +3331,7 @@ function writeIdentityCache(deps) {
   const write = deps.writeFileImpl ?? ((p, data) => writeFileSync(p, data, { mode: 384 }));
   try {
     const entry = { identity: deps.identity, fetched_at: deps.now };
-    write(join5(deps.dir, CACHE_FILE2), JSON.stringify(entry));
+    write(join6(deps.dir, cacheFile(deps.agent)), JSON.stringify(entry));
   } catch {
   }
 }
@@ -3250,7 +3344,7 @@ var IdentityResolver = class {
   git;
   constructor(dir, git = defaultGitAccess()) {
     this.dir = dir;
-    this.installPath = join6(dir, "install.json");
+    this.installPath = join7(dir, "install.json");
     this.git = git;
   }
   async resolve(cwd, opts) {
@@ -3298,7 +3392,7 @@ var IdentityResolver = class {
 async function readInstallId(path) {
   let buf;
   try {
-    buf = await readFile2(path, "utf8");
+    buf = await readFile3(path, "utf8");
   } catch {
     return null;
   }
@@ -3381,41 +3475,39 @@ function toResourceAttributes(id, opts) {
 }
 async function resolveIdentityRecord({ dataDir: dataDir2, cwd, opts }) {
   const hint = opts.identity_hint;
-  if (hint?.source === "mdm_file" && (hint.user_email || hint.user_upn)) {
-    return {
-      source: "mdm_file",
-      ...hint.user_email ? { email: hint.user_email } : {},
-      ...hint.user_upn ? { upn: hint.user_upn } : {}
-    };
-  }
-  if (hint?.source === "plugin_login" && (hint.email || hint.account_id || hint.user_id || hint.org_id || hint.org_name || hint.plan)) {
-    return {
-      source: "plugin_login",
-      ...hint.email ? { email: hint.email } : {},
-      ...hint.account_id ? { account_id: hint.account_id } : {},
-      ...hint.user_id ? { user_id: hint.user_id } : {},
-      ...hint.org_id ? { org_id: hint.org_id } : {},
-      ...hint.org_name ? { org_name: hint.org_name } : {},
-      ...hint.plan ? { plan: hint.plan } : {}
-    };
-  }
   const now = opts.now ?? Date.now();
-  const hit = readIdentityCache({ dir: dataDir2, now });
+  const hit = readIdentityCache({ dir: dataDir2, agent: opts.agent, now });
   let cached;
   if (hit.fresh) {
     cached = hit.identity;
   } else {
     cached = await probeMachineScopedIdentity(opts);
-    writeIdentityCache({ dir: dataDir2, now, identity: cached });
+    writeIdentityCache({ dir: dataDir2, agent: opts.agent, now, identity: cached });
   }
+  if (cached?.source === "native_claude" || cached?.source === "native_codex") {
+    const assertion = hintRecord(hint);
+    return assertion ? { ...cached, asserted_identity: assertion } : cached;
+  }
+  const asserted = hintRecord(hint);
+  if (asserted)
+    return asserted;
   if (cached)
     return cached;
   const git = await (opts.identitySources?.gitEmail ?? readGitConfigEmail)(cwd);
   return git ? { source: "git_config", email: git.email, scope: git.scope } : null;
 }
+function hintRecord(hint) {
+  if (hint?.source === "mdm_file" && (hint.user_email || hint.user_upn)) {
+    return { source: "mdm_file", ...hint.user_email ? { email: hint.user_email } : {}, ...hint.user_upn ? { upn: hint.user_upn } : {} };
+  }
+  if (hint?.source === "plugin_login" && hint.email)
+    return { source: "plugin_login", email: hint.email };
+  return null;
+}
 async function probeMachineScopedIdentity(opts) {
   const native = (opts.nativeReader ?? readNativeIdentity)(opts.agent);
-  if (native)
+  const expectedSource = opts.agent === "claude-code" ? "native_claude" : "native_codex";
+  if (native?.source === expectedSource)
     return native;
   const dscl = await (opts.identitySources?.dsclEmail ?? readMacOsDsclEmail)();
   if (dscl)
@@ -3443,14 +3535,14 @@ function gitRead(args) {
 
 // dist/shared/queue.mjs
 import { open as open3, stat as stat2 } from "node:fs/promises";
-import { join as join7 } from "node:path";
+import { join as join8 } from "node:path";
 var Queue = class {
   dir;
   path;
   capBytes;
   constructor(dir, capBytes) {
     this.dir = dir;
-    this.path = join7(dir, "queue.ndjson");
+    this.path = join8(dir, "queue.ndjson");
     this.capBytes = capBytes;
   }
   async size() {
@@ -3493,9 +3585,9 @@ var Queue = class {
 
 // dist/shared/health.mjs
 var import_proper_lockfile2 = __toESM(require_proper_lockfile(), 1);
-import { mkdir as mkdir3, readFile as readFile3, rename as rename3, writeFile } from "node:fs/promises";
-import { join as join8 } from "node:path";
-var DEFAULT = { dropped_event_count: 0 };
+import { mkdir as mkdir3, readFile as readFile4, rename as rename3, writeFile } from "node:fs/promises";
+import { join as join9 } from "node:path";
+var DEFAULT = { dropped_event_count: 0, metadata_skip_counts: {} };
 var LOCK_RETRIES = {
   retries: 100,
   factor: 1.5,
@@ -3508,19 +3600,25 @@ var HealthState = class {
   tmp;
   constructor(dir) {
     this.dir = dir;
-    this.path = join8(dir, "health.json");
+    this.path = join9(dir, "health.json");
     this.tmp = `${this.path}.tmp`;
   }
   async read() {
     try {
-      return { ...DEFAULT, ...JSON.parse(await readFile3(this.path, "utf8")) };
+      const parsed = JSON.parse(await readFile4(this.path, "utf8"));
+      return { ...DEFAULT, ...parsed, metadata_skip_counts: { ...parsed.metadata_skip_counts } };
     } catch {
-      return { ...DEFAULT };
+      return { ...DEFAULT, metadata_skip_counts: {} };
     }
   }
   async recordDrop(n) {
     await this.update((h) => {
       h.dropped_event_count += n;
+    });
+  }
+  async recordMetadataSkip(reason) {
+    await this.update((h) => {
+      h.metadata_skip_counts[reason] = (h.metadata_skip_counts[reason] ?? 0) + 1;
     });
   }
   async touch() {
@@ -3537,7 +3635,7 @@ var HealthState = class {
   async update(mutate) {
     await mkdir3(this.dir, { recursive: true });
     try {
-      await readFile3(this.path);
+      await readFile4(this.path);
     } catch {
       await writeFile(this.path, "{}", "utf8");
     }
@@ -3558,24 +3656,24 @@ var HealthState = class {
 
 // dist/shared/flusher.mjs
 var import_proper_lockfile3 = __toESM(require_proper_lockfile(), 1);
-import { appendFile, open as open4, readFile as readFile6, rename as rename6, writeFile as writeFile4 } from "node:fs/promises";
-import { join as join11 } from "node:path";
+import { appendFile, open as open4, readFile as readFile7, rename as rename6, writeFile as writeFile4 } from "node:fs/promises";
+import { join as join12 } from "node:path";
 
 // dist/shared/flush-cursor.mjs
-import { readFile as readFile4, rename as rename4, writeFile as writeFile2 } from "node:fs/promises";
-import { join as join9 } from "node:path";
+import { readFile as readFile5, rename as rename4, writeFile as writeFile2 } from "node:fs/promises";
+import { join as join10 } from "node:path";
 var FlushCursor = class {
   dir;
   path;
   tmpPath;
   constructor(dir) {
     this.dir = dir;
-    this.path = join9(dir, "flush_cursor.json");
+    this.path = join10(dir, "flush_cursor.json");
     this.tmpPath = `${this.path}.tmp`;
   }
   async read() {
     try {
-      const buf = await readFile4(this.path, "utf8");
+      const buf = await readFile5(this.path, "utf8");
       const parsed = JSON.parse(buf);
       return parsed.last_flushed_offset_bytes ?? 0;
     } catch (err) {
@@ -3607,8 +3705,8 @@ var FlushCursor = class {
 };
 
 // dist/shared/backoff-state.mjs
-import { mkdir as mkdir4, readFile as readFile5, rename as rename5, writeFile as writeFile3 } from "node:fs/promises";
-import { join as join10 } from "node:path";
+import { mkdir as mkdir4, readFile as readFile6, rename as rename5, writeFile as writeFile3 } from "node:fs/promises";
+import { join as join11 } from "node:path";
 var DEFAULT2 = {
   consecutiveAuthFailures: 0,
   transientAttempts: 0
@@ -3621,7 +3719,7 @@ var BackoffState = class {
   tmpPath;
   constructor(dir) {
     this.dir = dir;
-    this.path = join10(dir, "backoff.json");
+    this.path = join11(dir, "backoff.json");
     this.tmpPath = `${this.path}.tmp`;
   }
   async read() {
@@ -3711,7 +3809,7 @@ var BackoffState = class {
   }
   async loadFile() {
     try {
-      const buf = await readFile5(this.path, "utf8");
+      const buf = await readFile6(this.path, "utf8");
       return { ...DEFAULT2, ...JSON.parse(buf) };
     } catch (err) {
       if (err.code === "ENOENT") {
@@ -4122,6 +4220,32 @@ function readPluginFlags(opts = {}) {
   }
   return entry.plugin_flags;
 }
+function metadataGrantSkipReason(opts = {}) {
+  const resolved = resolveCredentialSync({
+    ...opts.paths !== void 0 ? { paths: opts.paths } : {},
+    ...opts.env !== void 0 ? { env: opts.env } : {}
+  });
+  if (resolved === null)
+    return "no_credential";
+  if (opts.credentialFingerprint !== void 0 && resolved.fingerprint !== opts.credentialFingerprint)
+    return "credential_changed";
+  const cacheOpts = opts.dir !== void 0 ? { dir: opts.dir } : {};
+  const entry = readWhoamiCacheAnyAge(resolved.fingerprint, cacheOpts);
+  const tenant = opts.expectedTenantId ?? entry?.result?.tenant_id ?? entry?.grant_binding?.tenant_assertion;
+  if (!tenant)
+    return "no_tenant";
+  if (resolved.ingestEndpoint !== void 0 && opts.ingestEndpoint !== void 0 && resolved.ingestEndpoint !== opts.ingestEndpoint)
+    return "grant_unbound";
+  if (entry?.grant_binding === void 0 || opts.apiEndpoint !== void 0 && entry.grant_binding.api_endpoint !== opts.apiEndpoint || opts.ingestEndpoint !== void 0 && entry.grant_binding.ingest_endpoint !== opts.ingestEndpoint)
+    return "grant_unbound";
+  if (entry.result !== void 0 && entry.grant_binding.tenant_assertion !== entry.result.tenant_id || opts.expectedTenantId !== void 0 && entry.grant_binding.tenant_assertion !== opts.expectedTenantId)
+    return "tenant_mismatch";
+  const fetchedAt = entry.plugin_flags_fetched_at;
+  const now = opts.now ?? Date.now();
+  if (entry.plugin_flags === void 0 || fetchedAt === void 0 || !Number.isFinite(fetchedAt) || fetchedAt > now || now - fetchedAt > PLUGIN_FLAGS_MAX_AGE_MS || entry.plugin_flags[PLUGIN_FLAG_SESSION_NAMING] !== true)
+    return "flag_off";
+  return null;
+}
 function matchesGrantBinding(entry, opts) {
   const bound = opts.apiEndpoint !== void 0 || opts.ingestEndpoint !== void 0 || opts.expectedTenantId !== void 0;
   if (!bound)
@@ -4197,6 +4321,7 @@ var ATTR_TYPE = {
   naming_schema_version: "int",
   name: "string",
   name_origin: "string",
+  skip_reason: "string",
   // prompt.submit
   prompt_length: "int",
   slash_command: "string",
@@ -4467,8 +4592,8 @@ var COMPACT_THRESHOLD_BYTES = 1e6;
 async function tryFlush(input) {
   const start = Date.now();
   const deadline = start + input.budgetMs;
-  const queuePath = join11(input.dataDir, "queue.ndjson");
-  const flushLockPath = join11(input.dataDir, ".flush.lock");
+  const queuePath = join12(input.dataDir, "queue.ndjson");
+  const flushLockPath = join12(input.dataDir, ".flush.lock");
   const backoff = new BackoffState(input.dataDir);
   const cursor = new FlushCursor(input.dataDir);
   const health = new HealthState(input.stateDir);
@@ -4481,7 +4606,7 @@ async function tryFlush(input) {
     return { skipped: true, reason: "backoff deadline in future" };
   }
   try {
-    await readFile6(flushLockPath);
+    await readFile7(flushLockPath);
   } catch {
     const fh = await open4(flushLockPath, "a");
     await fh.close();
@@ -4496,7 +4621,7 @@ async function tryFlush(input) {
     let startOffset = await cursor.read();
     let batch = await readBatch(queuePath, startOffset, input.batchMaxEvents ?? DEFAULT_MAX_EVENTS, input.batchMaxBytes ?? DEFAULT_MAX_BYTES);
     if (batch.events.length === 0 && batch.cursorPastEof) {
-      await appendFile(join11(input.dataDir, "collect-error.log"), `${(/* @__PURE__ */ new Date()).toISOString()} fancysauce: flush cursor (${startOffset}) past queue EOF (${batch.queueSize}); resetting (at-least-once dedup applies)
+      await appendFile(join12(input.dataDir, "collect-error.log"), `${(/* @__PURE__ */ new Date()).toISOString()} fancysauce: flush cursor (${startOffset}) past queue EOF (${batch.queueSize}); resetting (at-least-once dedup applies)
 `).catch(() => {
       });
       await cursor.resetUnlocked();
@@ -4514,7 +4639,7 @@ async function tryFlush(input) {
     try {
       envelope = encodeOtlp(events, input.resource);
     } catch (err) {
-      await appendFile(join11(input.dataDir, "collect-error.log"), `${(/* @__PURE__ */ new Date()).toISOString()} fancysauce: encoder rejected batch of ${events.length} events (cursor ${startOffset}\u2192${endOffset}); dropping: ${err.message}
+      await appendFile(join12(input.dataDir, "collect-error.log"), `${(/* @__PURE__ */ new Date()).toISOString()} fancysauce: encoder rejected batch of ${events.length} events (cursor ${startOffset}\u2192${endOffset}); dropping: ${err.message}
 `).catch(() => {
       });
       await cursor.advance(endOffset);
@@ -4675,7 +4800,7 @@ async function logRebind(dataDir2, rebind) {
   const truncated = body.length > REBIND_LOG_BODY_BUDGET ? `${body.slice(0, REBIND_LOG_BODY_BUDGET)}...[truncated ${body.length - REBIND_LOG_BODY_BUDGET}B]` : body;
   const line = `${(/* @__PURE__ */ new Date()).toISOString()} fancysauce: rebind directive received and ignored (v0.5.0 closed-schema): ${truncated}
 `;
-  await appendFile(join11(dataDir2, "collect-error.log"), line).catch(() => {
+  await appendFile(join12(dataDir2, "collect-error.log"), line).catch(() => {
   });
 }
 async function dropQueue(dataDir2, queuePath, cursor) {
@@ -4737,12 +4862,12 @@ function defaultOnError(_name, _err) {
 
 // dist/shared/sinks/event-log.mjs
 import { appendFile as appendFile2 } from "node:fs/promises";
-import { join as join12 } from "node:path";
+import { join as join13 } from "node:path";
 function eventLogSink() {
   return {
     name: "event-log",
     async onEvents(events, ctx) {
-      const path = join12(ctx.sessionDir, "events.v1.jsonl");
+      const path = join13(ctx.sessionDir, "events.v1.jsonl");
       const body = events.map(serialize).join("\n") + "\n";
       await appendFile2(path, body, { encoding: "utf8", mode: 384 });
     }
@@ -4762,8 +4887,8 @@ function serialize(e) {
 }
 
 // dist/shared/sinks/summary-updater.mjs
-import { readFile as readFile7, writeFile as writeFile5, rename as rename7, mkdir as mkdir5 } from "node:fs/promises";
-import { join as join13, dirname as dirname3 } from "node:path";
+import { readFile as readFile8, writeFile as writeFile5, rename as rename7, mkdir as mkdir5 } from "node:fs/promises";
+import { join as join14, dirname as dirname3 } from "node:path";
 
 // dist/shared/sinks/coalescers.mjs
 function initialSummary(sessionId, startTs, version) {
@@ -4927,11 +5052,11 @@ function summaryUpdaterSink(opts) {
   return {
     name: "summary-updater",
     async onEvents(events, ctx) {
-      const path = join13(ctx.sessionDir, "summary.json");
+      const path = join14(ctx.sessionDir, "summary.json");
       await withDirLock(ctx.sessionDir, async () => {
         let summary;
         try {
-          const raw = await readFile7(path, "utf8");
+          const raw = await readFile8(path, "utf8");
           summary = JSON.parse(raw);
         } catch (err) {
           if (err.code !== "ENOENT")
@@ -4951,8 +5076,8 @@ function summaryUpdaterSink(opts) {
 }
 
 // dist/shared/sinks/session-index.mjs
-import { readFile as readFile8, writeFile as writeFile6, rename as rename8, mkdir as mkdir6, rm } from "node:fs/promises";
-import { join as join14, dirname as dirname4 } from "node:path";
+import { readFile as readFile9, writeFile as writeFile6, rename as rename8, mkdir as mkdir6, rm } from "node:fs/promises";
+import { join as join15, dirname as dirname4 } from "node:path";
 
 // dist/shared/session-id.mjs
 var SESSION_ID_RE = /^[A-Za-z0-9_-]{1,128}$/;
@@ -4973,19 +5098,19 @@ function sessionIndexSink(opts = {}) {
       if (relevant.length === 0)
         return;
       await withDirLock(ctx.dataDir, async () => {
-        const indexPath = join14(ctx.dataDir, "session-index.json");
+        const indexPath = join15(ctx.dataDir, "session-index.json");
         let idx;
         try {
-          idx = JSON.parse(await readFile8(indexPath, "utf8"));
+          idx = JSON.parse(await readFile9(indexPath, "utf8"));
         } catch (err) {
           if (err.code !== "ENOENT")
             throw err;
           idx = { schema_version: 1, updated_ts: (/* @__PURE__ */ new Date()).toISOString(), sessions: [] };
         }
-        const summaryPath = join14(ctx.sessionDir, "summary.json");
+        const summaryPath = join15(ctx.sessionDir, "summary.json");
         let summary = null;
         try {
-          summary = JSON.parse(await readFile8(summaryPath, "utf8"));
+          summary = JSON.parse(await readFile9(summaryPath, "utf8"));
         } catch (err) {
           if (err.code !== "ENOENT")
             throw err;
@@ -5035,7 +5160,7 @@ function sessionIndexSink(opts = {}) {
         for (const s of expired) {
           if (!isValidSessionId(s.session_id))
             continue;
-          await rm(join14(ctx.dataDir, "sessions", s.session_id), { recursive: true, force: true });
+          await rm(join15(ctx.dataDir, "sessions", s.session_id), { recursive: true, force: true });
         }
         idx.updated_ts = (/* @__PURE__ */ new Date()).toISOString();
         await mkdir6(dirname4(indexPath), { recursive: true, mode: 448 });
@@ -5056,68 +5181,6 @@ import { createHash as createHash4 } from "node:crypto";
 import { mkdir as mkdir8 } from "node:fs/promises";
 import { dirname as dirname6, join as join18 } from "node:path";
 import { fileURLToPath as fileURLToPath2 } from "node:url";
-
-// dist/agents/codex/auth-claim.mjs
-import { readFile as readFile9 } from "node:fs/promises";
-import { join as join15 } from "node:path";
-function resolveCodexHome(env, homeDir) {
-  return env.CODEX_HOME && env.CODEX_HOME.length > 0 ? env.CODEX_HOME : join15(homeDir, ".codex");
-}
-function resolveCodexAuthPath(env, homeDir) {
-  return join15(resolveCodexHome(env, homeDir), "auth.json");
-}
-function decodeJwtPayload2(idToken) {
-  const parts = idToken.split(".");
-  if (parts.length !== 3)
-    return void 0;
-  let json;
-  try {
-    json = Buffer.from(parts[1], "base64url").toString("utf8");
-  } catch {
-    return void 0;
-  }
-  let payload;
-  try {
-    payload = JSON.parse(json);
-  } catch {
-    return void 0;
-  }
-  if (typeof payload !== "object" || payload === null)
-    return void 0;
-  return payload;
-}
-async function readPlanClaim(path) {
-  let raw;
-  try {
-    raw = await readFile9(path, "utf8");
-  } catch {
-    return void 0;
-  }
-  let doc;
-  try {
-    doc = JSON.parse(raw);
-  } catch {
-    return void 0;
-  }
-  if (typeof doc === "object" && doc !== null) {
-    const d = doc;
-    const tokens = typeof d.tokens === "object" && d.tokens !== null ? d.tokens : void 0;
-    const idToken = tokens?.id_token ?? d.id_token;
-    if (typeof idToken === "string") {
-      const payload = decodeJwtPayload2(idToken);
-      if (payload) {
-        const auth = payload["https://api.openai.com/auth"];
-        if (typeof auth === "object" && auth !== null) {
-          const planType = auth.chatgpt_plan_type;
-          if (typeof planType === "string" && planType.length > 0) {
-            return planType;
-          }
-        }
-      }
-    }
-  }
-  return void 0;
-}
 
 // dist/shared/lease.mjs
 import { closeSync as closeSync2, ftruncateSync, openSync as openSync2, readFileSync as readFileSync7, rmSync as rmSync2, statSync as statSync3, futimesSync, writeSync as writeSync2 } from "node:fs";
@@ -5237,9 +5300,9 @@ function transitionGrant(state, enabled, at) {
   if (enabled) {
     nextIntervals.push({ started_at: at });
   } else {
-    const open9 = nextIntervals[nextIntervals.length - 1];
-    if (open9 !== void 0 && open9.ended_at === void 0)
-      open9.ended_at = at;
+    const open10 = nextIntervals[nextIntervals.length - 1];
+    if (open10 !== void 0 && open10.ended_at === void 0)
+      open10.ended_at = at;
   }
   return {
     ...state,
@@ -5542,7 +5605,8 @@ async function appendCorruptGrantTransitions(path, raw) {
   const name = basename2(path);
   const prefix = name.startsWith(processingPrefix) ? processingPrefix : markerPrefix;
   const suffix = name.slice(prefix.length);
-  const claim = suffix.slice(0, suffix.indexOf("."));
+  const separator = suffix.indexOf(".");
+  const claim = (separator === -1 ? suffix : suffix.slice(0, separator)) || unixNanosecondClaim();
   const quarantine = `${path}.corrupt.${claim}`;
   const fh = await open5(quarantine, "a", 384);
   try {
@@ -5556,7 +5620,8 @@ async function appendCorruptGrantTransitions(path, raw) {
 async function appendCorruptSessionRegistrations(path, raw) {
   const processingPrefix = `${PENDING_SESSION_REGISTRATION_FILE}.processing.`;
   const suffix = basename2(path).slice(processingPrefix.length);
-  const claim = suffix.slice(0, suffix.indexOf("."));
+  const separator = suffix.indexOf(".");
+  const claim = (separator === -1 ? suffix : suffix.slice(0, separator)) || unixNanosecondClaim();
   const quarantine = `${path}.corrupt.${claim}`;
   const fh = await open5(quarantine, "a", 384);
   try {
@@ -5569,12 +5634,16 @@ async function appendCorruptSessionRegistrations(path, raw) {
 }
 function parsePendingGrantTransition(lineBytes) {
   let parsed;
+  let line;
   try {
-    parsed = JSON.parse(lineBytes.toString("utf8"));
+    line = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(lineBytes);
+    parsed = JSON.parse(line);
   } catch {
     return null;
   }
   if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed))
+    return null;
+  if (hasDuplicateObjectKeys(line))
     return null;
   const marker = parsed;
   const keys = Object.keys(marker);
@@ -5582,10 +5651,41 @@ function parsePendingGrantTransition(lineBytes) {
     return null;
   if (typeof marker.at !== "string" || marker.at === "" || typeof marker.enabled !== "boolean")
     return null;
-  const normalized = { at: marker.at, enabled: marker.enabled };
-  if (!Buffer.from(JSON.stringify(normalized)).equals(lineBytes))
-    return null;
-  return normalized;
+  return { at: marker.at, enabled: marker.enabled };
+}
+function hasDuplicateObjectKeys(line) {
+  const keys = /* @__PURE__ */ new Set();
+  let depth = 0;
+  for (let index = 0; index < line.length; ) {
+    const char = line[index];
+    if (char === '"') {
+      const start = index++;
+      while (index < line.length) {
+        if (line[index] === "\\")
+          index += 2;
+        else if (line[index++] === '"')
+          break;
+      }
+      if (depth === 1) {
+        let next = index;
+        while (/\s/.test(line[next] ?? ""))
+          next += 1;
+        if (line[next] === ":") {
+          const key = JSON.parse(line.slice(start, index));
+          if (keys.has(key))
+            return true;
+          keys.add(key);
+        }
+      }
+      continue;
+    }
+    if (char === "{" || char === "[")
+      depth += 1;
+    else if (char === "}" || char === "]")
+      depth -= 1;
+    index += 1;
+  }
+  return false;
 }
 function parsePendingSessionRegistration(lineBytes) {
   let parsed;
@@ -5746,6 +5846,7 @@ function parseState(value) {
   if (o.first_name_observation !== void 0 && first === null)
     return null;
   return {
+    ...Object.fromEntries(Object.entries(o).filter(([key]) => !STATE_FIELDS.has(key))),
     schema_version: 1,
     tenant_id: o.tenant_id,
     credential_fingerprint: o.credential_fingerprint,
@@ -5765,6 +5866,25 @@ function parseState(value) {
     pending_payload_ids: [...o.pending_payload_ids]
   };
 }
+var STATE_FIELDS = /* @__PURE__ */ new Set([
+  "schema_version",
+  "tenant_id",
+  "credential_fingerprint",
+  "endpoint_identity",
+  "install_id",
+  "agent",
+  "session_id",
+  "codex_home",
+  "capture_started_at",
+  "source_file_identity",
+  "byte_offset",
+  "source_file_id",
+  "source_continuity_checkpoint",
+  "grant_transitions",
+  "enabled_capture_intervals",
+  "first_name_observation",
+  "pending_payload_ids"
+]);
 function parseOptionalString(value) {
   return value === void 0 ? null : typeof value === "string" ? value : null;
 }
@@ -5930,6 +6050,8 @@ async function scheduleMetadataWork(input) {
     args.push("--expected-tenant-id", input.expectedTenantId);
   if (input.grantObservedAt)
     args.push("--grant-observed-at", input.grantObservedAt);
+  if (input.settle === true)
+    args.push("--settle");
   const spawner = input.spawner ?? ((binPath, childArgs) => spawnDetached(binPath, childArgs, buildRunnerEnv(process.env)));
   try {
     const { pid } = await spawner(sessionMetadataBinPath(dirname6(fileURLToPath2(import.meta.url))), args);
@@ -5941,13 +6063,82 @@ async function scheduleMetadataWork(input) {
   }
 }
 
+// dist/shared/session-metadata/skip.mjs
+var import_proper_lockfile5 = __toESM(require_proper_lockfile(), 1);
+import { randomUUID as randomUUID2 } from "node:crypto";
+import { mkdir as mkdir9, readdir as readdir2, readFile as readFile11, writeFile as writeFile7, unlink as unlink4, open as open6 } from "node:fs/promises";
+import { join as join19 } from "node:path";
+var DAY = 24 * 60 * 60 * 1e3;
+var WEEK = 7 * DAY;
+var CAP = 100 * 1024 * 1024;
+async function recordMetadataSkip(opts) {
+  const now = opts.now ?? Date.now();
+  const at = new Date(now).toISOString();
+  const root = join19(opts.dataDir, "session-metadata", ".skipped");
+  const dir = join19(root, opts.agent);
+  await mkdir9(dir, { recursive: true, mode: 448 });
+  const path = join19(dir, `${opts.sessionId}.json`);
+  const lockSeed = await open6(path, "a", 384);
+  await lockSeed.close();
+  const release = await import_proper_lockfile5.default.lock(path, { realpath: false, retries: 100, stale: 1e4 });
+  try {
+    let old = null;
+    try {
+      old = JSON.parse(await readFile11(path, "utf8"));
+    } catch {
+    }
+    const sentAt = old?.event_sent_at?.[opts.reason];
+    const sentMs = sentAt === void 0 ? Number.NaN : Date.parse(sentAt);
+    const send = !Number.isFinite(sentMs) || now - sentMs >= DAY;
+    const next = {
+      last_reason: opts.reason,
+      last_at: at,
+      event_sent_at: { ...old?.event_sent_at ?? {}, ...send ? { [opts.reason]: at } : {} }
+    };
+    await writeFile7(path, JSON.stringify(next), { encoding: "utf8", mode: 384 });
+    await new HealthState(opts.dataDir).recordMetadataSkip(opts.reason);
+    if (send) {
+      const event = {
+        event_uuid: randomUUID2(),
+        event_type: "session.metadata_worker_skipped",
+        session_id: opts.sessionId,
+        source: "session_metadata",
+        replay: "none",
+        sequence: 0,
+        timestamp_ns: BigInt(now) * 1000000n,
+        attributes: { skip_reason: opts.reason }
+      };
+      const line = JSON.stringify({ ...event, timestamp_ns: event.timestamp_ns.toString() });
+      await new Queue(join19(opts.dataDir, "outbound"), CAP).append([line]);
+    }
+  } finally {
+    await release();
+  }
+  for (const agent of await readdir2(root, { withFileTypes: true }).catch(() => [])) {
+    if (!agent.isDirectory())
+      continue;
+    const oldDir = join19(root, agent.name);
+    for (const file of await readdir2(oldDir).catch(() => [])) {
+      if (!file.endsWith(".json"))
+        continue;
+      const candidate = join19(oldDir, file);
+      try {
+        const record = JSON.parse(await readFile11(candidate, "utf8"));
+        if (now - Date.parse(record.last_at) > WEEK)
+          await unlink4(candidate);
+      } catch {
+      }
+    }
+  }
+}
+
 // dist/shared/plugin-version.mjs
 import { readFileSync as readFileSync8 } from "node:fs";
-import { join as join19 } from "node:path";
+import { join as join20 } from "node:path";
 function pluginVersion() {
   for (const path of [
-    join19(import.meta.dirname, "../../package.json"),
-    join19(import.meta.dirname, "../../../package.json")
+    join20(import.meta.dirname, "../../package.json"),
+    join20(import.meta.dirname, "../../../package.json")
   ]) {
     try {
       const value = JSON.parse(readFileSync8(path, "utf8"));
@@ -6025,9 +6216,8 @@ async function runCollect(adapter, opts) {
     }
     const hookPayload = opts.hookPayload;
     const root = opts.dataDir ?? dataDir();
-    await mkdir12(root, { recursive: true, mode: 448 });
-    const canFlush = Boolean(config.credential);
-    const identityOpts = canFlush ? { identity_hint: config.identity_hint ?? null, agent: adapter.agent } : void 0;
+    await mkdir13(root, { recursive: true, mode: 448 });
+    const identityOpts = { identity_hint: config.identity_hint ?? null, agent: adapter.agent };
     const identity = await new IdentityResolver(root).resolve(hookPayload.cwd ?? process.cwd(), identityOpts);
     const resource = toResourceAttributes(identity, {
       pluginVersion: pluginVersion(),
@@ -6038,8 +6228,11 @@ async function runCollect(adapter, opts) {
     const resolvedCredential = resolveCredentialSync();
     const cachedGrant = resolvedCredential === null ? null : readWhoamiCacheAnyAge(resolvedCredential.fingerprint);
     const expectedTenantId = cachedGrant?.result?.tenant_id ?? cachedGrant?.grant_binding?.tenant_assertion;
+    const apiEndpoint = resolvedCredential?.apiEndpoint ?? API_ENDPOINT;
+    const boundFlags = readPluginFlags({ apiEndpoint, ingestEndpoint: config.endpoint, ...expectedTenantId ? { expectedTenantId } : {} });
+    const skipReason = metadataGrantSkipReason({ apiEndpoint, ingestEndpoint: config.endpoint, ...expectedTenantId ? { expectedTenantId } : {} });
     const metadataSchedule = {
-      flags: pluginFlags,
+      flags: boundFlags,
       dataDir: root,
       installId: resource["fancysauce.install_id"],
       agent: adapter.agent,
@@ -6049,25 +6242,30 @@ async function runCollect(adapter, opts) {
       ...resolvedCredential !== null ? { credentialFingerprint: resolvedCredential.fingerprint } : {},
       ...expectedTenantId !== void 0 ? { expectedTenantId } : {},
       grantObservedAt: (/* @__PURE__ */ new Date()).toISOString(),
+      ...hookPayload.hook_event_name === "SubagentStop" && hookPayload.agent_type === "" ? { settle: true } : {},
       endpoint: config.endpoint,
       ...opts.sessionMetadataSpawner !== void 0 ? { spawner: opts.sessionMetadataSpawner } : {}
     };
-    const metadataWork = pluginFlags[PLUGIN_FLAG_SESSION_NAMING] === true ? scheduleMetadataWork(metadataSchedule) : existsSync(join24(root, "session-metadata", adapter.agent, hookPayload.session_id)) ? recordMetadataGrantTransition(metadataSchedule, metadataSchedule.grantObservedAt) : Promise.resolve();
+    const metadataWork = boundFlags[PLUGIN_FLAG_SESSION_NAMING] === true ? scheduleMetadataWork(metadataSchedule) : existsSync(join25(root, "session-metadata", adapter.agent, hookPayload.session_id)) ? recordMetadataGrantTransition(metadataSchedule, metadataSchedule.grantObservedAt) : Promise.resolve();
+    if (pluginFlags[PLUGIN_FLAG_SESSION_NAMING] === true && boundFlags[PLUGIN_FLAG_SESSION_NAMING] !== true && skipReason !== null) {
+      await recordMetadataSkip({ dataDir: root, agent: adapter.agent, sessionId: hookPayload.session_id, reason: skipReason }).catch(() => {
+      });
+    }
     void metadataWork.catch(() => {
     });
     const enrichedRaw = await adapter.mapHookEvent(hookPayload, { pluginFlags });
     const stamped = enrichedRaw && enrichedRaw.event_type === "session.start" && identity.repo_url_hash ? { ...enrichedRaw, attributes: { ...enrichedRaw.attributes, "fancysauce.repo_url_hash": identity.repo_url_hash } } : enrichedRaw;
-    const withId = stamped === null ? null : { ...stamped, event_uuid: randomUUID3() };
+    const withId = stamped === null ? null : { ...stamped, event_uuid: randomUUID4() };
     const primary = withId === null ? null : filterEvent(withId, config.policy);
     let primaryPending = primary;
-    const outboundDir = join24(root, "outbound");
-    await mkdir12(outboundDir, { recursive: true, mode: 448 });
+    const outboundDir = join25(root, "outbound");
+    await mkdir13(outboundDir, { recursive: true, mode: 448 });
     const queue = new Queue(outboundDir, QUEUE_CAP_BYTES);
     let queueDropped = 0;
     let tailFilterDropped = 0;
     const ctx = {
-      stateDir: join24(root, "state"),
-      errorLogPath: join24(root, "collect-error.log"),
+      stateDir: join25(root, "state"),
+      errorLogPath: join25(root, "collect-error.log"),
       transcriptRoot: opts.transcriptRoot
     };
     const sinkEvents = [];
@@ -6088,17 +6286,17 @@ async function runCollect(adapter, opts) {
       sinkEvents.push(...all);
     });
     if (sinkEvents.length > 0) {
-      const sessionDir = join24(root, "sessions", hookPayload.session_id);
+      const sessionDir = join25(root, "sessions", hookPayload.session_id);
       const onSinkError = async (name, err) => {
         const msg = err instanceof Error ? err.stack ?? err.message : String(err);
         try {
-          await appendFile3(join24(root, "collect-error.log"), `${(/* @__PURE__ */ new Date()).toISOString()} sink ${name}: ${msg}
+          await appendFile3(join25(root, "collect-error.log"), `${(/* @__PURE__ */ new Date()).toISOString()} sink ${name}: ${msg}
 `);
         } catch {
         }
       };
       try {
-        await mkdir12(sessionDir, { recursive: true, mode: 448 });
+        await mkdir13(sessionDir, { recursive: true, mode: 448 });
         const sinks = [
           eventLogSink(),
           summaryUpdaterSink({ pluginVersion: pluginVersion() }),
@@ -6114,7 +6312,7 @@ async function runCollect(adapter, opts) {
       }
     }
     const primaryFilterDropped = stamped !== null && primary === null ? 1 : 0;
-    const health = new HealthState(join24(root, "state"));
+    const health = new HealthState(join25(root, "state"));
     await health.touch();
     const dropped = queueDropped + tailFilterDropped + primaryFilterDropped;
     if (dropped > 0)
@@ -6123,7 +6321,7 @@ async function runCollect(adapter, opts) {
     if (remaining > 300) {
       await tryFlush({
         dataDir: outboundDir,
-        stateDir: join24(root, "state"),
+        stateDir: join25(root, "state"),
         credential: config.credential,
         endpoint: config.endpoint,
         resource,
@@ -6131,8 +6329,8 @@ async function runCollect(adapter, opts) {
       });
     }
     try {
-      const stateDir = join24(root, "state");
-      const pendingPath = join24(config.loginStateDir, "backfill-pending");
+      const stateDir = join25(root, "state");
+      const pendingPath = join25(config.loginStateDir, "backfill-pending");
       const pendingExists = await stat4(pendingPath).then(() => true).catch(() => false);
       if (pendingExists) {
         const { isBackfillActive: isBackfillActive2 } = await Promise.resolve().then(() => (init_pid_guard(), pid_guard_exports));
@@ -6149,11 +6347,11 @@ async function runCollect(adapter, opts) {
     }
     try {
       if (adapter.agent === "claude-code") {
-        const stateDir = join24(root, "state");
+        const stateDir = join25(root, "state");
         const { hasScanOnceMarker: hasScanOnceMarker2, claimScanOnce: claimScanOnce2 } = await Promise.resolve().then(() => (init_scan_once(), scan_once_exports));
         const alreadyAttempted = await hasScanOnceMarker2(stateDir);
         if (!alreadyAttempted && await claimScanOnce2(stateDir, pluginVersion())) {
-          const skipMarkerExists = await stat4(join24(stateDir, "backfill-skip")).then(() => true).catch(() => false);
+          const skipMarkerExists = await stat4(join25(stateDir, "backfill-skip")).then(() => true).catch(() => false);
           if (!skipMarkerExists) {
             const { spawnAutoScan: spawnAutoScan2 } = await Promise.resolve().then(() => (init_runner_spawn(), runner_spawn_exports));
             const { credentialPaths: credentialPaths2 } = await Promise.resolve().then(() => (init_credential_paths(), credential_paths_exports));
@@ -6166,7 +6364,7 @@ async function runCollect(adapter, opts) {
     } catch {
     }
     try {
-      const stateDir = join24(root, "state");
+      const stateDir = join25(root, "state");
       const { readStatus: readStatus2, writeStatus: writeStatus2 } = await Promise.resolve().then(() => (init_status(), status_exports));
       const status = await readStatus2(stateDir);
       if (status && status.phase === "completed" && !status.notified) {
@@ -6180,8 +6378,8 @@ async function runCollect(adapter, opts) {
     const msg = err instanceof Error ? `${err.message}
 ${err.stack ?? ""}` : String(err);
     try {
-      const logPath = join24(opts.dataDir ?? dataDir(), "collect-error.log");
-      await writeFile8(logPath, `${(/* @__PURE__ */ new Date()).toISOString()} ${msg}
+      const logPath = join25(opts.dataDir ?? dataDir(), "collect-error.log");
+      await writeFile9(logPath, `${(/* @__PURE__ */ new Date()).toISOString()} ${msg}
 `, { flag: "a" });
     } catch {
     }
@@ -6550,7 +6748,83 @@ function commandIsOnlyActingCommands(command) {
   const segments = splitSimpleCommands(command);
   return segments.length > 0 && segments.every((words) => simpleCommandIsShellSyntax(words) || simpleCommandActsOnWorkItem(words));
 }
-function extractWorkItemRefs(toolName, command, toolResponseRaw) {
+var DRIVE_FILE_MIME_TYPES = /* @__PURE__ */ new Set([
+  "application/vnd.google-apps.document",
+  "application/vnd.google-apps.spreadsheet",
+  "application/vnd.google-apps.presentation"
+]);
+var DRIVE_ID = /^[A-Za-z0-9_-]{33,44}$/;
+var DRIVE_MUTATION_VERBS = ["create", "update", "copy", "modify", "write", "batch_update"];
+function driveToolVerb(toolName) {
+  if (!toolName.startsWith("mcp__"))
+    return null;
+  const separator = toolName.indexOf("__", 5);
+  if (separator < 0)
+    return null;
+  const tool = toolName.slice(separator + 2);
+  return DRIVE_MUTATION_VERBS.find((verb) => tool === verb || tool.startsWith(`${verb}_`)) ?? null;
+}
+function plainObject(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value) ? value : null;
+}
+function driveResponseObject(raw) {
+  let response;
+  try {
+    response = JSON.parse(raw);
+    if (typeof response === "string")
+      response = JSON.parse(response);
+  } catch {
+    return null;
+  }
+  return plainObject(response);
+}
+function googleDriveRef(toolName, toolInput, toolResponseRaw) {
+  const verb = driveToolVerb(toolName);
+  if (!verb)
+    return [];
+  const response = driveResponseObject(toolResponseRaw);
+  const mimeType = response?.mimeType;
+  if (mimeType !== void 0 && (typeof mimeType !== "string" || !DRIVE_FILE_MIME_TYPES.has(mimeType)))
+    return [];
+  let candidate;
+  if (verb === "create" || verb === "copy") {
+    if (!response || typeof mimeType !== "string" || !DRIVE_FILE_MIME_TYPES.has(mimeType))
+      return [];
+    candidate = response.id;
+  } else {
+    const input = plainObject(toolInput);
+    if (!input)
+      return [];
+    const inputIds = new Set(["document_id", "spreadsheet_id", "presentation_id", "fileId", "file_id"].map((field) => input[field]).filter((value) => typeof value === "string"));
+    if (inputIds.size !== 1)
+      return [];
+    [candidate] = inputIds;
+    if ((typeof input.fileId === "string" || typeof input.file_id === "string") && (!response || typeof mimeType !== "string" || !DRIVE_FILE_MIME_TYPES.has(mimeType) || response.id !== candidate))
+      return [];
+  }
+  if (typeof candidate !== "string" || !DRIVE_ID.test(candidate))
+    return [];
+  return [{ system: "google_drive", kind: "file", id: candidate, scope: "drive.google.com", source: "tool_output" }];
+}
+function extractWorkItemRefs(toolName, command, toolResponseRaw, toolInput) {
+  if (toolInput !== void 0 && driveToolVerb(toolName)) {
+    return googleDriveRef(toolName, toolInput, toolResponseRaw);
+  }
+  if (toolName === "Artifact") {
+    let response;
+    try {
+      response = JSON.parse(toolResponseRaw);
+    } catch {
+      return [];
+    }
+    if (response === null || typeof response !== "object" || Array.isArray(response))
+      return [];
+    const object = response;
+    const candidate = object.artifact_id;
+    if (typeof candidate !== "string" || !/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(candidate))
+      return [];
+    return [{ system: "claude", kind: "artifact", id: candidate.toLowerCase(), scope: "claude.ai", source: "tool_output" }];
+  }
   if (toolName !== "Bash" || !toolResponseRaw || !commandActsOnWorkItem(command))
     return [];
   const refs = /* @__PURE__ */ new Map();
@@ -6669,14 +6943,14 @@ function mapHookToEvent(input, sequence, opts = {}) {
 }
 
 // dist/agents/codex/rollout-tail.mjs
-var import_proper_lockfile5 = __toESM(require_proper_lockfile(), 1);
-import { mkdir as mkdir15, readFile as readFile17, writeFile as writeFile12, rename as rename14, appendFile as appendFile4, unlink as unlink6 } from "node:fs/promises";
-import { join as join28 } from "node:path";
+var import_proper_lockfile6 = __toESM(require_proper_lockfile(), 1);
+import { mkdir as mkdir16, readFile as readFile18, writeFile as writeFile13, rename as rename14, appendFile as appendFile4, unlink as unlink7 } from "node:fs/promises";
+import { join as join29 } from "node:path";
 import { homedir as homedir6 } from "node:os";
 import { createHash as createHash5 } from "node:crypto";
 
 // dist/shared/tail-engine.mjs
-import { open as open8, constants as constants2 } from "node:fs/promises";
+import { open as open9, constants as constants2 } from "node:fs/promises";
 var DEFAULT_MAX_READ_BYTES = 4 * 1024 * 1024;
 async function readWindow(opts) {
   const { path, startOffset, sequenceBase, maxReadBytes, parseWindow, state } = opts;
@@ -6684,7 +6958,7 @@ async function readWindow(opts) {
   try {
     try {
       const flags = opts.nofollow && typeof constants2.O_NOFOLLOW === "number" ? constants2.O_RDONLY | constants2.O_NOFOLLOW : "r";
-      fh = await open8(path, flags);
+      fh = await open9(path, flags);
     } catch (err) {
       if (err.code === "ENOENT") {
         return { events: [], endOffset: startOffset, truncated: false };
@@ -6727,8 +7001,8 @@ function computeCostUsd(model, t) {
 }
 
 // dist/agents/codex/speed-posture.mjs
-import { readFile as readFile14, writeFile as writeFile9, rename as rename11, mkdir as mkdir13, stat as stat5 } from "node:fs/promises";
-import { join as join25 } from "node:path";
+import { readFile as readFile15, writeFile as writeFile10, rename as rename11, mkdir as mkdir14, stat as stat5 } from "node:fs/promises";
+import { join as join26 } from "node:path";
 var CATALOG_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1e3;
 var TIER_SHAPE = /^[a-z0-9_-]{1,32}$/;
 function aliasToWire(alias) {
@@ -6740,7 +7014,7 @@ function guardedTier(value) {
 async function readSpeedPostureWithMeta(codexHome, nowMs) {
   let parsed;
   try {
-    parsed = JSON.parse(await readFile14(join25(codexHome, "models_cache.json"), "utf8"));
+    parsed = JSON.parse(await readFile15(join26(codexHome, "models_cache.json"), "utf8"));
   } catch {
     return { posture: null };
   }
@@ -6773,7 +7047,7 @@ async function readSpeedPostureWithMeta(codexHome, nowMs) {
   if (entries.some((e) => e.defaultTier === "priority"))
     sp.fast_default = true;
   try {
-    const toml = await readFile14(join25(codexHome, "config.toml"), "utf8");
+    const toml = await readFile15(join26(codexHome, "config.toml"), "utf8");
     for (const line of toml.split("\n")) {
       const t = line.trim();
       if (t.startsWith("["))
@@ -6819,12 +7093,12 @@ function dropInvalidConfigServiceTier(posture) {
   return rest;
 }
 async function readSpeedPostureCached(codexHome, stateDir, nowMs) {
-  const modelsCache = await statOrUndefined(join25(codexHome, "models_cache.json"));
-  const config = await statOrUndefined(join25(codexHome, "config.toml"));
-  const cachePath = join25(stateDir, SPEED_POSTURE_CACHE_FILE);
+  const modelsCache = await statOrUndefined(join26(codexHome, "models_cache.json"));
+  const config = await statOrUndefined(join26(codexHome, "config.toml"));
+  const cachePath = join26(stateDir, SPEED_POSTURE_CACHE_FILE);
   let cached;
   try {
-    const parsed = JSON.parse(await readFile14(cachePath, "utf8"));
+    const parsed = JSON.parse(await readFile15(cachePath, "utf8"));
     if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
       cached = parsed;
     }
@@ -6838,10 +7112,10 @@ async function readSpeedPostureCached(codexHome, stateDir, nowMs) {
   }
   const { posture, fetchedAtMs } = await readSpeedPostureWithMeta(codexHome, nowMs);
   try {
-    await mkdir13(stateDir, { recursive: true, mode: 448 });
+    await mkdir14(stateDir, { recursive: true, mode: 448 });
     const tmp = `${cachePath}.${process.pid}.tmp`;
     const body = { modelsCache, config, posture, catalogFetchedAtMs: fetchedAtMs };
-    await writeFile9(tmp, JSON.stringify(body), "utf8");
+    await writeFile10(tmp, JSON.stringify(body), "utf8");
     await rename11(tmp, cachePath);
   } catch {
   }
@@ -7299,25 +7573,25 @@ function lensEvents(rateLimits, opts) {
 }
 
 // dist/agents/codex/rate-limit-state.mjs
-import { readFile as readFile15, writeFile as writeFile10, rename as rename12, mkdir as mkdir14 } from "node:fs/promises";
-import { join as join26 } from "node:path";
+import { readFile as readFile16, writeFile as writeFile11, rename as rename12, mkdir as mkdir15 } from "node:fs/promises";
+import { join as join27 } from "node:path";
 var LIMIT_FILE = "usage-limit-codex.json";
 var POSTURE_FILE = "usage-config-codex.json";
 async function readLimitState(stateDir) {
-  return readJsonObject(join26(stateDir, LIMIT_FILE));
+  return readJsonObject(join27(stateDir, LIMIT_FILE));
 }
 async function writeLimitState(stateDir, state) {
-  await writeStateAtomic(stateDir, join26(stateDir, LIMIT_FILE), state);
+  await writeStateAtomic(stateDir, join27(stateDir, LIMIT_FILE), state);
 }
 async function readPostureState(stateDir) {
-  return readJsonObject(join26(stateDir, POSTURE_FILE));
+  return readJsonObject(join27(stateDir, POSTURE_FILE));
 }
 async function writePostureState(stateDir, state) {
-  await writeStateAtomic(stateDir, join26(stateDir, POSTURE_FILE), state);
+  await writeStateAtomic(stateDir, join27(stateDir, POSTURE_FILE), state);
 }
 async function readJsonObject(path) {
   try {
-    const parsed = JSON.parse(await readFile15(path, "utf8"));
+    const parsed = JSON.parse(await readFile16(path, "utf8"));
     if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed))
       return {};
     return parsed;
@@ -7326,16 +7600,16 @@ async function readJsonObject(path) {
   }
 }
 async function writeStateAtomic(stateDir, path, body) {
-  await mkdir14(stateDir, { recursive: true, mode: 448 });
+  await mkdir15(stateDir, { recursive: true, mode: 448 });
   const tmp = `${path}.${process.pid}.tmp`;
-  await writeFile10(tmp, JSON.stringify(body), "utf8");
+  await writeFile11(tmp, JSON.stringify(body), "utf8");
   await rename12(tmp, path);
 }
 
 // dist/shared/replay-marker.mjs
-import { link as link2, readFile as readFile16, rename as rename13, unlink as unlink5, writeFile as writeFile11 } from "node:fs/promises";
-import { join as join27 } from "node:path";
-import { randomUUID as randomUUID4 } from "node:crypto";
+import { link as link2, readFile as readFile17, rename as rename13, unlink as unlink6, writeFile as writeFile12 } from "node:fs/promises";
+import { join as join28 } from "node:path";
+import { randomUUID as randomUUID5 } from "node:crypto";
 var WATCH_SINCE_FILE = "watch_since.json";
 function replayMarker(timestampNs, watchSinceMs, rereadSinceMs) {
   const eventMs = Number(timestampNs / 1000000n);
@@ -7350,11 +7624,11 @@ function markReplay(events, watchSinceMs, rereadSinceMs) {
     ev.replay = replayMarker(ev.timestamp_ns, watchSinceMs, rereadSinceMs);
 }
 async function readOrCreateWatchSince(sessionDir, nowMs, onError, legacyCursorName = "transcript_cursor.json") {
-  const path = join27(sessionDir, WATCH_SINCE_FILE);
+  const path = join28(sessionDir, WATCH_SINCE_FILE);
   const existing = await readWatchSince(path);
   if (existing !== void 0)
     return existing;
-  const value = await cursorOffset(join27(sessionDir, legacyCursorName)) > 0 ? 0 : nowMs;
+  const value = await cursorOffset(join28(sessionDir, legacyCursorName)) > 0 ? 0 : nowMs;
   const body = JSON.stringify({ since_ms: value });
   try {
     if (await createExclusive(path, body))
@@ -7371,7 +7645,7 @@ async function readOrCreateWatchSince(sessionDir, nowMs, onError, legacyCursorNa
 }
 async function readWatchSince(path) {
   try {
-    const parsed = JSON.parse(await readFile16(path, "utf8"));
+    const parsed = JSON.parse(await readFile17(path, "utf8"));
     if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed))
       return void 0;
     const v = parsed.since_ms;
@@ -7382,7 +7656,7 @@ async function readWatchSince(path) {
 }
 async function cursorOffset(path) {
   try {
-    const parsed = JSON.parse(await readFile16(path, "utf8"));
+    const parsed = JSON.parse(await readFile17(path, "utf8"));
     if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed))
       return 0;
     const v = parsed.byte_offset;
@@ -7392,8 +7666,8 @@ async function cursorOffset(path) {
   }
 }
 async function createExclusive(path, body) {
-  const tmp = `${path}.${randomUUID4()}.tmp`;
-  await writeFile11(tmp, body, "utf8");
+  const tmp = `${path}.${randomUUID5()}.tmp`;
+  await writeFile12(tmp, body, "utf8");
   try {
     await link2(tmp, path);
     return true;
@@ -7402,17 +7676,17 @@ async function createExclusive(path, body) {
       return false;
     throw err;
   } finally {
-    await unlink5(tmp).catch(() => {
+    await unlink6(tmp).catch(() => {
     });
   }
 }
 async function replace(path, body) {
-  const tmp = `${path}.${randomUUID4()}.tmp`;
-  await writeFile11(tmp, body, "utf8");
+  const tmp = `${path}.${randomUUID5()}.tmp`;
+  await writeFile12(tmp, body, "utf8");
   try {
     await rename13(tmp, path);
   } catch (err) {
-    await unlink5(tmp).catch(() => {
+    await unlink6(tmp).catch(() => {
     });
     throw err;
   }
@@ -7426,11 +7700,11 @@ async function tailCodexRollout(input, ctx, sink, options = {}) {
     await sink([]);
     return;
   }
-  const cursorDir = join28(ctx.stateDir, "sessions", sessionId, "codex");
-  await mkdir15(cursorDir, { recursive: true });
+  const cursorDir = join29(ctx.stateDir, "sessions", sessionId, "codex");
+  await mkdir16(cursorDir, { recursive: true });
   const nowMs = options.nowMs ?? Date.now();
   const watchSinceMs = await readOrCreateWatchSince(cursorDir, nowMs, (err) => logError(ctx.errorLogPath, `watch-since ${sessionId}`, err), "rollout_cursor.json");
-  const parentCursorPath = join28(cursorDir, "rollout_cursor.json");
+  const parentCursorPath = join29(cursorDir, "rollout_cursor.json");
   const sources = [
     { path: input.transcript_path, cursorPath: parentCursorPath }
   ];
@@ -7690,7 +7964,7 @@ async function readCursor(cursorPath, errorLogPath) {
   const empty = { byte_offset: 0, parser_state: {} };
   let buf;
   try {
-    buf = await readFile17(cursorPath, "utf8");
+    buf = await readFile18(cursorPath, "utf8");
   } catch (err) {
     if (err?.code !== "ENOENT") {
       await logError(errorLogPath, cursorPath, err);
@@ -7718,17 +7992,17 @@ async function readCursor(cursorPath, errorLogPath) {
 }
 async function writeCursor(cursorPath, body) {
   const tmp = `${cursorPath}.tmp`;
-  await writeFile12(tmp, JSON.stringify(body), "utf8");
+  await writeFile13(tmp, JSON.stringify(body), "utf8");
   await rename14(tmp, cursorPath);
 }
 async function lockCursorFile(cursorPath) {
   try {
     try {
-      await readFile17(cursorPath);
+      await readFile18(cursorPath);
     } catch {
-      await writeFile12(cursorPath, "{}", "utf8");
+      await writeFile13(cursorPath, "{}", "utf8");
     }
-    return await import_proper_lockfile5.default.lock(cursorPath, { retries: 0, realpath: false });
+    return await import_proper_lockfile6.default.lock(cursorPath, { retries: 0, realpath: false });
   } catch {
     return null;
   }
@@ -7736,7 +8010,7 @@ async function lockCursorFile(cursorPath) {
 async function seedSubagentCursor(cursorPath, model, errorLogPath) {
   if (!model)
     return;
-  const preexisting = await readFile17(cursorPath).then(() => true, () => false);
+  const preexisting = await readFile18(cursorPath).then(() => true, () => false);
   const release = await lockCursorFile(cursorPath);
   if (!release)
     return;
@@ -7751,7 +8025,7 @@ async function seedSubagentCursor(cursorPath, model, errorLogPath) {
     });
   } catch (err) {
     if (!preexisting)
-      await unlink6(cursorPath).catch(() => {
+      await unlink7(cursorPath).catch(() => {
       });
     await logError(errorLogPath, cursorPath, err);
   } finally {
@@ -7768,7 +8042,7 @@ function cursorKey(agentId) {
   return createHash5("sha256").update(agentId).digest("hex").slice(0, 16);
 }
 function subagentCursorPath(cursorDir, agentId) {
-  return join28(cursorDir, `subagent-${cursorKey(agentId)}.json`);
+  return join29(cursorDir, `subagent-${cursorKey(agentId)}.json`);
 }
 async function logError(errorLogPath, path, err) {
   const msg = err instanceof Error ? err.message : String(err);
@@ -7816,8 +8090,8 @@ function real(p) {
 }
 
 // dist/shared/heartbeat.mjs
-import { mkdir as mkdir16, rename as rename15, writeFile as writeFile13 } from "node:fs/promises";
-import { join as join29 } from "node:path";
+import { mkdir as mkdir17, rename as rename15, writeFile as writeFile14 } from "node:fs/promises";
+import { join as join30 } from "node:path";
 import { randomBytes as randomBytes6 } from "node:crypto";
 async function recordHeartbeat(dataDir2, now = /* @__PURE__ */ new Date()) {
   const beat = {
@@ -7826,19 +8100,19 @@ async function recordHeartbeat(dataDir2, now = /* @__PURE__ */ new Date()) {
     argv1: process.argv[1] ?? "",
     data_dir: dataDir2
   };
-  const stateDir = join29(dataDir2, "state");
-  const path = join29(stateDir, "last-fire.json");
+  const stateDir = join30(dataDir2, "state");
+  const path = join30(stateDir, "last-fire.json");
   const tmp = `${path}.${process.pid}.${randomBytes6(4).toString("hex")}.tmp`;
   try {
-    await mkdir16(stateDir, { recursive: true, mode: 448 });
-    await writeFile13(tmp, JSON.stringify(beat), { encoding: "utf8", mode: 384 });
+    await mkdir17(stateDir, { recursive: true, mode: 448 });
+    await writeFile14(tmp, JSON.stringify(beat), { encoding: "utf8", mode: 384 });
     await rename15(tmp, path);
   } catch {
   }
 }
 
 // dist/shared/whoami/refresh.mjs
-import { dirname as dirname9, join as join31 } from "node:path";
+import { dirname as dirname9, join as join32 } from "node:path";
 import { fileURLToPath as fileURLToPath6 } from "node:url";
 
 // dist/shared/whoami/lease.mjs
@@ -7862,9 +8136,9 @@ function releaseWhoamiLease(fingerprint2, opts = {}) {
 }
 
 // dist/shared/whoami/spawn.mjs
-import { join as join30 } from "node:path";
+import { join as join31 } from "node:path";
 init_runner_env();
-var WHOAMI_REFRESH_REL_PATH = join30("dist", "shared", "bin", "whoami-refresh.mjs");
+var WHOAMI_REFRESH_REL_PATH = join31("dist", "shared", "bin", "whoami-refresh.mjs");
 function whoamiRefreshBinPath(pluginRoot) {
   return pluginBinPath(pluginRoot, WHOAMI_REFRESH_REL_PATH);
 }
@@ -7897,7 +8171,7 @@ async function refreshWhoamiIfStale(opts = {}) {
   const lease = acquireWhoamiLease(resolved.fingerprint, cacheOpts);
   if (lease.kind === "held")
     return "held";
-  const pluginRoot = opts.pluginRoot ?? join31(dirname9(fileURLToPath6(import.meta.url)), "..", "..", "..");
+  const pluginRoot = opts.pluginRoot ?? join32(dirname9(fileURLToPath6(import.meta.url)), "..", "..", "..");
   const spawned = await spawnWhoamiRefresh({
     pluginRoot,
     ...opts.spawner !== void 0 ? { spawner: opts.spawner } : {}
@@ -7944,7 +8218,7 @@ async function main() {
       return;
     try {
       await refreshWhoamiIfStale({
-        pluginRoot: join32(dirname10(fileURLToPath7(import.meta.url)), "..", "..", "..")
+        pluginRoot: join33(dirname10(fileURLToPath7(import.meta.url)), "..", "..", "..")
       });
       const result = await runCollectOnce({ hookPayload, ...dataDir2 !== void 0 ? { dataDir: dataDir2 } : {} });
       if (result.stderr)

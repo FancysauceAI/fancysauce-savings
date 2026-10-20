@@ -1,6 +1,6 @@
 # What the fancysauce-savings plugin sends
 
-Generated from the plugin's content-filter keep-lists (`dist/shared/policy.mjs`) for version 0.20.2. Hooks receive the full tool input and prompt; the plugin emits only the fields below. Anything not listed is dropped before it is written to disk.
+Generated from the plugin's content-filter keep-lists (`dist/shared/policy.mjs`) for version 0.21.0. Hooks receive the full tool input and prompt; the plugin emits only the fields below. Anything not listed is dropped before it is written to disk.
 
 Kinds: **hash** is an unsalted SHA-256 of the named value, used to correlate equal values across events, not to conceal them: a short or guessable input can be recovered by guessing. **count** and **numeric** are numbers. **categorical** is one of a small fixed set of vendor-defined values. **scalar** is a short vendor-supplied value forwarded as text: a number, a version, or an enum token, never prose. **identifier** is an opaque id assigned by Claude Code or the API. **timestamp** is a point in time. **text** is marked explicitly and explained. **reference list** is a list of structured work references.
 
@@ -82,6 +82,14 @@ Source: Codex thread database. The first nonempty native thread name captured fr
 | `name` | text | The native Codex thread name. |
 | `name_origin` | categorical | Source kind of the captured session name. |
 | `expected_tenant_id` | identifier | Tenant id the source record was captured for, used for ingest binding. |
+
+## `session.metadata_worker_skipped`
+
+Source: session metadata worker. A session metadata worker skipped capture because its grant was unavailable.
+
+| Attribute | Kind | What it is |
+|---|---|---|
+| `skip_reason` | categorical | Why the session metadata worker skipped capture. |
 
 ## `prompt.submit`
 
@@ -228,6 +236,7 @@ Source: transcript tail. One model request, read from the session transcript Cla
 | `model` | categorical | Model identifier, as Claude Code reports it. |
 | `request_id` | identifier | Anthropic API request id. |
 | `transcript_message_uuid` | identifier | Claude Code's id for the transcript record. |
+| `cli_version` | scalar | Claude Code or Codex CLI version, as the local transcript or session reports it. |
 | `subsession_id` | identifier | Claude Code's id for the subagent the tool ran in, when it ran in one. |
 | `agent_type` | categorical | Subagent type name. |
 | `stop_reason` | categorical | API stop reason. |
@@ -289,7 +298,7 @@ Source: transcript tail or hook `StopFailure`. Claude Code reported that a usage
 | `fast_available` | boolean | Account or plan setting copied from Claude Code's local configuration cache. Never free text. |
 | `fast_default` | boolean | Account or plan setting copied from Claude Code's local configuration cache. Never free text. |
 | `config_service_tier` | scalar | Account or plan setting copied from Claude Code's local configuration cache. Never free text. |
-| `cli_version` | scalar | Account or plan setting copied from Claude Code's local configuration cache. Never free text. |
+| `cli_version` | scalar | Claude Code or Codex CLI version, as the local transcript or session reports it. |
 
 ## `usage_limit.snapshot`
 
@@ -337,7 +346,7 @@ Source: usage probe. The account's plan or limit configuration changed, from Cla
 | `fast_available` | boolean | Account or plan setting copied from Claude Code's local configuration cache. Never free text. |
 | `fast_default` | boolean | Account or plan setting copied from Claude Code's local configuration cache. Never free text. |
 | `config_service_tier` | scalar | Account or plan setting copied from Claude Code's local configuration cache. Never free text. |
-| `cli_version` | scalar | Account or plan setting copied from Claude Code's local configuration cache. Never free text. |
+| `cli_version` | scalar | Claude Code or Codex CLI version, as the local transcript or session reports it. |
 
 ## `usage_spend.snapshot`
 

@@ -60,10 +60,10 @@ var init_credential_paths = __esm({
 
 // dist/shared/backfill/status.mjs
 import { readFile, open, rename, mkdir, unlink } from "node:fs/promises";
-import { join as join2, dirname as dirname2 } from "node:path";
+import { join as join3, dirname as dirname2 } from "node:path";
 async function readStatus(stateDir) {
   try {
-    const raw = await readFile(join2(stateDir, "backfill.status"), "utf8");
+    const raw = await readFile(join3(stateDir, "backfill.status"), "utf8");
     return JSON.parse(raw);
   } catch {
     return null;
@@ -77,10 +77,10 @@ var init_status = __esm({
 
 // dist/shared/backfill/pid-guard.mjs
 import { readFile as readFile3, rm, mkdir as mkdir3, open as open3, link, stat as stat2 } from "node:fs/promises";
-import { join as join4 } from "node:path";
+import { join as join5 } from "node:path";
 async function readPidGuard(stateDir) {
   try {
-    const raw = await readFile3(join4(stateDir, "backfill.pid"), "utf8");
+    const raw = await readFile3(join5(stateDir, "backfill.pid"), "utf8");
     const pid = Number(raw.trim());
     return { raw, pid: Number.isFinite(pid) && pid > 0 ? pid : null };
   } catch {
@@ -134,6 +134,7 @@ var init_runner_env = __esm({
       "TZ",
       "TERM",
       "CODEX_HOME",
+      "CLAUDE_CONFIG_DIR",
       "VITEST",
       "CLAUDE_PLUGIN_DATA",
       "FANCYSAUCE_CREDENTIAL_PATHS",
@@ -146,10 +147,10 @@ var init_runner_env = __esm({
 
 // dist/shared/backfill/runner-spawn.mjs
 import { spawn } from "node:child_process";
-import { join as join5, dirname as dirname4 } from "node:path";
+import { join as join6, dirname as dirname4 } from "node:path";
 import { fileURLToPath as fileURLToPath2 } from "node:url";
 function resolveDistBinPath(containerDir, binName) {
-  return join5(containerDir, "..", "..", "shared", "bin", binName);
+  return join6(containerDir, "..", "..", "shared", "bin", binName);
 }
 async function spawnBackfillRunner(input) {
   const here = dirname4(fileURLToPath2(import.meta.url));
@@ -1733,27 +1734,27 @@ var require_adapter = __commonJS({
 var require_proper_lockfile = __commonJS({
   "node_modules/proper-lockfile/index.js"(exports, module) {
     "use strict";
-    var lockfile6 = require_lockfile();
+    var lockfile7 = require_lockfile();
     var { toPromise, toSync, toSyncOptions } = require_adapter();
     async function lock(file, options) {
-      const release = await toPromise(lockfile6.lock)(file, options);
+      const release = await toPromise(lockfile7.lock)(file, options);
       return toPromise(release);
     }
     function lockSync(file, options) {
-      const release = toSync(lockfile6.lock)(file, toSyncOptions(options));
+      const release = toSync(lockfile7.lock)(file, toSyncOptions(options));
       return toSync(release);
     }
     function unlock(file, options) {
-      return toPromise(lockfile6.unlock)(file, options);
+      return toPromise(lockfile7.unlock)(file, options);
     }
     function unlockSync(file, options) {
-      return toSync(lockfile6.unlock)(file, toSyncOptions(options));
+      return toSync(lockfile7.unlock)(file, toSyncOptions(options));
     }
     function check(file, options) {
-      return toPromise(lockfile6.check)(file, options);
+      return toPromise(lockfile7.check)(file, options);
     }
     function checkSync(file, options) {
-      return toSync(lockfile6.check)(file, toSyncOptions(options));
+      return toSync(lockfile7.check)(file, toSyncOptions(options));
     }
     module.exports = lock;
     module.exports.lock = lock;
@@ -1768,7 +1769,7 @@ var require_proper_lockfile = __commonJS({
 // dist/shared/bin/upload-history.mjs
 init_credential_paths();
 import { writeFile as writeFile5, mkdir as mkdir8 } from "node:fs/promises";
-import { join as join13 } from "node:path";
+import { join as join14 } from "node:path";
 
 // dist/shared/plugin-commands.mjs
 var COMMAND_PREFIX = "/fancysauce-savings:";
@@ -1778,20 +1779,32 @@ var UPLOAD_HISTORY_COMMAND = `${COMMAND_PREFIX}upload-history`;
 
 // dist/shared/data-dir.mjs
 import { readFileSync } from "node:fs";
-import { basename, join, dirname, relative, isAbsolute, sep } from "node:path";
+import { basename, join as join2, dirname, relative, isAbsolute, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { homedir as homedir2 } from "node:os";
+
+// dist/shared/claude-paths.mjs
+import { join } from "node:path";
+function resolveClaudeHome(env, homeDir) {
+  return env.CLAUDE_CONFIG_DIR ? env.CLAUDE_CONFIG_DIR : join(homeDir, ".claude");
+}
+function resolveClaudeProjectsDir(env, homeDir) {
+  return join(resolveClaudeHome(env, homeDir), "projects");
+}
+
+// dist/shared/data-dir.mjs
 function resolveDataDir(opts = {}) {
   if (opts.override)
     return opts.override;
   if (process.env.CLAUDE_PLUGIN_DATA)
     return process.env.CLAUDE_PLUGIN_DATA;
   const home = opts.homeDir ?? homedir2();
+  const claudeHome = resolveClaudeHome({ CLAUDE_CONFIG_DIR: claudeConfigDir(opts) }, home);
   const root = trimTrailingSlash(opts.pluginRoot ?? defaultPluginRoot());
-  const fromRegistry = deriveFromRegistry(root, home);
+  const fromRegistry = deriveFromRegistry(root, claudeHome);
   if (fromRegistry !== null)
     return fromRegistry;
-  const fromMarketplaces = deriveFromMarketplaces(root, home);
+  const fromMarketplaces = deriveFromMarketplaces(root, claudeHome);
   if (fromMarketplaces !== null)
     return fromMarketplaces;
   const fromCodexCache = deriveFromCodexCache(root, home);
@@ -1800,25 +1813,28 @@ function resolveDataDir(opts = {}) {
   const fromCodexMarketplaces = deriveFromCodexMarketplaces(root, home);
   if (fromCodexMarketplaces !== null)
     return fromCodexMarketplaces;
-  return join(home, ".claude-plugin-data");
+  return join2(home, ".claude-plugin-data");
 }
 function defaultPluginRoot() {
   const here = dirname(fileURLToPath(import.meta.url));
-  return join(here, "..", "..", "..");
+  return join2(here, "..", "..", "..");
 }
 function trimTrailingSlash(p) {
   return p.endsWith("/") || p.endsWith("\\") ? p.slice(0, -1) : p;
 }
-function deriveFromRegistry(root, home) {
-  const key = registryKey(root, home);
+function claudeConfigDir(opts) {
+  return opts.claudeConfigDir ?? process.env.CLAUDE_CONFIG_DIR;
+}
+function deriveFromRegistry(root, claudeHome) {
+  const key = registryKey(root, claudeHome);
   if (key === null)
     return null;
   const at = key.lastIndexOf("@");
-  return join(home, ".claude", "plugins", "data", `${key.slice(0, at)}-${key.slice(at + 1)}`);
+  return join2(claudeHome, "plugins", "data", `${key.slice(0, at)}-${key.slice(at + 1)}`);
 }
-function registryKey(root, home) {
+function registryKey(root, claudeHome) {
   try {
-    const regPath = join(home, ".claude", "plugins", "installed_plugins.json");
+    const regPath = join2(claudeHome, "plugins", "installed_plugins.json");
     const reg = JSON.parse(readFileSync(regPath, "utf8"));
     const plugins = reg?.plugins;
     if (typeof plugins !== "object" || plugins === null)
@@ -1842,9 +1858,9 @@ function registryKey(root, home) {
   }
   return null;
 }
-function deriveFromMarketplaces(root, home) {
+function deriveFromMarketplaces(root, claudeHome) {
   try {
-    const kmPath = join(home, ".claude", "plugins", "known_marketplaces.json");
+    const kmPath = join2(claudeHome, "plugins", "known_marketplaces.json");
     const km = JSON.parse(readFileSync(kmPath, "utf8"));
     let alias = null;
     for (const [k, v] of Object.entries(km)) {
@@ -1856,17 +1872,17 @@ function deriveFromMarketplaces(root, home) {
     }
     if (alias === null)
       return null;
-    const manifest = JSON.parse(readFileSync(join(root, ".claude-plugin", "marketplace.json"), "utf8"));
+    const manifest = JSON.parse(readFileSync(join2(root, ".claude-plugin", "marketplace.json"), "utf8"));
     const plugin = manifest.plugins?.[0]?.name;
     if (typeof plugin !== "string" || plugin.length === 0)
       return null;
-    return join(home, ".claude", "plugins", "data", `${plugin}-${alias}`);
+    return join2(claudeHome, "plugins", "data", `${plugin}-${alias}`);
   } catch {
     return null;
   }
 }
 function deriveFromCodexCache(root, home) {
-  const prefix = trimTrailingSlash(join(home, ".codex", "plugins", "cache"));
+  const prefix = trimTrailingSlash(join2(home, ".codex", "plugins", "cache"));
   const rel = relative(prefix, root);
   if (rel === "" || rel.startsWith("..") || isAbsolute(rel))
     return null;
@@ -1875,19 +1891,19 @@ function deriveFromCodexCache(root, home) {
   const plugin = parts[1];
   if (!alias || !plugin)
     return null;
-  return join(home, ".codex", "plugins", "data", `${plugin}-${alias}`);
+  return join2(home, ".codex", "plugins", "data", `${plugin}-${alias}`);
 }
 function deriveFromCodexMarketplaces(root, home) {
   try {
     const plugin = readCodexPluginName(root) ?? basename(root);
     if (plugin.length === 0)
       return null;
-    const configPath = join(home, ".codex", "config.toml");
+    const configPath = join2(home, ".codex", "config.toml");
     const marketplaces = parseCodexMarketplaces(readFileSync(configPath, "utf8"));
     for (const marketplace of marketplaces) {
-      const expectedRoot = trimTrailingSlash(join(marketplace.source, "plugins", plugin));
+      const expectedRoot = trimTrailingSlash(join2(marketplace.source, "plugins", plugin));
       if (expectedRoot === root) {
-        return join(home, ".codex", "plugins", "data", `${plugin}-${marketplace.alias}`);
+        return join2(home, ".codex", "plugins", "data", `${plugin}-${marketplace.alias}`);
       }
     }
   } catch {
@@ -1897,7 +1913,7 @@ function deriveFromCodexMarketplaces(root, home) {
 }
 function readCodexPluginName(root) {
   try {
-    const manifest = JSON.parse(readFileSync(join(root, ".codex-plugin", "plugin.json"), "utf8"));
+    const manifest = JSON.parse(readFileSync(join2(root, ".codex-plugin", "plugin.json"), "utf8"));
     return typeof manifest.name === "string" && manifest.name.length > 0 ? manifest.name : null;
   } catch {
     return null;
@@ -1940,10 +1956,10 @@ function parseTomlKey(key) {
 init_status();
 
 // dist/shared/backfill/scan-then-drain.mjs
-import { join as join12 } from "node:path";
+import { join as join13 } from "node:path";
 
 // dist/shared/config.mjs
-import { join as join3 } from "node:path";
+import { join as join4 } from "node:path";
 import { homedir as homedir3 } from "node:os";
 
 // dist/shared/policy.mjs
@@ -1970,6 +1986,7 @@ function defaultPolicy() {
       "name_origin",
       "expected_tenant_id"
     ]),
+    "session.metadata_worker_skipped": Object.freeze(["skip_reason"]),
     "prompt.submit": Object.freeze(["prompt_length", "slash_command"]),
     "tool_call.start": Object.freeze([
       "tool_name",
@@ -2134,6 +2151,7 @@ function defaultPolicy() {
       "model",
       "request_id",
       "transcript_message_uuid",
+      "cli_version",
       "subsession_id",
       "agent_type",
       "stop_reason",
@@ -2460,7 +2478,7 @@ async function ensureAmbientTenantCredential(existing, paths, opts = {}) {
 // dist/shared/config.mjs
 init_credential_paths();
 var INGEST_ENDPOINT = "https://ingest.preview.fancysauce.ai";
-var DEFAULT_LOGIN_STATE_DIR = join3(homedir3(), ".config", "fancysauce");
+var DEFAULT_LOGIN_STATE_DIR = join4(homedir3(), ".config", "fancysauce");
 var KNOWN_FANCYSAUCE_VARS = /* @__PURE__ */ new Set([
   "FANCYSAUCE_CREDENTIAL_PATHS",
   "FANCYSAUCE_API_KEY",
@@ -2573,18 +2591,18 @@ init_runner_spawn();
 // dist/shared/backfill/scan.mjs
 import { appendFile as appendFile2, mkdir as mkdir7, readdir as readdir2 } from "node:fs/promises";
 import { homedir as homedir5 } from "node:os";
-import { join as join11, relative as relative3 } from "node:path";
+import { join as join12, relative as relative3 } from "node:path";
 
 // dist/agents/claude-code/transcript-tail.mjs
 var import_proper_lockfile2 = __toESM(require_proper_lockfile(), 1);
 import { mkdir as mkdir5, readFile as readFile6, readdir, writeFile as writeFile3, appendFile, rename as rename5, lstat as lstat2 } from "node:fs/promises";
-import { basename as basename2, dirname as dirname5, isAbsolute as isAbsolute2, join as join8, relative as relative2, sep as sep2 } from "node:path";
+import { basename as basename2, dirname as dirname5, isAbsolute as isAbsolute2, join as join9, relative as relative2, sep as sep2 } from "node:path";
 import { homedir as homedir4 } from "node:os";
 import { randomUUID as randomUUID3 } from "node:crypto";
 
 // dist/agents/claude-code/subagent-cursor.mjs
 import { readFile as readFile4, rename as rename3, writeFile } from "node:fs/promises";
-import { join as join6 } from "node:path";
+import { join as join7 } from "node:path";
 
 // dist/shared/locking.mjs
 var import_proper_lockfile = __toESM(require_proper_lockfile(), 1);
@@ -2618,7 +2636,7 @@ var SubagentCursor = class {
   tmpPath;
   constructor(dir) {
     this.dir = dir;
-    this.path = join6(dir, "transcript_cursor.json");
+    this.path = join7(dir, "transcript_cursor.json");
     this.tmpPath = `${this.path}.tmp`;
   }
   async read() {
@@ -2874,7 +2892,7 @@ function detectUsageLimit(rec, sessionId, sequence, nowMs) {
 
 // dist/shared/replay-marker.mjs
 import { link as link2, readFile as readFile5, rename as rename4, unlink as unlink3, writeFile as writeFile2 } from "node:fs/promises";
-import { join as join7 } from "node:path";
+import { join as join8 } from "node:path";
 import { randomUUID as randomUUID2 } from "node:crypto";
 var WATCH_SINCE_FILE = "watch_since.json";
 function replayMarker(timestampNs, watchSinceMs, rereadSinceMs) {
@@ -2889,12 +2907,15 @@ function markReplay(events, watchSinceMs, rereadSinceMs) {
   for (const ev of events)
     ev.replay = replayMarker(ev.timestamp_ns, watchSinceMs, rereadSinceMs);
 }
+function readWatchSinceIfPresent(sessionDir) {
+  return readWatchSince(join8(sessionDir, WATCH_SINCE_FILE));
+}
 async function readOrCreateWatchSince(sessionDir, nowMs, onError, legacyCursorName = "transcript_cursor.json") {
-  const path = join7(sessionDir, WATCH_SINCE_FILE);
+  const path = join8(sessionDir, WATCH_SINCE_FILE);
   const existing = await readWatchSince(path);
   if (existing !== void 0)
     return existing;
-  const value = await cursorOffset(join7(sessionDir, legacyCursorName)) > 0 ? 0 : nowMs;
+  const value = await cursorOffset(join8(sessionDir, legacyCursorName)) > 0 ? 0 : nowMs;
   const body = JSON.stringify({ since_ms: value });
   try {
     if (await createExclusive(path, body))
@@ -2978,7 +2999,7 @@ var TranscriptTail = class {
     this.stateDir = stateDir;
     this.maxReadBytes = options.maxReadBytes ?? DEFAULT_MAX_READ_BYTES;
     this.errorLogPath = options.errorLogPath;
-    const root = options.transcriptRoot ?? join8(homedir4(), ".claude", "projects");
+    const root = options.transcriptRoot ?? resolveClaudeProjectsDir(process.env, homedir4());
     this.transcriptRoot = root.endsWith(sep2) ? root : root + sep2;
     this.nowMs = options.nowMs;
   }
@@ -2996,7 +3017,7 @@ var TranscriptTail = class {
     await mkdir5(cursorDir, { recursive: true });
     const nowMs = this.nowMs ?? Date.now();
     const watchSinceMs = await readOrCreateWatchSince(cursorDir, nowMs, (err) => this.logTailError(`watch-since ${sessionId}`, err));
-    const cursorPath = join8(cursorDir, "transcript_cursor.json");
+    const cursorPath = join9(cursorDir, "transcript_cursor.json");
     let release;
     try {
       release = await import_proper_lockfile2.default.lock(cursorPath, {
@@ -3013,8 +3034,8 @@ var TranscriptTail = class {
       const { events, endOffset, truncated } = await this.readSince(sessionId, transcriptPath, startOffset, sequenceBase, this.maxReadBytes);
       const rereadSinceMs = truncated ? nowMs : cursor.rereadSinceMs;
       markReplay(events, watchSinceMs, rereadSinceMs);
-      const sessionDir = join8(dirname5(transcriptPath), basename2(transcriptPath, ".jsonl"));
-      const subagentsRoot = join8(sessionDir, "subagents");
+      const sessionDir = join9(dirname5(transcriptPath), basename2(transcriptPath, ".jsonl"));
+      const subagentsRoot = join9(sessionDir, "subagents");
       const subagentPaths = await discoverSubagentTranscripts(sessionDir, (dir, err) => this.logSubagentError(sessionId, relative2(sessionDir, dir) || "subagents", err));
       const metaCache = new SubagentMetaCache();
       let seq = sequenceBase + events.length;
@@ -3067,7 +3088,7 @@ var TranscriptTail = class {
     }
     const cursorDir = this.cursorDir(sessionId);
     await mkdir5(cursorDir, { recursive: true });
-    const cursorPath = join8(cursorDir, "transcript_cursor.json");
+    const cursorPath = join9(cursorDir, "transcript_cursor.json");
     try {
       await readFile6(cursorPath);
     } catch {
@@ -3232,7 +3253,7 @@ async function readSubagent(opts) {
 }
 var MAX_SUBAGENT_DISCOVERY_DEPTH = 4;
 async function discoverSubagentTranscripts(sessionDir, onError) {
-  const root = join8(sessionDir, "subagents");
+  const root = join9(sessionDir, "subagents");
   try {
     if (!(await lstat2(root)).isDirectory())
       return [];
@@ -3255,7 +3276,7 @@ async function walkSubagentDir(dir, depthRemaining, onError) {
     return [];
   }
   const found = await Promise.all(entries.map(async (entry) => {
-    const full = join8(dir, entry.name);
+    const full = join9(dir, entry.name);
     const kind = await classifyDirent(full, entry);
     if (kind === "file" && entry.name.startsWith("agent-") && entry.name.endsWith(".jsonl")) {
       return [full];
@@ -3288,7 +3309,7 @@ function isValidSessionId(s) {
   return typeof s === "string" && SESSION_ID_RE.test(s);
 }
 function sessionCursorDir(stateDir, sessionId) {
-  return join8(stateDir, "sessions", sessionId);
+  return join9(stateDir, "sessions", sessionId);
 }
 function deriveSubagentCursorDir(sessCursorDir, subagentsRoot, subagentPath) {
   const agentId = basename2(subagentPath, ".jsonl").slice("agent-".length);
@@ -3299,8 +3320,8 @@ function deriveSubagentCursorDir(sessCursorDir, subagentsRoot, subagentPath) {
   if (nestedDir === ".." || nestedDir.startsWith(".." + sep2)) {
     return { ok: false, agentId, reason: `transcript outside subagents root: ${subagentPath}` };
   }
-  const cursorDir = nestedDir === "" ? join8(sessCursorDir, "subagents", agentId) : join8(sessCursorDir, "subagents", nestedDir, agentId);
-  const errorLabel = nestedDir === "" ? agentId : join8(nestedDir, agentId);
+  const cursorDir = nestedDir === "" ? join9(sessCursorDir, "subagents", agentId) : join9(sessCursorDir, "subagents", nestedDir, agentId);
+  const errorLabel = nestedDir === "" ? agentId : join9(nestedDir, agentId);
   return { ok: true, agentId, cursorDir, errorLabel };
 }
 function isAssistantRecord(r) {
@@ -3343,6 +3364,9 @@ function toApiRequestEvent(r, sessionId, sequence) {
     request_id: r.requestId ?? r.message.id,
     transcript_message_uuid: r.uuid
   };
+  if (typeof r.version === "string" && r.version) {
+    attrs.cli_version = r.version;
+  }
   if (typeof r.message.stop_reason === "string" && r.message.stop_reason) {
     attrs.stop_reason = r.message.stop_reason;
   }
@@ -3372,14 +3396,14 @@ function toApiRequestEvent(r, sessionId, sequence) {
 
 // dist/shared/queue.mjs
 import { open as open6, stat as stat3 } from "node:fs/promises";
-import { join as join9 } from "node:path";
+import { join as join10 } from "node:path";
 var Queue = class {
   dir;
   path;
   capBytes;
   constructor(dir, capBytes) {
     this.dir = dir;
-    this.path = join9(dir, "queue.ndjson");
+    this.path = join10(dir, "queue.ndjson");
     this.capBytes = capBytes;
   }
   async size() {
@@ -3466,6 +3490,7 @@ function buildRules(policy) {
     "session.end": k("session.end"),
     "session.recap": k("session.recap"),
     "session.name": k("session.name"),
+    "session.metadata_worker_skipped": k("session.metadata_worker_skipped"),
     "prompt.submit": promptSubmit,
     "tool_call.start": toolCallStart,
     "tool_call.complete": toolCallComplete,
@@ -3624,8 +3649,8 @@ var CACHED_SOURCE_SET = new Set(CACHED_IDENTITY_SOURCES);
 // dist/shared/health.mjs
 var import_proper_lockfile3 = __toESM(require_proper_lockfile(), 1);
 import { mkdir as mkdir6, readFile as readFile7, rename as rename6, writeFile as writeFile4 } from "node:fs/promises";
-import { join as join10 } from "node:path";
-var DEFAULT = { dropped_event_count: 0 };
+import { join as join11 } from "node:path";
+var DEFAULT = { dropped_event_count: 0, metadata_skip_counts: {} };
 var LOCK_RETRIES = {
   retries: 100,
   factor: 1.5,
@@ -3638,19 +3663,25 @@ var HealthState = class {
   tmp;
   constructor(dir) {
     this.dir = dir;
-    this.path = join10(dir, "health.json");
+    this.path = join11(dir, "health.json");
     this.tmp = `${this.path}.tmp`;
   }
   async read() {
     try {
-      return { ...DEFAULT, ...JSON.parse(await readFile7(this.path, "utf8")) };
+      const parsed = JSON.parse(await readFile7(this.path, "utf8"));
+      return { ...DEFAULT, ...parsed, metadata_skip_counts: { ...parsed.metadata_skip_counts } };
     } catch {
-      return { ...DEFAULT };
+      return { ...DEFAULT, metadata_skip_counts: {} };
     }
   }
   async recordDrop(n) {
     await this.update((h) => {
       h.dropped_event_count += n;
+    });
+  }
+  async recordMetadataSkip(reason) {
+    await this.update((h) => {
+      h.metadata_skip_counts[reason] = (h.metadata_skip_counts[reason] ?? 0) + 1;
     });
   }
   async touch() {
@@ -3719,6 +3750,12 @@ init_runner_env();
 // dist/shared/session-metadata/state.mjs
 var import_proper_lockfile5 = __toESM(require_proper_lockfile(), 1);
 
+// dist/shared/session-metadata/skip.mjs
+var import_proper_lockfile6 = __toESM(require_proper_lockfile(), 1);
+var DAY = 24 * 60 * 60 * 1e3;
+var WEEK = 7 * DAY;
+var CAP = 100 * 1024 * 1024;
+
 // dist/shared/run-collect.mjs
 var QUEUE_CAP_BYTES = 100 * 1024 * 1024;
 function serializeForQueue(event) {
@@ -3763,9 +3800,9 @@ async function enqueueEvents(queue, events) {
 // dist/shared/backfill/scan.mjs
 var MAX_ITERATIONS_PER_TRANSCRIPT = 1e4;
 async function runBackfillScan(opts) {
-  const transcriptRoot = opts.transcriptRoot ?? join11(homedir5(), ".claude", "projects");
-  const stateDir = join11(opts.dataDir, "state");
-  const outboundDir = join11(opts.dataDir, "outbound");
+  const transcriptRoot = opts.transcriptRoot ?? resolveClaudeProjectsDir(process.env, homedir5());
+  const stateDir = join12(opts.dataDir, "state");
+  const outboundDir = join12(opts.dataDir, "outbound");
   await mkdir7(outboundDir, { recursive: true, mode: 448 });
   const queue = new Queue(outboundDir, opts.queueCapBytes ?? QUEUE_CAP_BYTES);
   const maxReadBytes = opts.maxReadBytes ?? DEFAULT_MAX_READ_BYTES;
@@ -3795,8 +3832,8 @@ async function runBackfillScan(opts) {
     summary.sessionsScanned++;
     try {
       const sessCursorDir = sessionCursorDir(stateDir, sessionId);
-      const watchSinceMs = await readOrCreateWatchSince(sessCursorDir, Date.now(), (err) => logScanError(opts.errorLogPath, sessionId, "watch-since", err));
-      const subagentsRoot = join11(sessionDir, "subagents");
+      const watchSinceMs = await readWatchSinceIfPresent(sessCursorDir) ?? Date.now();
+      const subagentsRoot = join12(sessionDir, "subagents");
       const subagentPaths = await discoverSubagentTranscripts(sessionDir, (dir, err) => logScanError(opts.errorLogPath, sessionId, relative3(sessionDir, dir) || "subagents", err));
       const metaCache = new SubagentMetaCache();
       for (const subagentPath of subagentPaths) {
@@ -3914,7 +3951,7 @@ async function discoverSessionDirs(transcriptRoot, errorLogPath) {
   }
   const found = [];
   for (const proj of projectEntries) {
-    const projDir = join11(transcriptRoot, proj.name);
+    const projDir = join12(transcriptRoot, proj.name);
     if (await classifyDirent(projDir, proj) !== "dir")
       continue;
     let sessionEntries;
@@ -3927,7 +3964,7 @@ async function discoverSessionDirs(transcriptRoot, errorLogPath) {
     for (const entry of sessionEntries) {
       if (!isValidSessionId(entry.name))
         continue;
-      const sessionDir = join11(projDir, entry.name);
+      const sessionDir = join12(projDir, entry.name);
       if (await classifyDirent(sessionDir, entry) !== "dir")
         continue;
       found.push({ sessionId: entry.name, sessionDir });
@@ -3980,11 +4017,11 @@ async function scanThenDrain(args) {
     // rather than silently contained into nothing. Without this, scan.mts's
     // per-transcript containment had nowhere to write in production — only
     // tests (which pass errorLogPath directly) ever exercised it.
-    errorLogPath: join12(args.dataDir, "collect-error.log")
+    errorLogPath: join13(args.dataDir, "collect-error.log")
   });
   args.out(`Scan complete: ${summary.sessionsScanned} sessions scanned, ${summary.transcriptsTailed} transcripts tailed, ${summary.transcriptsFailed} failed (see collect-error.log), ${summary.eventsEnqueued} events enqueued, ${summary.skippedLocked} skipped (locked), ${summary.skippedFull + summary.skippedFiltered} dropped (queue full / filtered).
 `);
-  const queue = new Queue(join12(args.dataDir, "outbound"), QUEUE_CAP_BYTES);
+  const queue = new Queue(join13(args.dataDir, "outbound"), QUEUE_CAP_BYTES);
   if (await queue.size() === 0) {
     args.out("Queue is empty; nothing to upload.\n");
     return 0;
@@ -4027,7 +4064,7 @@ async function main(opts) {
   const err = opts.stderr ?? ((s) => {
     process.stderr.write(s);
   });
-  const stateDir = join13(dataDir, "state");
+  const stateDir = join14(dataDir, "state");
   if (argv.includes("--status")) {
     return renderStatus(stateDir, out);
   }
@@ -4072,7 +4109,7 @@ Re-run ${UPLOAD_HISTORY_COMMAND} to resume from cursor.
 }
 async function writeSkipMarker(stateDir, out) {
   await mkdir8(stateDir, { recursive: true });
-  await writeFile5(join13(stateDir, "backfill-skip"), JSON.stringify({ created_at: (/* @__PURE__ */ new Date()).toISOString() }), "utf8");
+  await writeFile5(join14(stateDir, "backfill-skip"), JSON.stringify({ created_at: (/* @__PURE__ */ new Date()).toISOString() }), "utf8");
   out(`Backfill nudges suppressed. Run ${UPLOAD_HISTORY_COMMAND} (without --skip) to start one any time.
 `);
   return 0;

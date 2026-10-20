@@ -117,6 +117,7 @@ var init_runner_env = __esm({
       "TZ",
       "TERM",
       "CODEX_HOME",
+      "CLAUDE_CONFIG_DIR",
       "VITEST",
       "CLAUDE_PLUGIN_DATA",
       "FANCYSAUCE_CREDENTIAL_PATHS",
@@ -1716,27 +1717,27 @@ var require_adapter = __commonJS({
 var require_proper_lockfile = __commonJS({
   "node_modules/proper-lockfile/index.js"(exports, module) {
     "use strict";
-    var lockfile6 = require_lockfile();
+    var lockfile7 = require_lockfile();
     var { toPromise, toSync, toSyncOptions } = require_adapter();
     async function lock(file, options) {
-      const release = await toPromise(lockfile6.lock)(file, options);
+      const release = await toPromise(lockfile7.lock)(file, options);
       return toPromise(release);
     }
     function lockSync(file, options) {
-      const release = toSync(lockfile6.lock)(file, toSyncOptions(options));
+      const release = toSync(lockfile7.lock)(file, toSyncOptions(options));
       return toSync(release);
     }
     function unlock(file, options) {
-      return toPromise(lockfile6.unlock)(file, options);
+      return toPromise(lockfile7.unlock)(file, options);
     }
     function unlockSync(file, options) {
-      return toSync(lockfile6.unlock)(file, toSyncOptions(options));
+      return toSync(lockfile7.unlock)(file, toSyncOptions(options));
     }
     function check(file, options) {
-      return toPromise(lockfile6.check)(file, options);
+      return toPromise(lockfile7.check)(file, options);
     }
     function checkSync(file, options) {
-      return toSync(lockfile6.check)(file, toSyncOptions(options));
+      return toSync(lockfile7.check)(file, toSyncOptions(options));
     }
     module.exports = lock;
     module.exports.lock = lock;
@@ -1751,10 +1752,10 @@ var require_proper_lockfile = __commonJS({
 // dist/shared/bin/auto-scan.mjs
 import { appendFileSync } from "node:fs";
 import { appendFile as appendFile3 } from "node:fs/promises";
-import { join as join11 } from "node:path";
+import { join as join12 } from "node:path";
 
 // dist/shared/backfill/scan-then-drain.mjs
-import { join as join10 } from "node:path";
+import { join as join11 } from "node:path";
 
 // dist/shared/config.mjs
 import { join } from "node:path";
@@ -1784,6 +1785,7 @@ function defaultPolicy() {
       "name_origin",
       "expected_tenant_id"
     ]),
+    "session.metadata_worker_skipped": Object.freeze(["skip_reason"]),
     "prompt.submit": Object.freeze(["prompt_length", "slash_command"]),
     "tool_call.start": Object.freeze([
       "tool_name",
@@ -1948,6 +1950,7 @@ function defaultPolicy() {
       "model",
       "request_id",
       "transcript_message_uuid",
+      "cli_version",
       "subsession_id",
       "agent_type",
       "stop_reason",
@@ -2395,12 +2398,12 @@ init_runner_spawn();
 // dist/shared/backfill/scan.mjs
 import { appendFile as appendFile2, mkdir as mkdir6, readdir as readdir2 } from "node:fs/promises";
 import { homedir as homedir4 } from "node:os";
-import { join as join9, relative as relative2 } from "node:path";
+import { join as join10, relative as relative2 } from "node:path";
 
 // dist/agents/claude-code/transcript-tail.mjs
 var import_proper_lockfile2 = __toESM(require_proper_lockfile(), 1);
 import { mkdir as mkdir4, readFile as readFile5, readdir, writeFile as writeFile3, appendFile, rename as rename4, lstat as lstat2 } from "node:fs/promises";
-import { basename, dirname as dirname3, isAbsolute, join as join6, relative, sep } from "node:path";
+import { basename, dirname as dirname3, isAbsolute, join as join7, relative, sep } from "node:path";
 import { homedir as homedir3 } from "node:os";
 import { randomUUID as randomUUID3 } from "node:crypto";
 
@@ -2711,6 +2714,9 @@ function markReplay(events, watchSinceMs, rereadSinceMs) {
   for (const ev of events)
     ev.replay = replayMarker(ev.timestamp_ns, watchSinceMs, rereadSinceMs);
 }
+function readWatchSinceIfPresent(sessionDir) {
+  return readWatchSince(join5(sessionDir, WATCH_SINCE_FILE));
+}
 async function readOrCreateWatchSince(sessionDir, nowMs, onError, legacyCursorName = "transcript_cursor.json") {
   const path = join5(sessionDir, WATCH_SINCE_FILE);
   const existing = await readWatchSince(path);
@@ -2780,6 +2786,15 @@ async function replace(path, body) {
   }
 }
 
+// dist/shared/claude-paths.mjs
+import { join as join6 } from "node:path";
+function resolveClaudeHome(env, homeDir) {
+  return env.CLAUDE_CONFIG_DIR ? env.CLAUDE_CONFIG_DIR : join6(homeDir, ".claude");
+}
+function resolveClaudeProjectsDir(env, homeDir) {
+  return join6(resolveClaudeHome(env, homeDir), "projects");
+}
+
 // dist/agents/claude-code/transcript-tail.mjs
 var SESSION_ID_RE = /^[A-Za-z0-9_-]{16,128}$/;
 var AGENT_ID_RE = /^[A-Za-z0-9_-]{16,128}$/;
@@ -2800,7 +2815,7 @@ var TranscriptTail = class {
     this.stateDir = stateDir;
     this.maxReadBytes = options.maxReadBytes ?? DEFAULT_MAX_READ_BYTES;
     this.errorLogPath = options.errorLogPath;
-    const root = options.transcriptRoot ?? join6(homedir3(), ".claude", "projects");
+    const root = options.transcriptRoot ?? resolveClaudeProjectsDir(process.env, homedir3());
     this.transcriptRoot = root.endsWith(sep) ? root : root + sep;
     this.nowMs = options.nowMs;
   }
@@ -2818,7 +2833,7 @@ var TranscriptTail = class {
     await mkdir4(cursorDir, { recursive: true });
     const nowMs = this.nowMs ?? Date.now();
     const watchSinceMs = await readOrCreateWatchSince(cursorDir, nowMs, (err) => this.logTailError(`watch-since ${sessionId}`, err));
-    const cursorPath = join6(cursorDir, "transcript_cursor.json");
+    const cursorPath = join7(cursorDir, "transcript_cursor.json");
     let release;
     try {
       release = await import_proper_lockfile2.default.lock(cursorPath, {
@@ -2835,8 +2850,8 @@ var TranscriptTail = class {
       const { events, endOffset, truncated } = await this.readSince(sessionId, transcriptPath, startOffset, sequenceBase, this.maxReadBytes);
       const rereadSinceMs = truncated ? nowMs : cursor.rereadSinceMs;
       markReplay(events, watchSinceMs, rereadSinceMs);
-      const sessionDir = join6(dirname3(transcriptPath), basename(transcriptPath, ".jsonl"));
-      const subagentsRoot = join6(sessionDir, "subagents");
+      const sessionDir = join7(dirname3(transcriptPath), basename(transcriptPath, ".jsonl"));
+      const subagentsRoot = join7(sessionDir, "subagents");
       const subagentPaths = await discoverSubagentTranscripts(sessionDir, (dir, err) => this.logSubagentError(sessionId, relative(sessionDir, dir) || "subagents", err));
       const metaCache = new SubagentMetaCache();
       let seq = sequenceBase + events.length;
@@ -2889,7 +2904,7 @@ var TranscriptTail = class {
     }
     const cursorDir = this.cursorDir(sessionId);
     await mkdir4(cursorDir, { recursive: true });
-    const cursorPath = join6(cursorDir, "transcript_cursor.json");
+    const cursorPath = join7(cursorDir, "transcript_cursor.json");
     try {
       await readFile5(cursorPath);
     } catch {
@@ -3054,7 +3069,7 @@ async function readSubagent(opts) {
 }
 var MAX_SUBAGENT_DISCOVERY_DEPTH = 4;
 async function discoverSubagentTranscripts(sessionDir, onError) {
-  const root = join6(sessionDir, "subagents");
+  const root = join7(sessionDir, "subagents");
   try {
     if (!(await lstat2(root)).isDirectory())
       return [];
@@ -3077,7 +3092,7 @@ async function walkSubagentDir(dir, depthRemaining, onError) {
     return [];
   }
   const found = await Promise.all(entries.map(async (entry) => {
-    const full = join6(dir, entry.name);
+    const full = join7(dir, entry.name);
     const kind = await classifyDirent(full, entry);
     if (kind === "file" && entry.name.startsWith("agent-") && entry.name.endsWith(".jsonl")) {
       return [full];
@@ -3110,7 +3125,7 @@ function isValidSessionId(s) {
   return typeof s === "string" && SESSION_ID_RE.test(s);
 }
 function sessionCursorDir(stateDir, sessionId) {
-  return join6(stateDir, "sessions", sessionId);
+  return join7(stateDir, "sessions", sessionId);
 }
 function deriveSubagentCursorDir(sessCursorDir, subagentsRoot, subagentPath) {
   const agentId = basename(subagentPath, ".jsonl").slice("agent-".length);
@@ -3121,8 +3136,8 @@ function deriveSubagentCursorDir(sessCursorDir, subagentsRoot, subagentPath) {
   if (nestedDir === ".." || nestedDir.startsWith(".." + sep)) {
     return { ok: false, agentId, reason: `transcript outside subagents root: ${subagentPath}` };
   }
-  const cursorDir = nestedDir === "" ? join6(sessCursorDir, "subagents", agentId) : join6(sessCursorDir, "subagents", nestedDir, agentId);
-  const errorLabel = nestedDir === "" ? agentId : join6(nestedDir, agentId);
+  const cursorDir = nestedDir === "" ? join7(sessCursorDir, "subagents", agentId) : join7(sessCursorDir, "subagents", nestedDir, agentId);
+  const errorLabel = nestedDir === "" ? agentId : join7(nestedDir, agentId);
   return { ok: true, agentId, cursorDir, errorLabel };
 }
 function isAssistantRecord(r) {
@@ -3165,6 +3180,9 @@ function toApiRequestEvent(r, sessionId, sequence) {
     request_id: r.requestId ?? r.message.id,
     transcript_message_uuid: r.uuid
   };
+  if (typeof r.version === "string" && r.version) {
+    attrs.cli_version = r.version;
+  }
   if (typeof r.message.stop_reason === "string" && r.message.stop_reason) {
     attrs.stop_reason = r.message.stop_reason;
   }
@@ -3194,14 +3212,14 @@ function toApiRequestEvent(r, sessionId, sequence) {
 
 // dist/shared/queue.mjs
 import { open as open5, stat as stat3 } from "node:fs/promises";
-import { join as join7 } from "node:path";
+import { join as join8 } from "node:path";
 var Queue = class {
   dir;
   path;
   capBytes;
   constructor(dir, capBytes) {
     this.dir = dir;
-    this.path = join7(dir, "queue.ndjson");
+    this.path = join8(dir, "queue.ndjson");
     this.capBytes = capBytes;
   }
   async size() {
@@ -3288,6 +3306,7 @@ function buildRules(policy) {
     "session.end": k("session.end"),
     "session.recap": k("session.recap"),
     "session.name": k("session.name"),
+    "session.metadata_worker_skipped": k("session.metadata_worker_skipped"),
     "prompt.submit": promptSubmit,
     "tool_call.start": toolCallStart,
     "tool_call.complete": toolCallComplete,
@@ -3446,8 +3465,8 @@ var CACHED_SOURCE_SET = new Set(CACHED_IDENTITY_SOURCES);
 // dist/shared/health.mjs
 var import_proper_lockfile3 = __toESM(require_proper_lockfile(), 1);
 import { mkdir as mkdir5, readFile as readFile6, rename as rename5, writeFile as writeFile4 } from "node:fs/promises";
-import { join as join8 } from "node:path";
-var DEFAULT = { dropped_event_count: 0 };
+import { join as join9 } from "node:path";
+var DEFAULT = { dropped_event_count: 0, metadata_skip_counts: {} };
 var LOCK_RETRIES = {
   retries: 100,
   factor: 1.5,
@@ -3460,19 +3479,25 @@ var HealthState = class {
   tmp;
   constructor(dir) {
     this.dir = dir;
-    this.path = join8(dir, "health.json");
+    this.path = join9(dir, "health.json");
     this.tmp = `${this.path}.tmp`;
   }
   async read() {
     try {
-      return { ...DEFAULT, ...JSON.parse(await readFile6(this.path, "utf8")) };
+      const parsed = JSON.parse(await readFile6(this.path, "utf8"));
+      return { ...DEFAULT, ...parsed, metadata_skip_counts: { ...parsed.metadata_skip_counts } };
     } catch {
-      return { ...DEFAULT };
+      return { ...DEFAULT, metadata_skip_counts: {} };
     }
   }
   async recordDrop(n) {
     await this.update((h) => {
       h.dropped_event_count += n;
+    });
+  }
+  async recordMetadataSkip(reason) {
+    await this.update((h) => {
+      h.metadata_skip_counts[reason] = (h.metadata_skip_counts[reason] ?? 0) + 1;
     });
   }
   async touch() {
@@ -3541,6 +3566,12 @@ init_runner_env();
 // dist/shared/session-metadata/state.mjs
 var import_proper_lockfile5 = __toESM(require_proper_lockfile(), 1);
 
+// dist/shared/session-metadata/skip.mjs
+var import_proper_lockfile6 = __toESM(require_proper_lockfile(), 1);
+var DAY = 24 * 60 * 60 * 1e3;
+var WEEK = 7 * DAY;
+var CAP = 100 * 1024 * 1024;
+
 // dist/shared/run-collect.mjs
 var QUEUE_CAP_BYTES = 100 * 1024 * 1024;
 function serializeForQueue(event) {
@@ -3585,9 +3616,9 @@ async function enqueueEvents(queue, events) {
 // dist/shared/backfill/scan.mjs
 var MAX_ITERATIONS_PER_TRANSCRIPT = 1e4;
 async function runBackfillScan(opts) {
-  const transcriptRoot = opts.transcriptRoot ?? join9(homedir4(), ".claude", "projects");
-  const stateDir = join9(opts.dataDir, "state");
-  const outboundDir = join9(opts.dataDir, "outbound");
+  const transcriptRoot = opts.transcriptRoot ?? resolveClaudeProjectsDir(process.env, homedir4());
+  const stateDir = join10(opts.dataDir, "state");
+  const outboundDir = join10(opts.dataDir, "outbound");
   await mkdir6(outboundDir, { recursive: true, mode: 448 });
   const queue = new Queue(outboundDir, opts.queueCapBytes ?? QUEUE_CAP_BYTES);
   const maxReadBytes = opts.maxReadBytes ?? DEFAULT_MAX_READ_BYTES;
@@ -3617,8 +3648,8 @@ async function runBackfillScan(opts) {
     summary.sessionsScanned++;
     try {
       const sessCursorDir = sessionCursorDir(stateDir, sessionId);
-      const watchSinceMs = await readOrCreateWatchSince(sessCursorDir, Date.now(), (err) => logScanError(opts.errorLogPath, sessionId, "watch-since", err));
-      const subagentsRoot = join9(sessionDir, "subagents");
+      const watchSinceMs = await readWatchSinceIfPresent(sessCursorDir) ?? Date.now();
+      const subagentsRoot = join10(sessionDir, "subagents");
       const subagentPaths = await discoverSubagentTranscripts(sessionDir, (dir, err) => logScanError(opts.errorLogPath, sessionId, relative2(sessionDir, dir) || "subagents", err));
       const metaCache = new SubagentMetaCache();
       for (const subagentPath of subagentPaths) {
@@ -3736,7 +3767,7 @@ async function discoverSessionDirs(transcriptRoot, errorLogPath) {
   }
   const found = [];
   for (const proj of projectEntries) {
-    const projDir = join9(transcriptRoot, proj.name);
+    const projDir = join10(transcriptRoot, proj.name);
     if (await classifyDirent(projDir, proj) !== "dir")
       continue;
     let sessionEntries;
@@ -3749,7 +3780,7 @@ async function discoverSessionDirs(transcriptRoot, errorLogPath) {
     for (const entry of sessionEntries) {
       if (!isValidSessionId(entry.name))
         continue;
-      const sessionDir = join9(projDir, entry.name);
+      const sessionDir = join10(projDir, entry.name);
       if (await classifyDirent(sessionDir, entry) !== "dir")
         continue;
       found.push({ sessionId: entry.name, sessionDir });
@@ -3802,11 +3833,11 @@ async function scanThenDrain(args) {
     // rather than silently contained into nothing. Without this, scan.mts's
     // per-transcript containment had nowhere to write in production — only
     // tests (which pass errorLogPath directly) ever exercised it.
-    errorLogPath: join10(args.dataDir, "collect-error.log")
+    errorLogPath: join11(args.dataDir, "collect-error.log")
   });
   args.out(`Scan complete: ${summary.sessionsScanned} sessions scanned, ${summary.transcriptsTailed} transcripts tailed, ${summary.transcriptsFailed} failed (see collect-error.log), ${summary.eventsEnqueued} events enqueued, ${summary.skippedLocked} skipped (locked), ${summary.skippedFull + summary.skippedFiltered} dropped (queue full / filtered).
 `);
-  const queue = new Queue(join10(args.dataDir, "outbound"), QUEUE_CAP_BYTES);
+  const queue = new Queue(join11(args.dataDir, "outbound"), QUEUE_CAP_BYTES);
   if (await queue.size() === 0) {
     args.out("Queue is empty; nothing to upload.\n");
     return 0;
@@ -3844,8 +3875,8 @@ async function runAutoScan(opts) {
   const sleep = opts.sleep ?? defaultSleep;
   const jitterMs = opts.jitterMs ?? Math.floor(Math.random() * AUTO_SCAN_JITTER_MAX_MS);
   await sleep(jitterMs);
-  const stateDir = join11(opts.dataDir, "state");
-  const auditLogPath = join11(opts.dataDir, "auto-scan.log");
+  const stateDir = join12(opts.dataDir, "state");
+  const auditLogPath = join12(opts.dataDir, "auto-scan.log");
   const audit = (s) => {
     const line = `${(/* @__PURE__ */ new Date()).toISOString()} ${s.replace(/[\p{Cc}\p{Cf}]+/gu, " ").trim()}`.slice(0, 2e3) + "\n";
     try {
@@ -3886,7 +3917,7 @@ if (isMain) {
   void runAutoScan({ dataDir, credentialUserPath: credPath }).then((code) => process.exit(code)).catch(async (err) => {
     const msg = err instanceof Error ? err.stack ?? err.message : String(err);
     try {
-      await appendFile3(join11(dataDir, "collect-error.log"), `${(/* @__PURE__ */ new Date()).toISOString()} auto-scan: ${msg}
+      await appendFile3(join12(dataDir, "collect-error.log"), `${(/* @__PURE__ */ new Date()).toISOString()} auto-scan: ${msg}
 `);
     } catch {
     }

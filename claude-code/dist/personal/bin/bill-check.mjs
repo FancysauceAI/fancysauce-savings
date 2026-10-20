@@ -3,14 +3,23 @@ import { createRequire as __cr } from 'node:module'; const require = __cr(import
 // dist/personal/bin/bill-check.mjs
 import { realpathSync } from "node:fs";
 import { parseArgs } from "node:util";
-import { join as join2, dirname } from "node:path";
+import { join as join3, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { homedir } from "node:os";
+
+// dist/shared/claude-paths.mjs
+import { join } from "node:path";
+function resolveClaudeHome(env, homeDir) {
+  return env.CLAUDE_CONFIG_DIR ? env.CLAUDE_CONFIG_DIR : join(homeDir, ".claude");
+}
+function resolveClaudeProjectsDir(env, homeDir) {
+  return join(resolveClaudeHome(env, homeDir), "projects");
+}
 
 // dist/personal/lib/usage.mjs
 import { createReadStream, readFileSync, readdirSync, statSync } from "node:fs";
 import { createInterface } from "node:readline";
-import { join } from "node:path";
+import { join as join2 } from "node:path";
 function normalizeModelKey(modelId) {
   return modelId.replace(/-\d{8}$/, "");
 }
@@ -124,7 +133,7 @@ var DAYS_PER_MONTH = 30.4375;
 async function collectSessions(projectsDir, since) {
   let projects = [];
   try {
-    projects = readdirSync(projectsDir).map((name) => join(projectsDir, name)).filter((p) => {
+    projects = readdirSync(projectsDir).map((name) => join2(projectsDir, name)).filter((p) => {
       try {
         return statSync(p).isDirectory();
       } catch {
@@ -139,7 +148,7 @@ async function collectSessions(projectsDir, since) {
       for (const f of readdirSync(proj)) {
         if (!f.endsWith(".jsonl"))
           continue;
-        const full = join(proj, f);
+        const full = join2(proj, f);
         try {
           if (statSync(full).isFile())
             transcripts.push(full);
@@ -157,13 +166,13 @@ async function collectSessions(projectsDir, since) {
       const s = await extractSession(t);
       const sidDir = t.replace(/\.jsonl$/, "");
       try {
-        const subDir = join(sidDir, "subagents");
+        const subDir = join2(sidDir, "subagents");
         if (statSync(subDir).isDirectory()) {
           for (const sf of readdirSync(subDir)) {
             if (!sf.endsWith(".jsonl"))
               continue;
             try {
-              const sub = await extractSession(join(subDir, sf));
+              const sub = await extractSession(join2(subDir, sf));
               for (const [model, usage] of sub.perModel) {
                 let bucket = s.perModel.get(model);
                 if (!bucket) {
@@ -591,8 +600,8 @@ var isDirectInvocation = (() => {
 })();
 if (isDirectInvocation) {
   const here = dirname(fileURLToPath(import.meta.url));
-  const pricingPath = join2(here, "..", "data", "pricing.json");
-  let cliProjectsDir = join2(homedir(), ".claude", "projects");
+  const pricingPath = join3(here, "..", "data", "pricing.json");
+  let cliProjectsDir = resolveClaudeProjectsDir(process.env, homedir());
   try {
     const f = parseFlags(process.argv.slice(2));
     if (f.projectsDir)
