@@ -42,11 +42,11 @@ set -eo pipefail
 # --- configuration (edit before uploading to Kandji) ----------------------
 INGEST_TOKEN="fs_ingest_REPLACE_ME" # from your fancysauce dashboard
 IDENTITY_TYPE="full"
-CODEX_TAG="v0.20.2"                 # pinned plugin release for Codex telemetry
-CODEX_SHA="501e1e3e96df90adead5d54205608bb969547323"   # commit sha of CODEX_TAG
+CODEX_TAG="v0.21.0"                 # pinned plugin release for Codex telemetry
+CODEX_SHA="e63e4893c8737a5ab9bed4dd3f23a054648a0048"   # commit sha of CODEX_TAG
 CC_MODE="managed-hooks"             # plugin | managed-hooks
-CC_TAG="v0.20.2"                    # pinned plugin release for Claude Code telemetry
-CC_SHA="501e1e3e96df90adead5d54205608bb969547323"   # commit sha of CC_TAG
+CC_TAG="v0.21.0"                    # pinned plugin release for Claude Code telemetry
+CC_SHA="e63e4893c8737a5ab9bed4dd3f23a054648a0048"   # commit sha of CC_TAG
 # SessionEnd hooks share a 1.5s budget, which the collector's own 1800ms
 # self-budget already overruns. Claude Code raises the shared budget to the
 # longest per-hook timeout, so this one field is what keeps the end-of-session
@@ -230,6 +230,9 @@ CODEX_HOOKS_DIR="$CODEX_DIR/hooks"
 # download. Moving it to a tool-neutral directory changes a published download
 # path, so it moves with those guides, in FAN-645.
 set -u
+
+# The attribution worker's own hook fires must not reach the collector or git.
+[ "${FANCYSAUCE_ATTRIBUTION_WORKER:-}" = "1" ] && exit 0
 
 # The cache and data roots live under the invoking user's HOME. Without one there is
 # no user-owned place to hold executable code, and a world-writable fallback would let

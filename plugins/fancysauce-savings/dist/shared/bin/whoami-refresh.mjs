@@ -117,10 +117,10 @@ function credentialPaths() {
 var INGEST_ENDPOINT = "https://ingest.preview.fancysauce.ai";
 var API_ENDPOINT = "https://api.preview.fancysauce.ai";
 var DEFAULT_LOGIN_STATE_DIR = join(homedir2(), ".config", "fancysauce");
-function parseCredentialPathsEnv() {
-  if (process.env.VITEST !== "true")
+function parseCredentialPathsEnv(env = process.env) {
+  if (env.VITEST !== "true")
     return null;
-  const raw = process.env.FANCYSAUCE_CREDENTIAL_PATHS;
+  const raw = env.FANCYSAUCE_CREDENTIAL_PATHS;
   if (!raw)
     return null;
   let parsed;
@@ -167,8 +167,8 @@ function sha256Hex(input) {
 
 // dist/shared/whoami/credential.mjs
 var FINGERPRINT_HEX_CHARS = 12;
-function whoamiCredentialPaths() {
-  const parsed = parseCredentialPathsEnv();
+function whoamiCredentialPaths(env = process.env) {
+  const parsed = parseCredentialPathsEnv(env);
   return parsed ? { system: parsed.system, user: parsed.user } : credentialPaths();
 }
 function pathFlavor() {

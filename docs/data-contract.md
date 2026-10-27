@@ -1,6 +1,6 @@
 # What the fancysauce-savings plugin sends
 
-Generated from the plugin's content-filter keep-lists (`dist/shared/policy.mjs`) for version 0.21.0. Hooks receive the full tool input and prompt; the plugin emits only the fields below. Anything not listed is dropped before it is written to disk.
+Generated from the plugin's content-filter keep-lists (`dist/shared/policy.mjs`) for version 0.22.0. Hooks receive the full tool input and prompt; the plugin emits only the fields below. Anything not listed is dropped before it is written to disk.
 
 Kinds: **hash** is an unsalted SHA-256 of the named value, used to correlate equal values across events, not to conceal them: a short or guessable input can be recovered by guessing. **count** and **numeric** are numbers. **categorical** is one of a small fixed set of vendor-defined values. **scalar** is a short vendor-supplied value forwarded as text: a number, a version, or an enum token, never prose. **identifier** is an opaque id assigned by Claude Code or the API. **timestamp** is a point in time. **text** is marked explicitly and explained. **reference list** is a list of structured work references.
 
@@ -44,6 +44,8 @@ Source: hook `SessionStart`. A Claude Code session began.
 | `model` | categorical | Model identifier, as Claude Code reports it. |
 | `permission_mode` | categorical | Claude Code permission mode for the session. |
 | `fancysauce.repo_url_hash` | hash | SHA-256 of the git remote URL of the working directory, when it is a git checkout. |
+| `parent_session_id` | identifier | Session id of the agent session that started this one through a shell, when the plugin found one. Absent otherwise. |
+| `parent_link_method` | categorical | How the plugin looked for the parent session: `pidwalk`, `env`, or `none`. Sent only when the workspace turns session linking on. |
 
 ## `session.end`
 
@@ -74,14 +76,29 @@ Source: transcript tail. A Claude Code `away_summary` recap captured from the lo
 
 ## `session.name`
 
-Source: Codex thread database. The first nonempty native thread name captured from Codex's local session database.
+Source: Codex thread database, or the attribution agent. The session's name: the first nonempty native thread name captured from Codex's local session database, or a title the attribution agent wrote for the session.
 
 | Attribute | Kind | What it is |
 |---|---|---|
 | `naming_schema_version` | numeric | Version of the session-name wire shape. |
-| `name` | text | The native Codex thread name. |
+| `name` | text | The session name: the native Codex thread name, or a title the attribution agent wrote. |
 | `name_origin` | categorical | Source kind of the captured session name. |
 | `expected_tenant_id` | identifier | Tenant id the source record was captured for, used for ingest binding. |
+| `fire_index` | count | Which attribution run of the session produced this event, counting from 1. |
+| `trigger_tokens` | count | The session's input plus output tokens when the run started. |
+| `prompt_version` | numeric | Version of the attribution prompt the run used. |
+
+## `session.attribution`
+
+Source: attribution agent. The attribution agent's suggested attribution values for the session, from the workspace's vocabulary.
+
+| Attribute | Kind | What it is |
+|---|---|---|
+| `matches` | match list | Suggested attribution values: up to 20 objects, each with `valueId` (the workspace's value id) and `confidence` (an integer). The server clamps confidence and drops unknown ids. |
+| `source` | categorical | Where the attribution came from. Always `agent-matched`. |
+| `fire_index` | count | Which attribution run of the session produced this event, counting from 1. |
+| `trigger_tokens` | count | The session's input plus output tokens when the run started. |
+| `prompt_version` | numeric | Version of the attribution prompt the run used. |
 
 ## `session.metadata_worker_skipped`
 
@@ -260,6 +277,10 @@ Source: transcript tail. One model request, read from the session transcript Cla
 | `service_tier_requested` | scalar | Account or plan setting copied from Claude Code's local configuration cache. Never free text. |
 | `service_tier_observed` | scalar | Account or plan setting copied from Claude Code's local configuration cache. Never free text. |
 | `limit_id` | scalar | Account or plan setting copied from Claude Code's local configuration cache. Never free text. |
+| `fancysauce.worker_of` | identifier | Session id of the session the attribution worker ran for. The row is overhead, never a session. |
+| `fancysauce.worker_role` | categorical | The worker's role. `attribution_agent` today. |
+| `fancysauce.worker_fire_index` | count | Which attribution run of the session this worker call belongs to. |
+| `fancysauce.worker_agent` | categorical | Coding tool of the session: `claude-code` or `codex-cli`. |
 
 ## `usage_limit.exceeded`
 
@@ -320,6 +341,7 @@ Source: usage probe. A reading of the account's usage windows from Claude Code's
 | `seat_tier` | scalar | Account or plan setting copied from Claude Code's local configuration cache. Never free text. |
 | `model` | categorical | Model identifier, as Claude Code reports it. |
 | `limit_id` | scalar | Account or plan setting copied from Claude Code's local configuration cache. Never free text. |
+| `reading_origin` | categorical | Where the usage reading came from: `cache` (Claude Code's `/usage` cache) or `session` (the live session, through the plugin's usage relay). |
 
 ## `usage_config.changed`
 

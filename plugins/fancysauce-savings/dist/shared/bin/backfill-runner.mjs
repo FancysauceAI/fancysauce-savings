@@ -13,7 +13,11 @@ var __require = /* @__PURE__ */ ((x) => typeof require !== "undefined" ? require
   throw Error('Dynamic require of "' + x + '" is not supported');
 });
 var __commonJS = (cb, mod) => function __require2() {
-  return mod || (0, cb[__getOwnPropNames(cb)[0]])((mod = { exports: {} }).exports, mod), mod.exports;
+  try {
+    return mod || (0, cb[__getOwnPropNames(cb)[0]])((mod = { exports: {} }).exports, mod), mod.exports;
+  } catch (e) {
+    throw mod = 0, e;
+  }
 };
 var __copyProps = (to, from, except, desc) => {
   if (from && typeof from === "object" || typeof from === "function") {
@@ -1620,7 +1624,14 @@ import { homedir as homedir2 } from "node:os";
 // dist/shared/policy.mjs
 function defaultPolicy() {
   const keepLists = {
-    "session.start": Object.freeze(["cwd_hash", "model", "permission_mode", "fancysauce.repo_url_hash"]),
+    "session.start": Object.freeze([
+      "cwd_hash",
+      "model",
+      "permission_mode",
+      "fancysauce.repo_url_hash",
+      "parent_session_id",
+      "parent_link_method"
+    ]),
     "session.end": Object.freeze(["reason", "duration_wall_s"]),
     "session.recap": Object.freeze([
       "recap_schema_version",
@@ -1639,7 +1650,17 @@ function defaultPolicy() {
       "naming_schema_version",
       "name",
       "name_origin",
-      "expected_tenant_id"
+      "expected_tenant_id",
+      "fire_index",
+      "trigger_tokens",
+      "prompt_version"
+    ]),
+    "session.attribution": Object.freeze([
+      "matches",
+      "source",
+      "fire_index",
+      "trigger_tokens",
+      "prompt_version"
     ]),
     "session.metadata_worker_skipped": Object.freeze(["skip_reason"]),
     "prompt.submit": Object.freeze(["prompt_length", "slash_command"]),
@@ -1775,7 +1796,8 @@ function defaultPolicy() {
       "plan_type",
       "seat_tier",
       "model",
-      "limit_id"
+      "limit_id",
+      "reading_origin"
     ]),
     "usage_spend.snapshot": Object.freeze([
       "spend_used_minor",
@@ -1829,7 +1851,11 @@ function defaultPolicy() {
       "spend_control_resets_at",
       "service_tier_requested",
       "service_tier_observed",
-      "limit_id"
+      "limit_id",
+      "fancysauce.worker_of",
+      "fancysauce.worker_role",
+      "fancysauce.worker_fire_index",
+      "fancysauce.worker_agent"
     ])
   };
   return Object.freeze({
@@ -2156,12 +2182,13 @@ var KNOWN_FANCYSAUCE_VARS = /* @__PURE__ */ new Set([
   "FANCYSAUCE_API_KEY",
   "FANCYSAUCE_IDENTITY_TYPE",
   "FANCYSAUCE_INGEST_TOKEN",
-  "FANCYSAUCE_TENANT_KEY"
+  "FANCYSAUCE_TENANT_KEY",
+  "FANCYSAUCE_ATTRIBUTION_WORKER"
 ]);
-function parseCredentialPathsEnv() {
-  if (process.env.VITEST !== "true")
+function parseCredentialPathsEnv(env = process.env) {
+  if (env.VITEST !== "true")
     return null;
-  const raw = process.env.FANCYSAUCE_CREDENTIAL_PATHS;
+  const raw = env.FANCYSAUCE_CREDENTIAL_PATHS;
   if (!raw)
     return null;
   let parsed;
@@ -2338,9 +2365,9 @@ var BackoffState = class {
   dir;
   path;
   tmpPath;
-  constructor(dir) {
+  constructor(dir, fileName = "backoff.json") {
     this.dir = dir;
-    this.path = join3(dir, "backoff.json");
+    this.path = join3(dir, fileName);
     this.tmpPath = `${this.path}.tmp`;
   }
   async read() {
@@ -2668,6 +2695,21 @@ function validateWorkRefList(value) {
   }
   return refs;
 }
+var MAX_MATCHES_PER_EVENT = 20;
+function validateMatchList(value) {
+  if (!Array.isArray(value) || value.length > MAX_MATCHES_PER_EVENT)
+    return void 0;
+  const matches = [];
+  for (const item of value) {
+    if (typeof item !== "object" || item === null)
+      return void 0;
+    const { valueId, confidence } = item;
+    if (typeof valueId !== "string" || typeof confidence !== "number" || !Number.isSafeInteger(confidence))
+      return void 0;
+    matches.push({ valueId, confidence });
+  }
+  return matches;
+}
 
 // dist/shared/whoami/cache.mjs
 var SUCCESS_TTL_MS = 6 * 60 * 60 * 1e3;
@@ -2714,6 +2756,8 @@ var ATTR_TYPE = {
   model: "string",
   permission_mode: "string",
   "fancysauce.repo_url_hash": "string",
+  parent_session_id: "string",
+  parent_link_method: "string",
   // session.end
   reason: "string",
   duration_wall_s: "int",
@@ -2734,6 +2778,17 @@ var ATTR_TYPE = {
   name: "string",
   name_origin: "string",
   skip_reason: "string",
+  // session.attribution, and the fire fields the attribution agent adds to session.name
+  matches: "match_list",
+  source: "string",
+  fire_index: "int",
+  trigger_tokens: "int",
+  prompt_version: "int",
+  // The attribution worker's own api.request row
+  "fancysauce.worker_of": "string",
+  "fancysauce.worker_role": "string",
+  "fancysauce.worker_fire_index": "int",
+  "fancysauce.worker_agent": "string",
   // prompt.submit
   prompt_length: "int",
   slash_command: "string",
@@ -2810,6 +2865,7 @@ var ATTR_TYPE = {
   reached_type: "string",
   limit_source: "string",
   limit_id: "string",
+  reading_origin: "string",
   credits_has: "bool",
   credits_unlimited: "bool",
   credits_balance: "string",
@@ -2973,6 +3029,21 @@ function encodeAnyValue(key, v) {
       if (typeof v === "bigint")
         return { doubleValue: Number(v) };
       throw new Error(`Attribute ${key} typed double requires number|bigint, got ${typeof v}`);
+    case "match_list": {
+      const matches = validateMatchList(v);
+      if (!matches) {
+        throw new Error(`Attribute ${key} typed match_list requires 0..20 items of { valueId: string, confidence: integer }`);
+      }
+      const values = matches.map((match) => ({
+        kvlistValue: {
+          values: [
+            { key: "valueId", value: { stringValue: match.valueId } },
+            { key: "confidence", value: { intValue: String(match.confidence) } }
+          ]
+        }
+      }));
+      return { arrayValue: { values } };
+    }
     case "ref_list": {
       const refs = validateWorkRefList(v);
       if (!refs) {

@@ -2,6 +2,23 @@
 
 All public releases of `fancysauce-savings`. Most recent first.
 
+## v0.22.0 — 2026-10-27
+
+### Highlights
+
+- **Headless attribution agent.** With the `attribution-agent` tenant flag on, a Claude Code or Codex session that passes 20,000 input and output tokens gets a title and attribution matches. A worker with no tools writes them, on the developer's own login. The flag is off by default, so nothing changes until a tenant turns it on. (FAN-2227, #253)
+- **Session links.** With the `fancytab-session-link` tenant flag on, `session.start` names the agent session that started it through a shell. For example, a Codex session that a Claude Code session started records the Claude session id as `parent_session_id`. (FAN-1603, #247; FAN-2192, #250)
+
+### Features
+
+- **Live rate-limit readings in Go builds.** Go-runtime Claude Code builds ship a hooks module that writes a live session's rate-limit reading to the plugin data dir. The Go usage probe sends those readings, so limit use arrives without anyone running `/usage`. (#219)
+
+### Fixes
+
+- **A sandboxed session reports that it is not captured.** A Claude Code session that Codex starts in its `workspace-write` sandbox cannot be captured, because the sandbox denies writes under `~/.claude`. The collector now stops at once and reports that the session is not captured, instead of "Hook cancelled". The README states the limit. (FAN-2190, #251)
+- **Claude worker cost is correct.** The Claude attribution worker writes its prompt cache at the 5-minute tier, which is the tier that the server prices. Before this release, the session drawer under-priced Claude worker runs. (FAN-2289, #254)
+- **Go login shows its result page.** The Go `login` command waits up to one second for the browser to get its response before it closes the loopback server. Before this release, the browser could show a connection error, although the CLI printed the correct result. (FAN-2372, #263)
+
 ## v0.21.0 — 2026-10-20
 
 ### Highlights

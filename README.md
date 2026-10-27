@@ -2,7 +2,7 @@
 
 Usage analytics for Claude Code and OpenAI Codex CLI.
 
-**Version:** 0.21.0
+**Version:** 0.22.0
 
 This repo is the canonical distribution for both the Claude Code plugin and the
 OpenAI Codex plugin. Each tool installs only its own plugin.
@@ -37,6 +37,32 @@ To install and setup the plugin in Codex:
 codex plugin marketplace add FancysauceAI/fancysauce-savings
 @fancysauce-login
 ```
+
+
+## Claude Code started by Codex in a sandbox
+
+Codex can run `claude` as a tool command. Its `workspace-write` sandbox denies
+writes under `~/.claude`, so the plugin does not capture that Claude Code
+session:
+
+- Claude Code cannot create `~/.claude/session-env/<session>`, so it runs no
+  `SessionStart` hook.
+- Claude Code cannot write its transcript in `~/.claude/projects`, so the
+  plugin cannot read the API requests of the session.
+- The plugin cannot write its data directory in `~/.claude/plugins/data`.
+
+When the plugin cannot write its data directory, Claude Code shows this line
+at the end of the session:
+`SessionEnd hook [...] failed: fancysauce: cannot write <data directory>, so this session is not captured.`
+
+Do not make `~/.claude` paths writable for the sandbox. Claude Code runs
+files from these paths outside the sandbox. It sources the files in
+`~/.claude/session-env` before each Bash command. It runs the plugin binaries
+in `~/.claude/plugins/data`. A sandboxed command that writes there can run code
+outside the sandbox.
+
+To capture a Claude Code session that Codex starts, run that `claude` command
+outside the sandbox. For example, approve it to run unsandboxed.
 
 
 ## Enterprise / MDM deployment

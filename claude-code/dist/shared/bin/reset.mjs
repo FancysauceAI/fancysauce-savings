@@ -36,10 +36,10 @@ var WHOAMI_EXE = win322.join(SYSTEM32, "whoami.exe");
 
 // dist/shared/config.mjs
 var DEFAULT_LOGIN_STATE_DIR = join(homedir2(), ".config", "fancysauce");
-function parseCredentialPathsEnv() {
-  if (process.env.VITEST !== "true")
+function parseCredentialPathsEnv(env = process.env) {
+  if (env.VITEST !== "true")
     return null;
-  const raw = process.env.FANCYSAUCE_CREDENTIAL_PATHS;
+  const raw = env.FANCYSAUCE_CREDENTIAL_PATHS;
   if (!raw)
     return null;
   let parsed;

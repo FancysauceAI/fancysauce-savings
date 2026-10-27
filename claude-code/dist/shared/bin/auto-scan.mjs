@@ -12,11 +12,20 @@ var __require = /* @__PURE__ */ ((x) => typeof require !== "undefined" ? require
   if (typeof require !== "undefined") return require.apply(this, arguments);
   throw Error('Dynamic require of "' + x + '" is not supported');
 });
-var __esm = (fn, res) => function __init() {
-  return fn && (res = (0, fn[__getOwnPropNames(fn)[0]])(fn = 0)), res;
+var __esm = (fn, res, err) => function __init() {
+  if (err) throw err[0];
+  try {
+    return fn && (res = (0, fn[__getOwnPropNames(fn)[0]])(fn = 0)), res;
+  } catch (e) {
+    throw err = [e], e;
+  }
 };
 var __commonJS = (cb, mod) => function __require2() {
-  return mod || (0, cb[__getOwnPropNames(cb)[0]])((mod = { exports: {} }).exports, mod), mod.exports;
+  try {
+    return mod || (0, cb[__getOwnPropNames(cb)[0]])((mod = { exports: {} }).exports, mod), mod.exports;
+  } catch (e) {
+    throw mod = 0, e;
+  }
 };
 var __copyProps = (to, from, except, desc) => {
   if (from && typeof from === "object" || typeof from === "function") {
@@ -1764,7 +1773,14 @@ import { homedir as homedir2 } from "node:os";
 // dist/shared/policy.mjs
 function defaultPolicy() {
   const keepLists = {
-    "session.start": Object.freeze(["cwd_hash", "model", "permission_mode", "fancysauce.repo_url_hash"]),
+    "session.start": Object.freeze([
+      "cwd_hash",
+      "model",
+      "permission_mode",
+      "fancysauce.repo_url_hash",
+      "parent_session_id",
+      "parent_link_method"
+    ]),
     "session.end": Object.freeze(["reason", "duration_wall_s"]),
     "session.recap": Object.freeze([
       "recap_schema_version",
@@ -1783,7 +1799,17 @@ function defaultPolicy() {
       "naming_schema_version",
       "name",
       "name_origin",
-      "expected_tenant_id"
+      "expected_tenant_id",
+      "fire_index",
+      "trigger_tokens",
+      "prompt_version"
+    ]),
+    "session.attribution": Object.freeze([
+      "matches",
+      "source",
+      "fire_index",
+      "trigger_tokens",
+      "prompt_version"
     ]),
     "session.metadata_worker_skipped": Object.freeze(["skip_reason"]),
     "prompt.submit": Object.freeze(["prompt_length", "slash_command"]),
@@ -1919,7 +1945,8 @@ function defaultPolicy() {
       "plan_type",
       "seat_tier",
       "model",
-      "limit_id"
+      "limit_id",
+      "reading_origin"
     ]),
     "usage_spend.snapshot": Object.freeze([
       "spend_used_minor",
@@ -1973,7 +2000,11 @@ function defaultPolicy() {
       "spend_control_resets_at",
       "service_tier_requested",
       "service_tier_observed",
-      "limit_id"
+      "limit_id",
+      "fancysauce.worker_of",
+      "fancysauce.worker_role",
+      "fancysauce.worker_fire_index",
+      "fancysauce.worker_agent"
     ])
   };
   return Object.freeze({
@@ -2283,12 +2314,13 @@ var KNOWN_FANCYSAUCE_VARS = /* @__PURE__ */ new Set([
   "FANCYSAUCE_API_KEY",
   "FANCYSAUCE_IDENTITY_TYPE",
   "FANCYSAUCE_INGEST_TOKEN",
-  "FANCYSAUCE_TENANT_KEY"
+  "FANCYSAUCE_TENANT_KEY",
+  "FANCYSAUCE_ATTRIBUTION_WORKER"
 ]);
-function parseCredentialPathsEnv() {
-  if (process.env.VITEST !== "true")
+function parseCredentialPathsEnv(env = process.env) {
+  if (env.VITEST !== "true")
     return null;
-  const raw = process.env.FANCYSAUCE_CREDENTIAL_PATHS;
+  const raw = env.FANCYSAUCE_CREDENTIAL_PATHS;
   if (!raw)
     return null;
   let parsed;
@@ -3306,6 +3338,7 @@ function buildRules(policy) {
     "session.end": k("session.end"),
     "session.recap": k("session.recap"),
     "session.name": k("session.name"),
+    "session.attribution": k("session.attribution"),
     "session.metadata_worker_skipped": k("session.metadata_worker_skipped"),
     "prompt.submit": promptSubmit,
     "tool_call.start": toolCallStart,
@@ -3559,6 +3592,41 @@ var NO_PLUGIN_FLAGS = Object.freeze({});
 
 // dist/shared/session-metadata/delivery.mjs
 var MAX_RECAP_BYTES = 4 * 1024 * 1024;
+
+// dist/shared/attribution/trigger.mjs
+init_runner_spawn();
+
+// dist/shared/attribution/profiles.mjs
+function tokenCount(value) {
+  if (typeof value === "bigint")
+    return Number(value);
+  return typeof value === "number" && Number.isFinite(value) ? value : 0;
+}
+var CLAUDE_PROFILE = {
+  agent: "claude-code",
+  countTokens: (event) => tokenCount(event.attributes.tokens_input) + tokenCount(event.attributes.tokens_output),
+  dedupKey: (event) => {
+    const requestId = event.attributes.request_id;
+    return typeof requestId === "string" && requestId !== "" ? requestId : void 0;
+  },
+  runnerArgs: ["--agent", "claude-code"]
+};
+var CODEX_PROFILE = {
+  agent: "codex-cli",
+  countTokens: (event) => Math.max(0, tokenCount(event.attributes.tokens_input) - tokenCount(event.attributes.tokens_cache_read)) + tokenCount(event.attributes.tokens_output),
+  dedupKey: (event) => event.event_uuid,
+  runnerArgs: ["--agent", "codex-cli"]
+};
+var PROFILES = /* @__PURE__ */ new Map([
+  [CLAUDE_PROFILE.agent, CLAUDE_PROFILE],
+  [CODEX_PROFILE.agent, CODEX_PROFILE]
+]);
+
+// dist/shared/attribution/runner-env.mjs
+init_runner_env();
+
+// dist/shared/attribution/trigger.mjs
+var PENDING_TTL_MS = 24 * 60 * 60 * 1e3;
 
 // dist/shared/session-metadata/schedule.mjs
 init_runner_env();

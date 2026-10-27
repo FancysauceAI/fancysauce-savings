@@ -14,6 +14,9 @@
 # path, so it moves with those guides, in FAN-645.
 set -u
 
+# The attribution worker's own hook fires must not reach the collector or git.
+[ "${FANCYSAUCE_ATTRIBUTION_WORKER:-}" = "1" ] && exit 0
+
 # The cache and data roots live under the invoking user's HOME. Without one there is
 # no user-owned place to hold executable code, and a world-writable fallback would let
 # any local user pre-seed the code this wrapper runs. Do nothing instead.
