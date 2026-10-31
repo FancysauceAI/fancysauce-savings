@@ -4,6 +4,7 @@
 #   fancysauce.sh <Event> --ref <tag> --sha <sha>   # codex, pinned (default tool)
 #   fancysauce.sh <Event> --ref latest              # codex, floating
 #   fancysauce.sh <Event> --tool claude-code        # pin read from /etc/fancysauce/claude-code.pin
+#                                                   # ("<tag> <sha>", or "latest" to float)
 # Both tools pipe the hook-event JSON on stdin. The event name the collector
 # acts on comes from that payload; the argv event only triggers the fetch.
 #
@@ -195,9 +196,15 @@ read_pin() { # fills REF/SHA from PIN_FILE; leaves them unchanged unless the pin
   # The rollback path in kandji/README.md is exactly that hand edit, so strip it.
   _cr="$(printf '\r')"
   _tag="${_tag%$_cr}"; _pin_sha="${_pin_sha%$_cr}"; _pin_rest="${_pin_rest%$_cr}"
-  # Exactly two fields. A third would let a well-formed sha in the wrong column
+  # At most two fields. A third would let a well-formed sha in the wrong column
   # be accepted as the pin.
   [ -z "$_pin_rest" ] || return 0
+  # A lone `latest` floats: SessionStart resolves the newest release, as Codex
+  # does for `--ref latest`. It must be the only field — `latest <sha>` is a torn
+  # or hand-edited pin, not a floating one.
+  if [ "$_tag" = "latest" ] && [ -z "$_pin_sha" ]; then
+    REF="latest"; SHA=""; return 0
+  fi
   # LC_ALL=C so the character classes are bytes: a range under another locale can
   # admit a wider set, and this value decides which code runs.
   printf '%s' "$_tag" | LC_ALL=C grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+$' 2>/dev/null || return 0
@@ -236,10 +243,12 @@ session_start() {
 
 read_pin
 
-# Claude Code has no floating mode: without a valid pin there is nothing to
-# resolve, and resolve_latest() would turn a missing pin into a network fetch.
+# Claude Code floats only on an explicit `latest` (from the pin, or from argv as
+# Codex takes it): without one, a missing pin has nothing to resolve, and
+# resolve_latest() would turn it into a network fetch.
 FETCH_ON_START=1
-if [ "$TOOL" = "claude-code" ] && { [ -z "$REF" ] || [ -z "$SHA" ]; }; then
+if [ "$TOOL" = "claude-code" ] \
+   && { [ -z "$REF" ] || { [ "$REF" != "latest" ] && [ -z "$SHA" ]; }; }; then
   FETCH_ON_START=0
 fi
 
@@ -270,10 +279,11 @@ usable() { # <dir> -> runnable, and still on the commit we expect
   [ -f "$1/$COLLECT_REL" ] || return 1
   _want="$EXPECT_SHA"
   [ -n "$_want" ] || _want="$(cat "$RESOLVED" 2>/dev/null)"
-  # Neither one means nothing has ever been verified in this cache. Claude Code has
-  # no floating mode, so that state is an unpinned machine whose cache may still be
-  # populated: running it gives up the verification this arm exists to add. Codex
-  # floating mode reaches the same state legitimately on a first run.
+  # Neither one means nothing has ever been verified in this cache. For Claude Code
+  # that is an unpinned machine, or a floating one whose first resolve failed, and
+  # its cache may still be populated: running it gives up the verification this
+  # arm exists to add. Codex floating mode reaches the same state legitimately on
+  # a first run.
   if [ -z "$_want" ]; then
     [ "$TOOL" = "claude-code" ] && return 1
     return 0

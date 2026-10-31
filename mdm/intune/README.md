@@ -6,7 +6,7 @@ Two distinct artifacts land on each managed Windows machine:
 
 | Artifact | Path | Scope | Purpose |
 |---|---|---|---|
-| `managed-settings.json` | System-wide ClaudeCode path (see V2 note below) | System-wide | Registers the fancysauce marketplace and enables the plugin for every Claude Code user on the machine. Identical across all tenants — contains no secrets. Intune deploys the **plugin** arm; the managed-hooks arm described in [`../README.md`](../README.md) is macOS-only today. |
+| `managed-settings.json` | `C:\Program Files\ClaudeCode\managed-settings.json` (see [the path note](#managed-settings-path-on-windows)) | System-wide | Registers the fancysauce marketplace and enables the plugin for every Claude Code user on the machine. Identical across all tenants — contains no secrets. Intune deploys the **plugin** arm; the managed-hooks arm described in [`../README.md`](../README.md) is macOS-only today. |
 | `credentials.json` | `%APPDATA%\fancysauce\credentials.json` | Per-user | Carries the ingest token and the user's directory email so the plugin can tag usage events. Written at Intune deployment time by a Win32 user-context app. |
 
 The plugin (`fancysauce-savings`) comes from the GitHub dist repo `FancysauceAI/fancysauce-savings`; it is not bundled in this package. Managed settings register the marketplace and enable the plugin, but do not install it — each user runs `claude plugin install fancysauce-savings@fancysauce` once.
@@ -19,14 +19,64 @@ The plugin (`fancysauce-savings`) comes from the GitHub dist repo `FancysauceAI/
 > guides both deploy Codex usage analytics today. This Intune guide covers Claude Code
 > only.
 
-### V2 verification gap — Windows managed-settings path
+### Managed-settings path on Windows
 
-There is ambiguity about the exact system-wide path Claude Code reads on Windows. The two candidates are:
+Claude Code reads managed settings from `C:\Program Files\ClaudeCode\`. It does **not** read `C:\ProgramData\ClaudeCode\`. A file at the `ProgramData` path has no effect. See [the Claude Code managed settings documentation](https://code.claude.com/docs/en/managed-settings).
 
-- `C:\Program Files\ClaudeCode\managed-settings.json`
-- `C:\ProgramData\ClaudeCode\managed-settings.json`
+Claude Code reads two things in that folder:
 
-**Verify this with your installed Claude Code version before deploying at scale.** Run `claude --version` and check the Claude Code release notes or documentation for the `managed-settings.json` location on Windows. `C:\ProgramData\ClaudeCode\` is the more conventional choice for per-machine data that must be writable by MDM tooling without requiring `Program Files` elevation, but the authoritative path depends on the CC build you are running.
+- `managed-settings.json`
+- every `*.json` file in `managed-settings.d\`, merged in alphabetical order
+
+## Plugin arm: `plugin-deploy.ps1`
+
+`plugin-deploy.ps1` is an Intune **platform script**. It deploys the Fancysauce plugin for Claude Code. It needs no Win32 app and no credentials file.
+
+The script writes one file:
+
+`C:\Program Files\ClaudeCode\managed-settings.d\50-fancysauce.json`
+
+The file registers a managed URL marketplace and enables the plugin. Claude Code installs the plugin from that marketplace. The user runs no install command.
+
+This file is a **template**. The fancysauce dashboard replaces the single marker `__FANCYSAUCE_SETTINGS_JSON__` with the settings JSON for your tenant. Do not deploy the template as it is. Copy the rendered script from the dashboard.
+
+### Platform script settings
+
+Create the script in the Intune admin center: **Devices > Scripts and remediations > Platform scripts > Add > Windows 10 and later**. Upload the `.ps1` file. Intune takes an uploaded file and has no paste box.
+
+| Setting | Value | Why |
+|---|---|---|
+| Run this script using the logged on credentials | **No** | The script must run as SYSTEM to write to `Program Files`. The Intune default is Yes. |
+| Enforce script signature check | **No** | The script is not signed. The Intune default is Yes. |
+| Run script in 64-bit PowerShell host | **Yes** | Set this value **when you create the script**. If you change it on an existing script, Intune opens the script in the 64-bit host and does not run it. |
+
+Keep the script ASCII only. Intune rejects other characters, and Windows PowerShell 5.1 reads a file without a BOM as ANSI.
+
+Assign the script to a device group. Intune runs a device-assigned script once, and then again for each new user who signs in. It runs the script again only when you change the script or its policy. A device that is only Entra registered, and not joined, does not receive scripts.
+
+### What the script does
+
+- Writes to `$env:ProgramW6432` and reads the `Registry64` view, so the 32-bit PowerShell host still writes to `C:\Program Files\`. It logs a notice when it runs in the 32-bit host.
+- Writes UTF-8 with no BOM. Claude Code drops a settings file that has a BOM.
+- Does nothing when the file already holds the same content.
+- Logs a WARNING when `HKLM\SOFTWARE\Policies\ClaudeCode\Settings` exists. Claude Code uses only the highest managed source that holds any setting. A registry value hides this file.
+- Logs a notice when `C:\ProgramData\ClaudeCode\managed-settings.json` exists, because Claude Code does not read that path.
+- Logs a notice when Git for Windows is not at `C:\Program Files\Git\bin\bash.exe`. The plugin runs its hooks through Git Bash.
+- Always exits 0.
+
+The script prints each message and also appends it to `C:\ProgramData\fancysauce\mdm-deploy.log`. The Intune admin center shows only the script status, so read this log on the device.
+
+### Verify
+
+1. On one PC, read `C:\ProgramData\fancysauce\mdm-deploy.log` for `wrote` and for any WARNING.
+2. Check that the file exists at `C:\Program Files\ClaudeCode\managed-settings.d\50-fancysauce.json`.
+3. Run `/status` in Claude Code. Confirm that Setting sources names the managed file.
+
+The marketplace URL in the rendered script acts as a credential. Treat the script like a secret. If you rotate the key, replace the script in Intune, because the URL changes.
+
+## Credentials arm: Win32 app
+
+The sections below describe the original arm: a Win32 app that writes a per-user `credentials.json`, and a `managed-settings.json` that registers the public marketplace.
 
 ## Prerequisites
 
@@ -56,9 +106,7 @@ Follow the packaging instructions in `intunewin-build.md`. At the end of this st
 
 `managed-settings.json` contains no secrets and is identical for all tenants. Deploy it to the system-wide Windows path using Intune's **Custom Configuration Profile** (or an equivalent file-delivery mechanism such as a separate Win32 system-context app or an OMA-URI profile).
 
-**Target path** — see V2 verification gap above. Use whichever of the following your CC version reads:
-- `C:\ProgramData\ClaudeCode\managed-settings.json` (most likely)
-- `C:\Program Files\ClaudeCode\managed-settings.json`
+**Target path:** `C:\Program Files\ClaudeCode\managed-settings.json`. Do not use `C:\ProgramData\ClaudeCode\`. Claude Code does not read it.
 
 Deploy this as **device-targeted** (not user-targeted) so the file lands before any user logs in. All users on the machine will share this configuration.
 
@@ -83,8 +131,7 @@ After a test deployment, run the following checks.
 
 **Check 1 — managed-settings installed:**
 ```powershell
-Get-Content "C:\ProgramData\ClaudeCode\managed-settings.json"
-# (adjust path per your V2 verification)
+Get-Content "C:\Program Files\ClaudeCode\managed-settings.json"
 ```
 Expected: the JSON from `managed-settings.json` in this template set.
 
@@ -135,8 +182,8 @@ Common causes: app was deployed in device context instead of user context; Intun
 The install command passes `-ExecutionPolicy Bypass` explicitly, which overrides machine policy for this invocation. If a third-party endpoint-security product is blocking PowerShell execution, whitelist the Intune Management Extension process (`IntuneManagementExtension.exe`) or request an exception from your security team.
 
 **Plugin not loading in Claude Code:**
-Confirm `managed-settings.json` is at the correct system-wide path and is valid JSON:
+Confirm `managed-settings.json` is at `C:\Program Files\ClaudeCode\` and is valid JSON:
 ```powershell
-Get-Content "C:\ProgramData\ClaudeCode\managed-settings.json" | ConvertFrom-Json
+Get-Content "C:\Program Files\ClaudeCode\managed-settings.json" | ConvertFrom-Json
 ```
 Also confirm Claude Code is version 2.1.141 or later for reliable `extraKnownMarketplaces` support.

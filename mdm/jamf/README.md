@@ -11,7 +11,7 @@ before deciding whether you need it. `--cc-mode` picks the Claude Code arm.
 |---|---|---|---|
 | `50-fancysauce.json` (`managed-hooks`, the default) | `/Library/Application Support/ClaudeCode/managed-settings.d/50-fancysauce.json` | System-wide | Wires every Claude Code hook event to the fancysauce wrapper, and disables the plugin so one session is not collected twice. A drop-in fragment — your own `managed-settings.json` is never created or edited. Identical across all tenants — contains no secrets. Needs Claude Code 2.1.83+. |
 | `fancysauce.sh` (`managed-hooks` only) | `/etc/fancysauce/hooks/fancysauce.sh` | System-wide | The same wrapper the Codex hooks use, invoked with `--tool claude-code`. Fetches the pinned release into `~/.cache/fancysauce/claude-code/` and runs the usage analytics from there. |
-| `claude-code.pin` (`managed-hooks` only) | `/etc/fancysauce/claude-code.pin` | System-wide | One line, `<tag> <sha>`. Names the plugin release Claude Code usage analytics runs. Change it to move the fleet. |
+| `claude-code.pin` (`managed-hooks` only) | `/etc/fancysauce/claude-code.pin` | System-wide | One line: `<tag> <sha>`, or `latest` to float. Names the plugin release Claude Code usage analytics runs. Change it to move the fleet. |
 | `managed-settings.json` (`--cc-mode plugin`) | `/Library/Application Support/ClaudeCode/managed-settings.json` | System-wide | The alternative arm: registers the fancysauce marketplace and enables the plugin, which each user then installs once with `claude plugin install fancysauce-savings@fancysauce`. |
 | `ai.fancysauce.identity` config profile (**optional**) | managed-preferences domain | Per-user | Adds the user's directory email/UPN as an identity hint. Only for fleets whose developers have no Claude Code / Codex sign-in to attribute by. **This is the only artifact where Jamf substitutes `$EMAIL`.** Not in the package. |
 | `credentials.json` | `~/.config/fancysauce/credentials.json` | Per-user | Carries the ingest token (and the email hint when the profile is deployed); read by **both** tools. Materialized at each user login by a LaunchAgent. |
@@ -64,6 +64,50 @@ Everything else in the package is system-wide and ships byte-for-byte. Codex
 usage analytics never use `codex plugin` commands — those hooks are gated by a
 first-run trust prompt and install per user. An enforced `requirements.toml`
 is auto-trusted instead.
+
+## Plugin arm: `plugin-deploy.sh` (policy script)
+
+`plugin-deploy.sh` is a Jamf Pro **policy script**. It deploys the Fancysauce plugin for Claude Code. It is separate from the package that `build-pkg.sh` builds. It needs no package and no credentials file.
+
+The script runs as root and writes one file:
+
+`/Library/Application Support/ClaudeCode/managed-settings.d/50-fancysauce.json`
+
+The file registers a managed URL marketplace and enables the plugin. Claude Code installs the plugin from that marketplace. The user runs no install command.
+
+This file is a **template**. The fancysauce dashboard replaces the single marker `__FANCYSAUCE_SETTINGS_JSON__` with the settings JSON for your tenant. Do not deploy the template as it is. Copy the rendered script from the dashboard.
+
+### Policy settings
+
+1. In Jamf Pro, open **Settings > Computer management > Scripts**. Add a script and paste the rendered script into the Script tab.
+2. Create a policy with a **Scripts** payload that runs the script.
+3. Set the triggers to **Enrollment Complete** and **Recurring Check-in**.
+4. Set the execution frequency to **Ongoing**.
+5. Scope the policy to the Macs that run Claude Code.
+
+The script runs at every check-in. It does nothing when the file already holds the same content, so Claude Code does not see a change.
+
+### What the script does
+
+- Writes the file through a temporary file in the same directory, and then moves it into place. The final file has mode `0644`.
+- Sets `a+x` on the `ClaudeCode` directory and `0755` on `managed-settings.d`.
+- Prints a WARNING when a `com.anthropic.claudecode` configuration profile exists, for the console user or for the device. Claude Code uses only the highest managed source that holds any setting. A profile hides this file.
+- Deletes the pre-release `50-fancysauce-telemetry.json`. Its name sorts before ours, so its hooks would merge in and collect each session twice.
+- Prints a notice when it replaces the Kandji managed-hooks fragment. It prints a warning when `managed-settings.json` still carries the fancysauce hooks.
+- Always exits 0.
+
+Use one arm for each Mac. This script deploys the plugin. The package and the Kandji script deploy managed hooks.
+
+### Verify
+
+1. On one Mac, read the policy log for `wrote` and for any WARNING.
+2. Run `/status` in Claude Code. Confirm that Setting sources names the managed file.
+
+The marketplace URL in the rendered script acts as a credential. If you rotate the key, replace the script in Jamf, because the URL changes.
+
+## Package arm: `build-pkg.sh`
+
+The sections below describe the package that `build-pkg.sh` builds.
 
 ## Prerequisites
 

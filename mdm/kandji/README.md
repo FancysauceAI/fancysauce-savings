@@ -9,7 +9,7 @@ usage-analytics needs on a managed Mac — for both tools:
 |---|---|---|---|
 | `50-fancysauce.json` (`CC_MODE="managed-hooks"`, the default) | `/Library/Application Support/ClaudeCode/managed-settings.d/50-fancysauce.json` | System-wide | Wires every Claude Code hook event to the fancysauce wrapper, and disables the plugin so one session is not collected twice. A drop-in fragment — your own `managed-settings.json` is never created or edited. Identical across all tenants — contains no secrets. Needs Claude Code 2.1.83+. |
 | `fancysauce.sh` (`managed-hooks` only) | `/etc/fancysauce/hooks/fancysauce.sh` | System-wide | The same wrapper the Codex hooks use, invoked with `--tool claude-code`. Fetches the pinned release into `~/.cache/fancysauce/claude-code/` and runs the usage analytics from there. |
-| `claude-code.pin` (`managed-hooks` only) | `/etc/fancysauce/claude-code.pin` | System-wide | One line, `<tag> <sha>`. Names the plugin release Claude Code usage analytics runs. Change it to move the fleet. |
+| `claude-code.pin` (`managed-hooks` only) | `/etc/fancysauce/claude-code.pin` | System-wide | One line: `<tag> <sha>`, or `latest` to float. Names the plugin release Claude Code usage analytics runs. Change it to move the fleet. |
 | `managed-settings.json` (`CC_MODE="plugin"`) | `/Library/Application Support/ClaudeCode/managed-settings.json` | System-wide | The alternative arm: registers the fancysauce marketplace and enables the plugin, which the user then installs once. This is what the standalone `managed-settings.json` beside this README carries. |
 | `requirements.toml` | `/etc/codex/requirements.toml` | System-wide | Enforces the fancysauce usage-analytics hook for every Codex lifecycle event. Enforced hooks are **auto-trusted** — no user prompt, analytics run zero-step. |
 | `fancysauce.sh` | `/etc/codex/hooks/fancysauce.sh` | System-wide | The Codex hook wrapper `requirements.toml` invokes. Fail-open (never breaks a session); fetches the pinned plugin release into `~/.cache/fancysauce/codex/` and runs the usage analytics from there. |
@@ -86,11 +86,11 @@ Open `deploy.sh` and set the configuration values at the top:
 ```sh
 INGEST_TOKEN="fs_ingest_REPLACE_ME" # replace with your ingest token
 IDENTITY_TYPE="full"
-CODEX_TAG="v0.21.0"                 # pinned plugin release for Codex usage analytics
-CODEX_SHA="e63e4893c8737a5ab9bed4dd3f23a054648a0048"   # commit sha of CODEX_TAG
+CODEX_TAG="v0.22.0"                 # pinned plugin release for Codex usage analytics
+CODEX_SHA="acdad73fb2dca2b8a2bede823f536210183dc78c"   # commit sha of CODEX_TAG
 CC_MODE="managed-hooks"             # plugin | managed-hooks
-CC_TAG="v0.21.0"                    # pinned plugin release for Claude Code usage analytics
-CC_SHA="e63e4893c8737a5ab9bed4dd3f23a054648a0048"   # commit sha of CC_TAG
+CC_TAG="v0.22.0"                    # pinned plugin release for Claude Code usage analytics
+CC_SHA="acdad73fb2dca2b8a2bede823f536210183dc78c"   # commit sha of CC_TAG
 CC_SESSION_END_TIMEOUT="5"          # seconds, 2-60; raises the shared SessionEnd budget
 ```
 
@@ -112,6 +112,12 @@ git ls-remote https://github.com/FancysauceAI/fancysauce-savings.git 'refs/tags/
 ```
 
 (Take the sha from the `^{}` line; for an unannotated tag, drop the `^{}`.)
+
+To float a tool on the newest release instead, set its tag to `latest` and its
+sha to empty (`CODEX_TAG="latest"` and `CODEX_SHA=""`, or `CC_TAG="latest"` and
+`CC_SHA=""`). Each session then resolves the newest `vX.Y.Z` tag and verifies the
+checkout against it. Floating removes the review step between a published tag
+and what your fleet runs.
 
 Leave the last line of the script exactly as it is:
 
@@ -211,7 +217,8 @@ ls -l /etc/fancysauce/hooks/fancysauce.sh
 cat /etc/fancysauce/claude-code.pin
 ```
 Expected: the wrapper present, root-owned, executable (`-rwxr-xr-x`); the pin one
-line of `<tag> <sha>` matching your `CC_TAG`/`CC_SHA`.
+line of `<tag> <sha>` matching your `CC_TAG`/`CC_SHA`, or `latest` when
+`CC_TAG="latest"`.
 
 **Check 2 — Codex managed hooks installed:**
 ```sh
@@ -219,7 +226,8 @@ cat /etc/codex/requirements.toml
 ls -l /etc/codex/hooks/fancysauce.sh
 ```
 Expected: a stanza per lifecycle event, each command carrying your
-`--ref <tag> --sha <sha>`; the wrapper present, root-owned, executable (`-rwxr-xr-x`).
+`--ref <tag> --sha <sha>` (or `--ref latest` with no `--sha` when
+`CODEX_TAG="latest"`); the wrapper present, root-owned, executable (`-rwxr-xr-x`).
 
 **Check 3 — credentials materialized:**
 ```sh
@@ -329,11 +337,13 @@ Confirm, in this order:
 4. `disableAllHooks` is not set anywhere. It is a normal enterprise posture and
    it silences managed hooks too — the machine then reports nothing, silently.
 5. The wrapper and the pin are present (Check 1b), and the pin holds a `vX.Y.Z`
-   tag and a 40-character lowercase sha. A malformed pin reads as absent.
+   tag and a 40-character lowercase sha, or a lone `latest`. A malformed pin
+   reads as absent.
 6. The cache populated after a session (`ls ~/.cache/fancysauce/claude-code/`).
    An empty cache means the fetch failed (network/proxy) or the pinned sha does
    not match the tag. A machine that has never held a good pin runs nothing at
-   all — there is no floating mode on this arm.
+   all. A `latest` pin floats, but a machine whose first resolve fails also runs
+   nothing until a resolve succeeds.
 7. `git` and `node` are on PATH for the user's shell.
 
 The wrapper is fail-open, so none of these surface an error in the Claude Code

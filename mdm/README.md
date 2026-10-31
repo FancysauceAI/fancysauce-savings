@@ -5,9 +5,14 @@ managed fleet — the `fancysauce-savings` plugin for Claude Code, and the
 managed-hook path for OpenAI Codex. It works with **any** MDM. Product-specific
 walkthroughs live in subfolders:
 
-- **Jamf Pro** → [`jamf/README.md`](jamf/README.md) — Claude Code + Codex
+- **Jamf Pro** → [`jamf/README.md`](jamf/README.md) — Claude Code + Codex, and a plugin-arm policy script (`jamf/plugin-deploy.sh`)
 - **Kandji** → [`kandji/README.md`](kandji/README.md) — Claude Code + Codex
-- **Microsoft Intune (Windows)** → [`intune/README.md`](intune/README.md) — Claude Code only ([why](intune/README.md))
+- **Microsoft Intune (Windows)** → [`intune/README.md`](intune/README.md) — Claude Code only ([why](intune/README.md)), and a plugin-arm platform script (`intune/plugin-deploy.ps1`)
+
+The Jamf and Intune plugin-arm scripts (`jamf/plugin-deploy.sh` and
+`intune/plugin-deploy.ps1`) are templates. They carry one marker,
+`__FANCYSAUCE_SETTINGS_JSON__`, where fancysauce puts your tenant's settings JSON.
+Copy the rendered script from the fancysauce dashboard.
 
 If you run a different MDM (Mosyle, Addigy, Workspace ONE, …), the contract below
 is everything you need — adapt it to your tool's file-deployment and
@@ -205,7 +210,8 @@ That block arrives as a **drop-in policy fragment**, not as your
 `managed-settings.json`. See [the drop-in fragment](#the-drop-in-fragment) below.
 
 That is the same wrapper the Codex arm uses. It verifies the checkout's `HEAD`
-against the sha in `/etc/fancysauce/claude-code.pin` on **every** event, and
+against the sha in `/etc/fancysauce/claude-code.pin` on **every** event (or, for
+a `latest` pin, against the commit the last session start resolved), and
 fetches a new release only at `SessionStart`. A pin change therefore takes effect
 at the next check-in plus the next session start. A session already running keeps
 the release it started with only until some session on that Mac fetches the new
@@ -391,24 +397,28 @@ script deletes that file outright — the name is exclusively ours.
 `/etc/fancysauce/claude-code.pin` is one line, root-owned, mode `0644`:
 
 ```
-v0.21.0 e63e4893c8737a5ab9bed4dd3f23a054648a0048
+v0.22.0 acdad73fb2dca2b8a2bede823f536210183dc78c
 ```
 
 Resolve the sha for a tag with:
 
 ```sh
-git ls-remote https://github.com/FancysauceAI/fancysauce-savings.git 'refs/tags/v0.21.0^{}'
+git ls-remote https://github.com/FancysauceAI/fancysauce-savings.git 'refs/tags/v0.22.0^{}'
 ```
 
-The wrapper validates both fields on every read (`vX.Y.Z` tag, 40 hex sha). A
-missing **or** malformed pin means the same thing: fetch nothing, run the newest
-cache directory that still verifies, exit 0. That is the safe degradation, not an
-error the user sees — the machine stays on its last good release until the next
-check-in fixes the pin. A machine that has never held a good pin verifies nothing,
-so it collects nothing rather than running an unverified cache directory. There is
-no floating mode here: without a sha to check the checkout against, running
-whatever sits in the cache would give up the guarantee this arm exists to add.
-Such a machine is silent, not wrong, and one good pin fixes it.
+To float on the newest release instead, the pin is the single word `latest`.
+At each session start the wrapper then resolves the newest `vX.Y.Z` tag, and it
+verifies the checkout against the commit it resolved (recorded in the cache's
+`resolved-sha`). `latest` with a sha after it is malformed.
+
+The wrapper validates the pin on every read (`vX.Y.Z` tag and 40 hex sha, or a
+lone `latest`). A missing **or** malformed pin means the same thing: fetch
+nothing, run the newest cache directory that still verifies, exit 0. That is the
+safe degradation, not an error the user sees — the machine stays on its last good
+release until the next check-in fixes the pin. A machine that has never held a
+good pin, or a floating machine whose first resolve failed, verifies nothing, so
+it collects nothing rather than running an unverified cache directory. Such a
+machine is silent, not wrong, and one good pin or resolve fixes it.
 
 **The wrapper's release selection is not tamper-proof against the local user.**
 The hook runs as the logged-in user, and the cache and data roots live in that

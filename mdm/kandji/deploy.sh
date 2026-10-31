@@ -42,11 +42,13 @@ set -eo pipefail
 # --- configuration (edit before uploading to Kandji) ----------------------
 INGEST_TOKEN="fs_ingest_REPLACE_ME" # from your fancysauce dashboard
 IDENTITY_TYPE="full"
-CODEX_TAG="v0.21.0"                 # pinned plugin release for Codex telemetry
-CODEX_SHA="e63e4893c8737a5ab9bed4dd3f23a054648a0048"   # commit sha of CODEX_TAG
+# A *_TAG of "latest" with an empty *_SHA floats: each session runs the newest
+# release instead of the pinned one.
+CODEX_TAG="v0.22.0"                 # pinned plugin release for Codex telemetry
+CODEX_SHA="acdad73fb2dca2b8a2bede823f536210183dc78c"   # commit sha of CODEX_TAG
 CC_MODE="managed-hooks"             # plugin | managed-hooks
-CC_TAG="v0.21.0"                    # pinned plugin release for Claude Code telemetry
-CC_SHA="e63e4893c8737a5ab9bed4dd3f23a054648a0048"   # commit sha of CC_TAG
+CC_TAG="v0.22.0"                    # pinned plugin release for Claude Code telemetry
+CC_SHA="acdad73fb2dca2b8a2bede823f536210183dc78c"   # commit sha of CC_TAG
 # SessionEnd hooks share a 1.5s budget, which the collector's own 1800ms
 # self-budget already overruns. Claude Code raises the shared budget to the
 # longest per-hook timeout, so this one field is what keeps the end-of-session
@@ -221,6 +223,7 @@ CODEX_HOOKS_DIR="$CODEX_DIR/hooks"
 #   fancysauce.sh <Event> --ref <tag> --sha <sha>   # codex, pinned (default tool)
 #   fancysauce.sh <Event> --ref latest              # codex, floating
 #   fancysauce.sh <Event> --tool claude-code        # pin read from /etc/fancysauce/claude-code.pin
+#                                                   # ("<tag> <sha>", or "latest" to float)
 # Both tools pipe the hook-event JSON on stdin. The event name the collector
 # acts on comes from that payload; the argv event only triggers the fetch.
 #
@@ -412,9 +415,15 @@ read_pin() { # fills REF/SHA from PIN_FILE; leaves them unchanged unless the pin
   # The rollback path in kandji/README.md is exactly that hand edit, so strip it.
   _cr="$(printf '\r')"
   _tag="${_tag%$_cr}"; _pin_sha="${_pin_sha%$_cr}"; _pin_rest="${_pin_rest%$_cr}"
-  # Exactly two fields. A third would let a well-formed sha in the wrong column
+  # At most two fields. A third would let a well-formed sha in the wrong column
   # be accepted as the pin.
   [ -z "$_pin_rest" ] || return 0
+  # A lone `latest` floats: SessionStart resolves the newest release, as Codex
+  # does for `--ref latest`. It must be the only field — `latest <sha>` is a torn
+  # or hand-edited pin, not a floating one.
+  if [ "$_tag" = "latest" ] && [ -z "$_pin_sha" ]; then
+    REF="latest"; SHA=""; return 0
+  fi
   # LC_ALL=C so the character classes are bytes: a range under another locale can
   # admit a wider set, and this value decides which code runs.
   printf '%s' "$_tag" | LC_ALL=C grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+$' 2>/dev/null || return 0
@@ -453,10 +462,12 @@ session_start() {
 
 read_pin
 
-# Claude Code has no floating mode: without a valid pin there is nothing to
-# resolve, and resolve_latest() would turn a missing pin into a network fetch.
+# Claude Code floats only on an explicit `latest` (from the pin, or from argv as
+# Codex takes it): without one, a missing pin has nothing to resolve, and
+# resolve_latest() would turn it into a network fetch.
 FETCH_ON_START=1
-if [ "$TOOL" = "claude-code" ] && { [ -z "$REF" ] || [ -z "$SHA" ]; }; then
+if [ "$TOOL" = "claude-code" ] \
+   && { [ -z "$REF" ] || { [ "$REF" != "latest" ] && [ -z "$SHA" ]; }; }; then
   FETCH_ON_START=0
 fi
 
@@ -487,10 +498,11 @@ usable() { # <dir> -> runnable, and still on the commit we expect
   [ -f "$1/$COLLECT_REL" ] || return 1
   _want="$EXPECT_SHA"
   [ -n "$_want" ] || _want="$(cat "$RESOLVED" 2>/dev/null)"
-  # Neither one means nothing has ever been verified in this cache. Claude Code has
-  # no floating mode, so that state is an unpinned machine whose cache may still be
-  # populated: running it gives up the verification this arm exists to add. Codex
-  # floating mode reaches the same state legitimately on a first run.
+  # Neither one means nothing has ever been verified in this cache. For Claude Code
+  # that is an unpinned machine, or a floating one whose first resolve failed, and
+  # its cache may still be populated: running it gives up the verification this
+  # arm exists to add. Codex floating mode reaches the same state legitimately on
+  # a first run.
   if [ -z "$_want" ]; then
     [ "$TOOL" = "claude-code" ] && return 1
     return 0
@@ -520,6 +532,13 @@ FANCYSAUCE_WRAPPER_EOF
 # canonical requirements.toml from it, and kandji-mdm-template.test.mjs derives
 # this list from that. A stanza added here alone fails the suite.
 CODEX_EVENTS="SessionStart UserPromptSubmit PreToolUse PermissionRequest PostToolUse PreCompact PostCompact SubagentStart SubagentStop Stop"
+# Floating passes no --sha: the wrapper verifies the checkout against the tag it
+# resolves, and a sha here would pin the fleet to whatever this file names.
+if [ "$CODEX_TAG" = "latest" ]; then
+  CODEX_REF_ARGS="--ref latest"
+else
+  CODEX_REF_ARGS="--ref $CODEX_TAG --sha $CODEX_SHA"
+fi
 {
   /usr/bin/printf '# fancysauce-savings — Codex managed hooks. Generated by the Kandji deploy script.\n'
   /usr/bin/printf '# Enforced hooks are auto-trusted: they run zero-step with no user prompt.\n\n'
@@ -528,8 +547,8 @@ CODEX_EVENTS="SessionStart UserPromptSubmit PreToolUse PermissionRequest PostToo
   # other tool writing its own requirements layer — taking Codex down at startup.
   /usr/bin/printf '[features]\nhooks = true\n\n[hooks]\n'
   for _event in $CODEX_EVENTS; do
-    /usr/bin/printf '\n[[hooks.%s]]\nmatcher = ""\n[[hooks.%s.hooks]]\ntype = "command"\ncommand = "/etc/codex/hooks/fancysauce.sh %s --ref %s --sha %s"\n' \
-      "$_event" "$_event" "$_event" "$CODEX_TAG" "$CODEX_SHA"
+    /usr/bin/printf '\n[[hooks.%s]]\nmatcher = ""\n[[hooks.%s.hooks]]\ntype = "command"\ncommand = "/etc/codex/hooks/fancysauce.sh %s %s"\n' \
+      "$_event" "$_event" "$_event" "$CODEX_REF_ARGS"
   done
 } | /usr/bin/tee "$CODEX_DIR/requirements.toml" >/dev/null
 /bin/chmod 0644 "$CODEX_DIR/requirements.toml"
@@ -595,8 +614,13 @@ if [ "$CC_MODE" = "managed-hooks" ]; then
   write_atomic "$CC_HOOKS_DIR/fancysauce.sh" 0755 < "$CODEX_HOOKS_DIR/fancysauce.sh"
 
   # The pin is read on EVERY hook event, so it is written whole and renamed.
-  /usr/bin/printf '%s %s\n' "$CC_TAG" "$CC_SHA" \
-    | write_atomic "$CC_ETC_DIR/claude-code.pin" 0644
+  # The wrapper floats only on a lone `latest`; `latest <sha>` reads as no pin.
+  if [ "$CC_TAG" = "latest" ]; then
+    /usr/bin/printf 'latest\n' | write_atomic "$CC_ETC_DIR/claude-code.pin" 0644
+  else
+    /usr/bin/printf '%s %s\n' "$CC_TAG" "$CC_SHA" \
+      | write_atomic "$CC_ETC_DIR/claude-code.pin" 0644
+  fi
 
   # The fragment sits one level deeper than managed-settings.json, so it needs
   # the same traversal a hardened root umask would otherwise deny. This directory

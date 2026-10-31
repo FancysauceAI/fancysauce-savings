@@ -2,6 +2,19 @@
 
 All public releases of `fancysauce-savings`. Most recent first.
 
+## v0.23.0 — 2026-10-30
+
+### Highlights
+
+- **Cowork base ZIP on each release.** A release now attaches `fancysauce-savings-cowork-base.zip` to its GitHub release on `FancysauceAI/fancy`. The ZIP has the Go collector for all five platforms, and a placeholder in place of the tenant key. A manual Release workflow in fancytab publishes both dist repos and the ZIP. The dashboard download that adds the tenant key is FAN-2442. (FAN-2441, #269)
+- **Identity in a Cowork VM.** When `~/.claude.json` has no account, the Go collector reads the account from `CLAUDE_CODE_USER_EMAIL`, `CLAUDE_CODE_ACCOUNT_UUID` and `CLAUDE_CODE_ORGANIZATION_UUID` before it runs `claude auth status`. Claude Code sets these variables for hooks in a Cowork VM. An identity from these variables has no plan name and no org name. (#267)
+
+### Features
+
+- **Linux arm64 collector.** The `fancy` tree ships a `linux-arm64` Go collector, so the plugin runs in a Cowork VM on Apple Silicon. (#267)
+- **Jamf Pro and Intune plugin-arm templates.** `mdm/jamf/plugin-deploy.sh` and `mdm/intune/plugin-deploy.ps1` install the Claude Code plugin on a Jamf Pro or Intune fleet. (FAN-2419, #268)
+- **MDM scripts can float on the newest release.** The Kandji deploy script and the managed-hook wrapper float a tool on the newest release when its tag is `latest` and its sha is empty. Pinned values work as before. (FAN-2380, #266)
+
 ## v0.22.0 — 2026-10-27
 
 ### Highlights
