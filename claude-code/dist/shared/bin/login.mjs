@@ -44,8 +44,23 @@ var SUCCESS_HTML = `<!doctype html>
   <h1>Authenticated</h1>
   <p>You can close this window.</p>
 </body></html>`;
+var REJECTED_HTML = `<!doctype html>
+<html><head>
+  <meta charset="utf-8">
+  <title>Sign-in did not complete</title>
+  <meta http-equiv="Cache-Control" content="no-store">
+  <script>history.replaceState({}, '', '/done');</script>
+</head><body style="font-family: -apple-system, system-ui, sans-serif; padding: 2em;">
+  <h1>Sign-in did not complete</h1>
+  <p>Return to the terminal for details.</p>
+</body></html>`;
 var ERROR_HTML_400 = `<!doctype html><html><body><h1>Authentication failed</h1>
   <p>State token did not match. Please re-run ${LOGIN_COMMAND}.</p></body></html>`;
+var MAX_TERMINAL_TEXT_LENGTH = 200;
+function terminalText(raw) {
+  const text = (raw ?? "").replace(/[^A-Za-z0-9 ._-]/g, " ").split(" ").filter(Boolean).join(" ");
+  return text.length > MAX_TERMINAL_TEXT_LENGTH ? text.slice(0, MAX_TERMINAL_TEXT_LENGTH).trim() : text;
+}
 async function startLoopback(opts) {
   let resolve;
   const completion = new Promise((res) => {
@@ -85,6 +100,15 @@ async function startLoopback(opts) {
         "Content-Type": "text/html; charset=utf-8",
         ...SECURITY_HEADERS
       }).end(ERROR_HTML_400);
+      return;
+    }
+    const rejection = terminalText(url.searchParams.get("error"));
+    if (rejection) {
+      res.writeHead(200, {
+        "Content-Type": "text/html; charset=utf-8",
+        ...SECURITY_HEADERS
+      }).end(REJECTED_HTML);
+      resolve({ kind: "rejected", code: rejection, description: terminalText(url.searchParams.get("error_description")) });
       return;
     }
     if (!credential) {
@@ -528,6 +552,11 @@ async function runLogin(opts) {
     await openBrowser(url, { onError: (err) => opts.logger.warn(`browser open failed: ${String(err)}; visit manually: ${url}`) });
   }
   const transferResult = await lb.completion;
+  if (transferResult.kind === "rejected") {
+    const reason = rejectionMessage(transferResult.code, transferResult.description);
+    opts.logger.error(reason);
+    return { kind: "error", reason };
+  }
   if (transferResult.kind === "error") {
     opts.logger.error(`login failed: ${transferResult.reason}`);
     return { kind: "error", reason: transferResult.reason };
@@ -562,6 +591,20 @@ async function runLogin(opts) {
     credential: transferResult.credential,
     backfill_intent: transferResult.backfill_intent
   };
+}
+function rejectionMessage(code, description) {
+  switch (code) {
+    case "cancelled":
+      return "Sign-in was cancelled.";
+    case "unverified_google_account":
+    case "unverified_microsoft_account":
+      return "That account's email isn't verified; try a different account.";
+    case "invalid_email":
+      return "That email can't be used to sign in.";
+    case "mint_failed":
+      return "The credential couldn't be issued; try again.";
+  }
+  return description === "" ? `Sign-in was rejected (${code}).` : `Sign-in was rejected (${code}): ${description}`;
 }
 async function readUserCredential(systemPath, userPath) {
   const read = await readCredential({ system: systemPath, user: userPath });

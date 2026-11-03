@@ -3861,6 +3861,9 @@ var ATTR_TYPE = {
   "fancysauce.repo_url_hash": "string",
   parent_session_id: "string",
   parent_link_method: "string",
+  // compaction.before
+  trigger: "string",
+  pre_tokens: "int",
   // session.end
   reason: "string",
   duration_wall_s: "int",

@@ -2067,8 +2067,8 @@ function defaultPolicy() {
       "original_reset_time"
     ]),
     "task.completed": Object.freeze(["task_id"]),
-    "compaction.before": Object.freeze([]),
-    "compaction.after": Object.freeze([]),
+    "compaction.before": Object.freeze(["trigger"]),
+    "compaction.after": Object.freeze(["pre_tokens", "trigger"]),
     "config.changed": Object.freeze([]),
     "usage_config.changed": Object.freeze([
       "plan_type",
@@ -2626,11 +2626,24 @@ import { homedir as homedir5 } from "node:os";
 import { join as join12, relative as relative3 } from "node:path";
 
 // dist/agents/claude-code/transcript-tail.mjs
-var import_proper_lockfile2 = __toESM(require_proper_lockfile(), 1);
 import { mkdir as mkdir5, readFile as readFile6, readdir, writeFile as writeFile3, appendFile, rename as rename5, lstat as lstat2 } from "node:fs/promises";
 import { basename as basename2, dirname as dirname5, isAbsolute as isAbsolute2, join as join9, relative as relative2, sep as sep2 } from "node:path";
 import { homedir as homedir4 } from "node:os";
 import { randomUUID as randomUUID3 } from "node:crypto";
+
+// dist/shared/session-metadata/identity.mjs
+import { createHash } from "node:crypto";
+var URL_NAMESPACE = Buffer.from("6ba7b8119dad11d180b400c04fd430c8", "hex");
+function uuidV5Url(tuple) {
+  const bytes = createHash("sha1").update(URL_NAMESPACE).update(JSON.stringify(tuple)).digest().subarray(0, 16);
+  bytes[6] = bytes[6] & 15 | 80;
+  bytes[8] = bytes[8] & 63 | 128;
+  const hex = bytes.toString("hex");
+  return [hex.slice(0, 8), hex.slice(8, 12), hex.slice(12, 16), hex.slice(16, 20), hex.slice(20)].join("-");
+}
+
+// dist/agents/claude-code/transcript-tail.mjs
+var import_proper_lockfile2 = __toESM(require_proper_lockfile(), 1);
 
 // dist/agents/claude-code/subagent-cursor.mjs
 import { readFile as readFile4, rename as rename3, writeFile } from "node:fs/promises";
@@ -3194,11 +3207,11 @@ var TranscriptTail = class {
       sequenceBase,
       maxReadBytes,
       state: {},
-      parseWindow: ccParseWindow((r, seq) => toApiRequestEvent(r, sessionId, seq), (rec, seq) => detectUsageLimit(rec, sessionId, seq, Date.now()))
+      parseWindow: ccParseWindow((r, seq) => toApiRequestEvent(r, sessionId, seq), (rec, seq) => detectUsageLimit(rec, sessionId, seq, Date.now()), (rec, seq) => compactionBoundary(rec, sessionId, seq))
     });
   }
 };
-function ccParseWindow(stamp, detectLimit) {
+function ccParseWindow(stamp, detectLimit, detectBoundary) {
   return (lines, sequenceBase) => {
     const events = [];
     let seq = sequenceBase;
@@ -3218,12 +3231,46 @@ function ccParseWindow(stamp, detectLimit) {
           seq++;
         }
       }
+      const boundary = detectBoundary?.(rec, seq);
+      if (boundary) {
+        events.push(boundary);
+        seq++;
+      }
       if (!isAssistantRecord(rec))
         continue;
       events.push(stamp(rec, seq));
       seq++;
     }
     return events;
+  };
+}
+function compactionBoundary(value, sessionId, sequence) {
+  if (typeof value !== "object" || value === null || Array.isArray(value))
+    return null;
+  const record = value;
+  if (record.type !== "system" || record.subtype !== "compact_boundary" || record.isSidechain === true || typeof record.uuid !== "string" || typeof record.timestamp !== "string")
+    return null;
+  const timestamp = Date.parse(record.timestamp);
+  if (!Number.isFinite(timestamp))
+    return null;
+  const attributes = {};
+  const metadata = record.compactMetadata;
+  if (typeof metadata === "object" && metadata !== null && !Array.isArray(metadata)) {
+    const fields = metadata;
+    if (typeof fields.preTokens === "number" && Number.isSafeInteger(fields.preTokens) && fields.preTokens >= 0) {
+      attributes.pre_tokens = fields.preTokens;
+    }
+    if (fields.trigger === "auto" || fields.trigger === "manual")
+      attributes.trigger = fields.trigger;
+  }
+  return {
+    event_uuid: uuidV5Url(["fancysauce/compaction-after/v1", sessionId, record.uuid]),
+    event_type: "compaction.after",
+    session_id: sessionId,
+    source: "transcript.tail",
+    sequence,
+    timestamp_ns: BigInt(timestamp) * 1000000n,
+    attributes
   };
 }
 async function readSubagent(opts) {
@@ -3480,9 +3527,9 @@ var Queue = class {
 init_credential_paths();
 
 // dist/shared/hash.mjs
-import { createHash, createHmac } from "node:crypto";
+import { createHash as createHash2, createHmac } from "node:crypto";
 function sha256Hex(input) {
-  return createHash("sha256").update(input, "utf8").digest("hex");
+  return createHash2("sha256").update(input, "utf8").digest("hex");
 }
 
 // dist/shared/types.mjs

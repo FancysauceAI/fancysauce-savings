@@ -2,6 +2,17 @@
 
 All public releases of `fancysauce-savings`. Most recent first.
 
+## v0.24.0 — 2026-11-03
+
+### Features
+
+- **Context size and trigger at compaction.** For each Claude Code compaction, `compaction.before` now carries `trigger` (`auto` or `manual`) from the PreCompact hook. `compaction.after` now comes from the transcript's `compact_boundary` record and carries `pre_tokens` (the context size before the compaction) and `trigger`. The plugin no longer sends a bare `compaction.after` from the PostCompact hook, because Claude Code writes the boundary record only after that hook returns. So `compaction.after` arrives on the next hook that reads the transcript. Each event has a stable id from the session and the boundary, so a reread sends no duplicate. The plugin sends only these two fields. It never sends the compaction instructions, the summary, or message text. A backfill also sends `compaction.after` for older boundaries. Both runtimes ship the change. (FAN-2494, #279)
+
+### Fixes
+
+- **Usage readings from a synced plugin install.** A plugin that the org plugin library installs (`plugins/synced/`), as in a cloud Cowork session, now writes its rate-limit readings. So these installs send `usage_limit.snapshot` events, as a marketplace install does. (#276)
+- **Sign-in rejections show in the terminal.** When the dashboard rejects a sign-in, the Go login and the Node login now print the reason at once and exit non-zero. Before, they waited for the timeout and printed it. The browser shows "Sign-in did not complete", and no credential is written. (FAN-2524, #274, #277)
+
 ## v0.23.1 — 2026-11-03
 
 ### Fixes

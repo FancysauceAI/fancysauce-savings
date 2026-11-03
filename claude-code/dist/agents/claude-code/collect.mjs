@@ -2053,8 +2053,8 @@ function defaultPolicy() {
       "original_reset_time"
     ]),
     "task.completed": Object.freeze(["task_id"]),
-    "compaction.before": Object.freeze([]),
-    "compaction.after": Object.freeze([]),
+    "compaction.before": Object.freeze(["trigger"]),
+    "compaction.after": Object.freeze(["pre_tokens", "trigger"]),
     "config.changed": Object.freeze([]),
     "usage_config.changed": Object.freeze([
       "plan_type",
@@ -5242,6 +5242,9 @@ var ATTR_TYPE = {
   "fancysauce.repo_url_hash": "string",
   parent_session_id: "string",
   parent_link_method: "string",
+  // compaction.before
+  trigger: "string",
+  pre_tokens: "int",
   // session.end
   reason: "string",
   duration_wall_s: "int",
@@ -7639,6 +7642,9 @@ function mapHookToEvent(input, sequence, opts = {}) {
       attributes.task_id = input.task_id;
     if (input.reason)
       attributes.reason = input.reason;
+    if (input.hook_event_name === "PreCompact" && (input.trigger === "auto" || input.trigger === "manual")) {
+      attributes.trigger = input.trigger;
+    }
     if (input.hook_event_name === "UserPromptSubmit") {
       const prompt = typeof input.prompt === "string" ? input.prompt : "";
       attributes.prompt_length = Buffer.byteLength(prompt, "utf8");
@@ -7807,11 +7813,24 @@ var SubagentMetaCache = class {
 };
 
 // dist/agents/claude-code/transcript-tail.mjs
-var import_proper_lockfile6 = __toESM(require_proper_lockfile(), 1);
 import { mkdir as mkdir16, readFile as readFile19, readdir as readdir4, writeFile as writeFile15, appendFile as appendFile6, rename as rename16, lstat as lstat2 } from "node:fs/promises";
 import { basename as basename4, dirname as dirname11, isAbsolute as isAbsolute2, join as join31, relative as relative2, sep as sep2 } from "node:path";
 import { homedir as homedir6 } from "node:os";
 import { randomUUID as randomUUID8 } from "node:crypto";
+
+// dist/shared/session-metadata/identity.mjs
+import { createHash as createHash5 } from "node:crypto";
+var URL_NAMESPACE = Buffer.from("6ba7b8119dad11d180b400c04fd430c8", "hex");
+function uuidV5Url(tuple) {
+  const bytes = createHash5("sha1").update(URL_NAMESPACE).update(JSON.stringify(tuple)).digest().subarray(0, 16);
+  bytes[6] = bytes[6] & 15 | 80;
+  bytes[8] = bytes[8] & 63 | 128;
+  const hex = bytes.toString("hex");
+  return [hex.slice(0, 8), hex.slice(8, 12), hex.slice(12, 16), hex.slice(16, 20), hex.slice(20)].join("-");
+}
+
+// dist/agents/claude-code/transcript-tail.mjs
+var import_proper_lockfile6 = __toESM(require_proper_lockfile(), 1);
 
 // dist/agents/claude-code/subagent-cursor.mjs
 import { readFile as readFile17, rename as rename14, writeFile as writeFile13 } from "node:fs/promises";
@@ -8180,11 +8199,11 @@ var TranscriptTail = class {
       sequenceBase,
       maxReadBytes,
       state: {},
-      parseWindow: ccParseWindow((r, seq) => toApiRequestEvent(r, sessionId, seq), (rec, seq) => detectUsageLimit(rec, sessionId, seq, Date.now()))
+      parseWindow: ccParseWindow((r, seq) => toApiRequestEvent(r, sessionId, seq), (rec, seq) => detectUsageLimit(rec, sessionId, seq, Date.now()), (rec, seq) => compactionBoundary(rec, sessionId, seq))
     });
   }
 };
-function ccParseWindow(stamp, detectLimit) {
+function ccParseWindow(stamp, detectLimit, detectBoundary) {
   return (lines, sequenceBase) => {
     const events = [];
     let seq = sequenceBase;
@@ -8204,12 +8223,46 @@ function ccParseWindow(stamp, detectLimit) {
           seq++;
         }
       }
+      const boundary = detectBoundary?.(rec, seq);
+      if (boundary) {
+        events.push(boundary);
+        seq++;
+      }
       if (!isAssistantRecord(rec))
         continue;
       events.push(stamp(rec, seq));
       seq++;
     }
     return events;
+  };
+}
+function compactionBoundary(value, sessionId, sequence) {
+  if (typeof value !== "object" || value === null || Array.isArray(value))
+    return null;
+  const record = value;
+  if (record.type !== "system" || record.subtype !== "compact_boundary" || record.isSidechain === true || typeof record.uuid !== "string" || typeof record.timestamp !== "string")
+    return null;
+  const timestamp = Date.parse(record.timestamp);
+  if (!Number.isFinite(timestamp))
+    return null;
+  const attributes = {};
+  const metadata = record.compactMetadata;
+  if (typeof metadata === "object" && metadata !== null && !Array.isArray(metadata)) {
+    const fields = metadata;
+    if (typeof fields.preTokens === "number" && Number.isSafeInteger(fields.preTokens) && fields.preTokens >= 0) {
+      attributes.pre_tokens = fields.preTokens;
+    }
+    if (fields.trigger === "auto" || fields.trigger === "manual")
+      attributes.trigger = fields.trigger;
+  }
+  return {
+    event_uuid: uuidV5Url(["fancysauce/compaction-after/v1", sessionId, record.uuid]),
+    event_type: "compaction.after",
+    session_id: sessionId,
+    source: "transcript.tail",
+    sequence,
+    timestamp_ns: BigInt(timestamp) * 1000000n,
+    attributes
   };
 }
 async function readSubagent(opts) {
@@ -8642,6 +8695,8 @@ async function writeStateAtomic(stateDir, path, body) {
 var ClaudeCodeAdapter = class {
   agent = "claude-code";
   async mapHookEvent(input, ctx) {
+    if (input.hook_event_name === "PostCompact")
+      return null;
     const raw = mapHookToEvent(input, 0, { pluginFlags: ctx.pluginFlags });
     if (raw === null)
       return null;

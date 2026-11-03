@@ -1717,8 +1717,8 @@ function defaultPolicy() {
       "original_reset_time"
     ]),
     "task.completed": Object.freeze(["task_id"]),
-    "compaction.before": Object.freeze([]),
-    "compaction.after": Object.freeze([]),
+    "compaction.before": Object.freeze(["trigger"]),
+    "compaction.after": Object.freeze(["pre_tokens", "trigger"]),
     "config.changed": Object.freeze([]),
     "usage_config.changed": Object.freeze([
       "plan_type",
@@ -2774,6 +2774,9 @@ var ATTR_TYPE = {
   "fancysauce.repo_url_hash": "string",
   parent_session_id: "string",
   parent_link_method: "string",
+  // compaction.before
+  trigger: "string",
+  pre_tokens: "int",
   // session.end
   reason: "string",
   duration_wall_s: "int",

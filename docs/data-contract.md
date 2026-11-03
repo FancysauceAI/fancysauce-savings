@@ -1,6 +1,6 @@
 # What the fancysauce-savings plugin sends
 
-Generated from the plugin's content-filter keep-lists (`dist/shared/policy.mjs`) for version 0.23.1. Hooks receive the full tool input and prompt; the plugin emits only the fields below. Anything not listed is dropped before it is written to disk.
+Generated from the plugin's content-filter keep-lists (`dist/shared/policy.mjs`) for version 0.24.0. Hooks receive the full tool input and prompt; the plugin emits only the fields below. Anything not listed is dropped before it is written to disk.
 
 Kinds: **hash** is an unsalted SHA-256 of the named value, used to correlate equal values across events, not to conceal them: a short or guessable input can be recovered by guessing. **count** and **numeric** are numbers. **categorical** is one of a small fixed set of vendor-defined values. **scalar** is a short vendor-supplied value forwarded as text: a number, a version, or an enum token, never prose. **identifier** is an opaque id assigned by Claude Code or the API. **timestamp** is a point in time. **text** is marked explicitly and explained. **reference list** is a list of structured work references.
 
@@ -222,13 +222,18 @@ Source: hook `TaskCompleted`. A background task completed.
 
 Source: hook `PreCompact`. Context compaction is about to run.
 
-No attributes. The event carries only its type, session id, sequence and timestamp.
+| Attribute | Kind | What it is |
+|---|---|---|
+| `trigger` | categorical | What started the compaction: `auto` or `manual`, as Claude Code reports it. |
 
 ## `compaction.after`
 
-Source: hook `PostCompact`. Context compaction finished.
+Source: transcript tail. Claude Code wrote a compaction boundary to the session transcript. The event arrives on the next hook that reads the transcript.
 
-No attributes. The event carries only its type, session id, sequence and timestamp.
+| Attribute | Kind | What it is |
+|---|---|---|
+| `pre_tokens` | count | The context size in tokens before the compaction, from the transcript boundary. |
+| `trigger` | categorical | What started the compaction: `auto` or `manual`, as Claude Code reports it. |
 
 ## `config.changed`
 
