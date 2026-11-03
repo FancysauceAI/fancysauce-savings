@@ -2,6 +2,14 @@
 
 All public releases of `fancysauce-savings`. Most recent first.
 
+## v0.23.1 — 2026-11-03
+
+### Fixes
+
+- **Session naming uses about 95% less CPU.** With the `fancytab-session-naming` tenant flag on, the session-metadata worker kept about one CPU core busy all day under a heavy subagent workload. Now only main-thread Stop, UserPromptSubmit and SessionEnd hooks start metadata work, and one worker per installation does it at low priority. An idle session costs one `stat`, and the worker reads only the bytes that a transcript added. On a 450-session load test, worker CPU falls from 13.65 to 0.75 CPU-s/min (Claude Code, TypeScript) and from 6.06 to 0.38 CPU-s/min (Claude Code, Go). (FAN-2474, #272)
+- **Recaps on large transcripts publish.** The worker read about 24 MB per run, so on a transcript of several hundred MB the cursor never reached the end, and later recaps never published. The worker now checks raw bytes for a recap before it decodes a line, and catches up old cursors in 256 MiB passes. On the load test, all 48 recaps publish, against 14 before. A recap now publishes about 30 s after Claude Code writes it, and at most about 70 s. (FAN-2474, #272)
+- **No re-read loops.** A full outbox keeps the cursor and retries when there is room, and an unchanged transcript tail without a final newline is not read again. (FAN-2474, #272)
+
 ## v0.23.0 — 2026-10-30
 
 ### Highlights

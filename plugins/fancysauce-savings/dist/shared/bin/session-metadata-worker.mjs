@@ -103,7 +103,7 @@ var require_polyfills = __commonJS({
       }
       if (platform === "win32") {
         fs.rename = typeof fs.rename !== "function" ? fs.rename : (function(fs$rename) {
-          function rename5(from, to, cb) {
+          function rename7(from, to, cb) {
             var start = Date.now();
             var backoff = 0;
             fs$rename(from, to, function CB(er) {
@@ -123,8 +123,8 @@ var require_polyfills = __commonJS({
               if (cb) cb(er);
             });
           }
-          if (Object.setPrototypeOf) Object.setPrototypeOf(rename5, fs$rename);
-          return rename5;
+          if (Object.setPrototypeOf) Object.setPrototypeOf(rename7, fs$rename);
+          return rename7;
         })(fs.rename);
       }
       fs.read = typeof fs.read !== "function" ? fs.read : (function(fs$read) {
@@ -528,8 +528,8 @@ var require_graceful_fs = __commonJS({
       fs2.createReadStream = createReadStream;
       fs2.createWriteStream = createWriteStream;
       var fs$readFile = fs2.readFile;
-      fs2.readFile = readFile6;
-      function readFile6(path, options, cb) {
+      fs2.readFile = readFile9;
+      function readFile9(path, options, cb) {
         if (typeof options === "function")
           cb = options, options = null;
         return go$readFile(path, options, cb);
@@ -545,8 +545,8 @@ var require_graceful_fs = __commonJS({
         }
       }
       var fs$writeFile = fs2.writeFile;
-      fs2.writeFile = writeFile4;
-      function writeFile4(path, data, options, cb) {
+      fs2.writeFile = writeFile6;
+      function writeFile6(path, data, options, cb) {
         if (typeof options === "function")
           cb = options, options = null;
         return go$writeFile(path, data, options, cb);
@@ -600,9 +600,9 @@ var require_graceful_fs = __commonJS({
         }
       }
       var fs$readdir = fs2.readdir;
-      fs2.readdir = readdir5;
+      fs2.readdir = readdir6;
       var noReaddirOptionVersions = /^v[0-5]\./;
-      function readdir5(path, options, cb) {
+      function readdir6(path, options, cb) {
         if (typeof options === "function")
           cb = options, options = null;
         var go$readdir = noReaddirOptionVersions.test(process.version) ? function go$readdir2(path2, options2, cb2, startTime) {
@@ -1241,11 +1241,11 @@ var require_mtime_precision = __commonJS({
     function probe(file, fs, callback) {
       const cachedPrecision = fs[cacheSymbol];
       if (cachedPrecision) {
-        return fs.stat(file, (err, stat3) => {
+        return fs.stat(file, (err, stat6) => {
           if (err) {
             return callback(err);
           }
-          callback(null, stat3.mtime, cachedPrecision);
+          callback(null, stat6.mtime, cachedPrecision);
         });
       }
       const mtime = new Date(Math.ceil(Date.now() / 1e3) * 1e3 + 5);
@@ -1253,13 +1253,13 @@ var require_mtime_precision = __commonJS({
         if (err) {
           return callback(err);
         }
-        fs.stat(file, (err2, stat3) => {
+        fs.stat(file, (err2, stat6) => {
           if (err2) {
             return callback(err2);
           }
-          const precision = stat3.mtime.getTime() % 1e3 === 0 ? "s" : "ms";
+          const precision = stat6.mtime.getTime() % 1e3 === 0 ? "s" : "ms";
           Object.defineProperty(fs, cacheSymbol, { value: precision });
-          callback(null, stat3.mtime, precision);
+          callback(null, stat6.mtime, precision);
         });
       });
     }
@@ -1313,14 +1313,14 @@ var require_lockfile = __commonJS({
         if (options.stale <= 0) {
           return callback(Object.assign(new Error("Lock file is already being held"), { code: "ELOCKED", file }));
         }
-        options.fs.stat(lockfilePath, (err2, stat3) => {
+        options.fs.stat(lockfilePath, (err2, stat6) => {
           if (err2) {
             if (err2.code === "ENOENT") {
               return acquireLock(file, { ...options, stale: 0 }, callback);
             }
             return callback(err2);
           }
-          if (!isLockStale(stat3, options)) {
+          if (!isLockStale(stat6, options)) {
             return callback(Object.assign(new Error("Lock file is already being held"), { code: "ELOCKED", file }));
           }
           removeLock(file, options, (err3) => {
@@ -1332,8 +1332,8 @@ var require_lockfile = __commonJS({
         });
       });
     }
-    function isLockStale(stat3, options) {
-      return stat3.mtime.getTime() < Date.now() - options.stale;
+    function isLockStale(stat6, options) {
+      return stat6.mtime.getTime() < Date.now() - options.stale;
     }
     function removeLock(file, options, callback) {
       options.fs.rmdir(getLockFile(file, options), (err) => {
@@ -1351,7 +1351,7 @@ var require_lockfile = __commonJS({
       lock2.updateDelay = lock2.updateDelay || options.update;
       lock2.updateTimeout = setTimeout(() => {
         lock2.updateTimeout = null;
-        options.fs.stat(lock2.lockfilePath, (err, stat3) => {
+        options.fs.stat(lock2.lockfilePath, (err, stat6) => {
           const isOverThreshold = lock2.lastUpdate + options.stale < Date.now();
           if (err) {
             if (err.code === "ENOENT" || isOverThreshold) {
@@ -1360,7 +1360,7 @@ var require_lockfile = __commonJS({
             lock2.updateDelay = 1e3;
             return updateLock(file, options);
           }
-          const isMtimeOurs = lock2.mtime.getTime() === stat3.mtime.getTime();
+          const isMtimeOurs = lock2.mtime.getTime() === stat6.mtime.getTime();
           if (!isMtimeOurs) {
             return setLockAsCompromised(
               file,
@@ -1485,11 +1485,11 @@ var require_lockfile = __commonJS({
         if (err) {
           return callback(err);
         }
-        options.fs.stat(getLockFile(file2, options), (err2, stat3) => {
+        options.fs.stat(getLockFile(file2, options), (err2, stat6) => {
           if (err2) {
             return err2.code === "ENOENT" ? callback(null, false) : callback(err2);
           }
-          return callback(null, !isLockStale(stat3, options));
+          return callback(null, !isLockStale(stat6, options));
         });
       });
     }
@@ -1614,10 +1614,37 @@ var require_proper_lockfile = __commonJS({
 });
 
 // dist/shared/bin/session-metadata-worker.mjs
-import { appendFile, mkdir as mkdir7, open as open6, readdir as readdir4 } from "node:fs/promises";
+import { appendFile, mkdir as mkdir9, open as open6, readFile as readFile8, readdir as readdir5, stat as stat5 } from "node:fs/promises";
 
 // dist/shared/lease.mjs
 import { closeSync, ftruncateSync, openSync, readFileSync, rmSync, statSync, futimesSync, writeSync } from "node:fs";
+var DEFAULT_MAX_LEASE_AGE_MS = 6e4;
+function acquireLease(path, maxAgeMs = DEFAULT_MAX_LEASE_AGE_MS) {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const fd = openSync(path, "wx", 384);
+      try {
+        writeSync(fd, String(process.pid));
+      } finally {
+        closeSync(fd);
+      }
+      return { kind: "acquired" };
+    } catch (err) {
+      if (err.code !== "EEXIST") {
+        return { kind: "held", pid: -1, reason: "uncreatable" };
+      }
+      const state2 = leaseState(path, Date.now(), maxAgeMs);
+      if (state2.kind === "held")
+        return state2;
+      try {
+        rmSync(path, { force: true });
+      } catch {
+      }
+    }
+  }
+  const state = leaseState(path, Date.now(), maxAgeMs);
+  return state.kind === "held" ? state : { kind: "held", pid: -1 };
+}
 function touchLeaseIfHolder(path, pid) {
   let fd;
   try {
@@ -1634,6 +1661,13 @@ function touchLeaseIfHolder(path, pid) {
       closeSync(fd);
   }
 }
+function leaseHeldBy(path, pid) {
+  try {
+    return readFileSync(path, "utf8").trim() === String(pid);
+  } catch {
+    return false;
+  }
+}
 function releaseLeaseIfHolder(path, pid) {
   try {
     if (readFileSync(path, "utf8").trim() !== String(pid))
@@ -1644,11 +1678,35 @@ function releaseLeaseIfHolder(path, pid) {
     return false;
   }
 }
+function leaseState(path, now, maxAgeMs) {
+  let mtimeMs;
+  try {
+    mtimeMs = statSync(path).mtimeMs;
+  } catch {
+    return { kind: "stale" };
+  }
+  if (now - mtimeMs > maxAgeMs)
+    return { kind: "stale" };
+  let pid;
+  try {
+    pid = Number(readFileSync(path, "utf8").trim());
+  } catch {
+    return { kind: "held", pid: -1, reason: "unreadable" };
+  }
+  if (!Number.isFinite(pid) || pid <= 0)
+    return { kind: "held", pid: -1, reason: "unreadable" };
+  try {
+    process.kill(pid, 0);
+    return { kind: "held", pid, reason: "claimed" };
+  } catch {
+    return { kind: "stale" };
+  }
+}
 
 // dist/shared/bin/session-metadata-worker.mjs
 var import_proper_lockfile5 = __toESM(require_proper_lockfile(), 1);
-import { homedir as homedir3 } from "node:os";
-import { join as join12 } from "node:path";
+import { homedir as homedir3, setPriority } from "node:os";
+import { dirname as dirname7, join as join13 } from "node:path";
 
 // dist/shared/config.mjs
 import { join } from "node:path";
@@ -2554,7 +2612,7 @@ function resolveCodexHome(env, homeDir) {
 import { execFile } from "node:child_process";
 import { promisify as promisify2 } from "node:util";
 import { existsSync } from "node:fs";
-import { dirname as dirname2, join as join8, resolve } from "node:path";
+import { dirname as dirname5, join as join11, resolve } from "node:path";
 import { fileURLToPath as fileURLToPath2 } from "node:url";
 
 // dist/shared/types.mjs
@@ -2597,8 +2655,1096 @@ function validateMatchList(value) {
   return matches;
 }
 
+// dist/shared/session-metadata/schedule.mjs
+import { createHash as createHash2, randomUUID as randomUUID2 } from "node:crypto";
+import { mkdir as mkdir6, readFile as readFile5, rename as rename4, stat as stat2, unlink as unlink3, writeFile as writeFile4 } from "node:fs/promises";
+import { dirname as dirname3, join as join8 } from "node:path";
+
+// dist/shared/session-metadata/state.mjs
+var import_proper_lockfile4 = __toESM(require_proper_lockfile(), 1);
+import { mkdir as mkdir5, open as open3, readFile as readFile4, readdir as readdir2, rename as rename3, unlink as unlink2 } from "node:fs/promises";
+import { basename, dirname as dirname2, join as join7 } from "node:path";
+import { randomBytes } from "node:crypto";
+var SESSION_METADATA_SCHEMA_VERSION = 1;
+var PENDING_GRANT_TRANSITION_FILE = "grant-transition.pending.ndjson";
+var PENDING_SESSION_REGISTRATION_FILE = "session-registration.pending.ndjson";
+var STATE_FILE = "state.json";
+function transitionGrant(state, enabled, at) {
+  const transitions = state.grant_transitions ?? [
+    { at: state.capture_started_at, enabled: true }
+  ];
+  const intervals = state.enabled_capture_intervals ?? [
+    { started_at: state.capture_started_at }
+  ];
+  const lastTransition = transitions[transitions.length - 1];
+  if (enabled && lastTransition !== void 0 && Date.parse(at) < Date.parse(lastTransition.at))
+    return state;
+  if (lastTransition?.enabled === enabled && state.grant_transitions !== void 0 && state.enabled_capture_intervals !== void 0) {
+    return state;
+  }
+  const nextIntervals = intervals.map((interval) => ({ ...interval }));
+  if (enabled) {
+    nextIntervals.push({ started_at: at });
+  } else {
+    const open7 = nextIntervals[nextIntervals.length - 1];
+    if (open7 !== void 0 && open7.ended_at === void 0)
+      open7.ended_at = at;
+  }
+  return {
+    ...state,
+    grant_transitions: [...transitions, { at, enabled }],
+    enabled_capture_intervals: nextIntervals
+  };
+}
+function grantTransitionChanges(state, enabled) {
+  if (state.grant_transitions === void 0 || state.grant_transitions.length === 0 || state.enabled_capture_intervals === void 0 || state.enabled_capture_intervals.length === 0) {
+    return true;
+  }
+  return state.grant_transitions[state.grant_transitions.length - 1]?.enabled !== enabled;
+}
+async function foldPendingGrantTransitions(dir) {
+  const paths = await pendingGrantTransitionPaths(dir);
+  if (paths.length === 0)
+    return;
+  const claimed = paths.filter((path) => basename(path) !== PENDING_GRANT_TRANSITION_FILE);
+  const pendingPath = join7(dir, PENDING_GRANT_TRANSITION_FILE);
+  const processingPath = `${pendingPath}.processing.${unixNanosecondClaim()}.${process.pid}.${randomBytes(4).toString("hex")}`;
+  try {
+    await rename3(pendingPath, processingPath);
+    const firstMarker = claimed.findIndex((path) => basename(path).startsWith(`${PENDING_GRANT_TRANSITION_FILE}.marker.`));
+    claimed.splice(firstMarker < 0 ? claimed.length : firstMarker, 0, processingPath);
+    await syncDirectory(dir);
+  } catch (error) {
+    if (!isNodeError(error, "ENOENT"))
+      throw error;
+  }
+  if (claimed.length === 0)
+    return;
+  const markers = await readPendingGrantTransitions(claimed, true);
+  const store = new SessionMetadataStateStore(dir);
+  const current = await store.read();
+  if (current === null)
+    throw new Error("cannot fold grant transition without session state");
+  let next = current;
+  for (const marker of markers) {
+    const alreadyApplied = next.grant_transitions?.some((transition) => transition.at === marker.at && transition.enabled === marker.enabled) ?? false;
+    if (!alreadyApplied && grantTransitionChanges(next, marker.enabled)) {
+      next = transitionGrant(next, marker.enabled, marker.at);
+    }
+  }
+  if (next !== current)
+    await store.write(next);
+  for (const path of claimed) {
+    await unlink2(path).catch((error) => {
+      if (!isNodeError(error, "ENOENT"))
+        throw error;
+    });
+  }
+  await syncDirectory(dir);
+}
+async function foldPendingSessionRegistrations(dir) {
+  const paths = await pendingSessionRegistrationPaths(dir);
+  if (paths.length === 0)
+    return;
+  const claimed = paths.filter((path) => basename(path) !== PENDING_SESSION_REGISTRATION_FILE);
+  const pendingPath = join7(dir, PENDING_SESSION_REGISTRATION_FILE);
+  const processingPath = `${pendingPath}.processing.${unixNanosecondClaim()}.${process.pid}.${randomBytes(4).toString("hex")}`;
+  try {
+    await rename3(pendingPath, processingPath);
+    claimed.push(processingPath);
+    await syncDirectory(dir);
+  } catch (error) {
+    if (!isNodeError(error, "ENOENT"))
+      throw error;
+  }
+  if (claimed.length === 0)
+    return;
+  const markers = await readPendingSessionRegistrations(claimed, true);
+  const store = new SessionMetadataStateStore(dir);
+  const current = await store.read();
+  let next = current;
+  for (const marker of markers) {
+    if (next !== null)
+      continue;
+    next = {
+      schema_version: SESSION_METADATA_SCHEMA_VERSION,
+      tenant_id: marker.tenant_id,
+      credential_fingerprint: marker.credential_fingerprint,
+      endpoint_identity: marker.endpoint_identity,
+      install_id: marker.install_id,
+      agent: marker.agent,
+      session_id: marker.session_id,
+      ...marker.codex_home !== void 0 ? { codex_home: marker.codex_home } : {},
+      capture_started_at: marker.capture_started_at,
+      source_file_identity: marker.source_file_identity,
+      byte_offset: marker.byte_offset ?? 0,
+      ...marker.byte_offset !== void 0 ? { capture_start_offset: marker.byte_offset } : {},
+      grant_transitions: [{ at: marker.capture_started_at, enabled: true }],
+      enabled_capture_intervals: [{ started_at: marker.capture_started_at }],
+      pending_payload_ids: []
+    };
+  }
+  if (next !== current && next !== null)
+    await store.write(next);
+  for (const path of claimed) {
+    await unlink2(path).catch((error) => {
+      if (!isNodeError(error, "ENOENT"))
+        throw error;
+    });
+  }
+  await syncDirectory(dir);
+}
+async function withSessionWorkerLock(dir, work, retries = 0) {
+  const workerLockDir = join7(dir, "worker-lock");
+  await mkdir5(workerLockDir, { recursive: true, mode: 448 });
+  let release;
+  try {
+    release = await import_proper_lockfile4.default.lock(workerLockDir, { realpath: false, retries, stale: 1e4 });
+  } catch (error) {
+    if (isNodeError(error, "ELOCKED"))
+      return null;
+    throw error;
+  }
+  try {
+    await foldPendingGrantTransitions(dir);
+    await foldPendingSessionRegistrations(dir);
+    return await work();
+  } finally {
+    await release();
+  }
+}
+async function pendingSessionRegistrationPaths(dir) {
+  let entries;
+  try {
+    entries = await readdir2(dir, { withFileTypes: true });
+  } catch (error) {
+    if (isNodeError(error, "ENOENT"))
+      return [];
+    throw error;
+  }
+  const processingPrefix = `${PENDING_SESSION_REGISTRATION_FILE}.processing.`;
+  const processing = entries.filter((entry) => entry.isFile() && entry.name.startsWith(processingPrefix) && !entry.name.includes(".corrupt.")).map((entry) => join7(dir, entry.name)).sort();
+  if (entries.some((entry) => entry.isFile() && entry.name === PENDING_SESSION_REGISTRATION_FILE)) {
+    processing.push(join7(dir, PENDING_SESSION_REGISTRATION_FILE));
+  }
+  return processing;
+}
+async function pendingGrantTransitionPaths(dir) {
+  let entries;
+  try {
+    entries = await readdir2(dir, { withFileTypes: true });
+  } catch (error) {
+    if (isNodeError(error, "ENOENT"))
+      return [];
+    throw error;
+  }
+  const processingPrefix = `${PENDING_GRANT_TRANSITION_FILE}.processing.`;
+  const markerPrefix = `${PENDING_GRANT_TRANSITION_FILE}.marker.`;
+  const processing = entries.filter((entry) => entry.isFile() && entry.name.startsWith(processingPrefix) && !entry.name.includes(".corrupt.")).map((entry) => join7(dir, entry.name)).sort();
+  const markers = entries.filter((entry) => entry.isFile() && entry.name.startsWith(markerPrefix) && !entry.name.includes(".corrupt.")).map((entry) => join7(dir, entry.name)).sort();
+  if (entries.some((entry) => entry.isFile() && entry.name === PENDING_GRANT_TRANSITION_FILE)) {
+    processing.push(join7(dir, PENDING_GRANT_TRANSITION_FILE));
+  }
+  return [...processing, ...markers];
+}
+async function readPendingGrantTransitions(paths, quarantineInvalid = false) {
+  const markers = [];
+  for (const path of paths) {
+    let raw;
+    try {
+      raw = await readFile4(path);
+    } catch (error) {
+      if (isNodeError(error, "ENOENT"))
+        continue;
+      throw error;
+    }
+    const corrupt = [];
+    let offset = 0;
+    while (offset < raw.length) {
+      const newline = raw.indexOf(10, offset);
+      if (newline === -1) {
+        corrupt.push(raw.subarray(offset));
+        break;
+      }
+      const line = raw.subarray(offset, newline);
+      const marker = parsePendingGrantTransition(line);
+      if (marker === null)
+        corrupt.push(raw.subarray(offset, newline + 1));
+      else
+        markers.push(marker);
+      offset = newline + 1;
+    }
+    if (quarantineInvalid && corrupt.length > 0) {
+      await appendCorruptGrantTransitions(path, Buffer.concat(corrupt));
+    }
+  }
+  return markers;
+}
+async function readPendingSessionRegistrations(paths, quarantineInvalid = false) {
+  const markers = [];
+  for (const path of paths) {
+    let raw;
+    try {
+      raw = await readFile4(path);
+    } catch (error) {
+      if (isNodeError(error, "ENOENT"))
+        continue;
+      throw error;
+    }
+    const corrupt = [];
+    let offset = 0;
+    while (offset < raw.length) {
+      const newline = raw.indexOf(10, offset);
+      if (newline === -1) {
+        corrupt.push(raw.subarray(offset));
+        break;
+      }
+      const line = raw.subarray(offset, newline);
+      const marker = parsePendingSessionRegistration(line);
+      if (marker === null)
+        corrupt.push(raw.subarray(offset, newline + 1));
+      else
+        markers.push(marker);
+      offset = newline + 1;
+    }
+    if (quarantineInvalid && corrupt.length > 0) {
+      await appendCorruptSessionRegistrations(path, Buffer.concat(corrupt));
+    }
+  }
+  return markers;
+}
+async function appendCorruptGrantTransitions(path, raw) {
+  const processingPrefix = `${PENDING_GRANT_TRANSITION_FILE}.processing.`;
+  const markerPrefix = `${PENDING_GRANT_TRANSITION_FILE}.marker.`;
+  const name = basename(path);
+  const prefix = name.startsWith(processingPrefix) ? processingPrefix : markerPrefix;
+  const suffix = name.slice(prefix.length);
+  const separator = suffix.indexOf(".");
+  const claim = (separator === -1 ? suffix : suffix.slice(0, separator)) || unixNanosecondClaim();
+  const quarantine = `${path}.corrupt.${claim}`;
+  const fh = await open3(quarantine, "a", 384);
+  try {
+    await fh.writeFile(raw);
+    await fh.sync();
+  } finally {
+    await fh.close();
+  }
+  await syncDirectory(dirname2(path));
+}
+async function appendCorruptSessionRegistrations(path, raw) {
+  const processingPrefix = `${PENDING_SESSION_REGISTRATION_FILE}.processing.`;
+  const suffix = basename(path).slice(processingPrefix.length);
+  const separator = suffix.indexOf(".");
+  const claim = (separator === -1 ? suffix : suffix.slice(0, separator)) || unixNanosecondClaim();
+  const quarantine = `${path}.corrupt.${claim}`;
+  const fh = await open3(quarantine, "a", 384);
+  try {
+    await fh.writeFile(raw);
+    await fh.sync();
+  } finally {
+    await fh.close();
+  }
+  await syncDirectory(dirname2(path));
+}
+function parsePendingGrantTransition(lineBytes) {
+  let parsed;
+  let line;
+  try {
+    line = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(lineBytes);
+    parsed = JSON.parse(line);
+  } catch {
+    return null;
+  }
+  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed))
+    return null;
+  if (hasDuplicateObjectKeys(line))
+    return null;
+  const marker = parsed;
+  const keys = Object.keys(marker);
+  if (keys.length !== 2 || !keys.includes("at") || !keys.includes("enabled"))
+    return null;
+  if (typeof marker.at !== "string" || marker.at === "" || typeof marker.enabled !== "boolean")
+    return null;
+  return { at: marker.at, enabled: marker.enabled };
+}
+function hasDuplicateObjectKeys(line) {
+  const keys = /* @__PURE__ */ new Set();
+  let depth = 0;
+  for (let index = 0; index < line.length; ) {
+    const char = line[index];
+    if (char === '"') {
+      const start = index++;
+      while (index < line.length) {
+        if (line[index] === "\\")
+          index += 2;
+        else if (line[index++] === '"')
+          break;
+      }
+      if (depth === 1) {
+        let next = index;
+        while (/\s/.test(line[next] ?? ""))
+          next += 1;
+        if (line[next] === ":") {
+          const key = JSON.parse(line.slice(start, index));
+          if (keys.has(key))
+            return true;
+          keys.add(key);
+        }
+      }
+      continue;
+    }
+    if (char === "{" || char === "[")
+      depth += 1;
+    else if (char === "}" || char === "]")
+      depth -= 1;
+    index += 1;
+  }
+  return false;
+}
+function parsePendingSessionRegistration(lineBytes) {
+  let parsed;
+  try {
+    parsed = JSON.parse(lineBytes.toString("utf8"));
+  } catch {
+    return null;
+  }
+  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed))
+    return null;
+  const marker = parsed;
+  const normalized = {
+    tenant_id: marker.tenant_id,
+    credential_fingerprint: marker.credential_fingerprint,
+    endpoint_identity: marker.endpoint_identity,
+    install_id: marker.install_id,
+    agent: marker.agent,
+    session_id: marker.session_id,
+    source_file_identity: marker.source_file_identity,
+    capture_started_at: marker.capture_started_at,
+    ...marker.byte_offset !== void 0 ? { byte_offset: marker.byte_offset } : {},
+    ...marker.codex_home !== void 0 ? { codex_home: marker.codex_home } : {}
+  };
+  const keys = Object.keys(marker);
+  const normalizedKeys = Object.keys(normalized);
+  if (keys.length !== normalizedKeys.length || keys.some((key, index) => key !== normalizedKeys[index]))
+    return null;
+  if (typeof normalized.tenant_id !== "string" || normalized.tenant_id === "")
+    return null;
+  if (typeof normalized.credential_fingerprint !== "string" || normalized.credential_fingerprint === "")
+    return null;
+  if (typeof normalized.endpoint_identity !== "string" || normalized.endpoint_identity === "")
+    return null;
+  if (typeof normalized.install_id !== "string" || normalized.install_id === "")
+    return null;
+  if (normalized.agent !== "claude-code" && normalized.agent !== "codex-cli")
+    return null;
+  if (typeof normalized.session_id !== "string" || normalized.session_id === "")
+    return null;
+  if (typeof normalized.source_file_identity !== "string" || normalized.source_file_identity === "")
+    return null;
+  if (typeof normalized.capture_started_at !== "string" || normalized.capture_started_at === "")
+    return null;
+  if (normalized.byte_offset !== void 0 && (!Number.isSafeInteger(normalized.byte_offset) || normalized.byte_offset < 0))
+    return null;
+  if (normalized.agent === "claude-code" && normalized.codex_home !== void 0)
+    return null;
+  if (normalized.agent === "codex-cli" && (typeof normalized.codex_home !== "string" || normalized.codex_home === ""))
+    return null;
+  if (!Buffer.from(JSON.stringify(normalized)).equals(lineBytes))
+    return null;
+  return normalized;
+}
+function unixNanosecondClaim() {
+  return (BigInt(Date.now()) * 1000000n).toString().padStart(20, "0");
+}
+function isNodeError(error, code) {
+  return error instanceof Error && "code" in error && error.code === code;
+}
+var SessionMetadataStateStore = class {
+  dir;
+  path;
+  constructor(dir) {
+    this.dir = dir;
+    this.path = join7(dir, STATE_FILE);
+  }
+  async read() {
+    let raw;
+    try {
+      raw = await readFile4(this.path, "utf8");
+    } catch {
+      return null;
+    }
+    try {
+      const parsed = JSON.parse(raw);
+      return parseState(parsed);
+    } catch {
+      return null;
+    }
+  }
+  async write(state) {
+    assertState(state);
+    await withDirLock(this.dir, async () => {
+      await mkdir5(this.dir, { recursive: true, mode: 448 });
+      const tmp = `${this.path}.${process.pid}.${randomBytes(4).toString("hex")}.tmp`;
+      let renamed = false;
+      try {
+        const fh = await open3(tmp, "wx", 384);
+        try {
+          await fh.writeFile(JSON.stringify(state));
+          await fh.sync();
+        } finally {
+          await fh.close();
+        }
+        await rename3(tmp, this.path);
+        renamed = true;
+        await syncDirectory(this.dir);
+      } finally {
+        if (!renamed)
+          await unlink2(tmp).catch(() => {
+          });
+      }
+    });
+  }
+};
+async function syncDirectory(path) {
+  try {
+    const fh = await open3(path, "r");
+    try {
+      await fh.sync();
+    } finally {
+      await fh.close();
+    }
+  } catch (error) {
+    if (process.platform !== "win32")
+      throw error;
+  }
+}
+function parseState(value) {
+  if (typeof value !== "object" || value === null)
+    return null;
+  const o = value;
+  if (o.schema_version !== SESSION_METADATA_SCHEMA_VERSION)
+    return null;
+  if (typeof o.tenant_id !== "string")
+    return null;
+  if (typeof o.credential_fingerprint !== "string")
+    return null;
+  if (typeof o.endpoint_identity !== "string")
+    return null;
+  if (typeof o.install_id !== "string")
+    return null;
+  if (o.agent !== "claude-code" && o.agent !== "codex-cli")
+    return null;
+  if (typeof o.session_id !== "string")
+    return null;
+  const codexHome = parseOptionalString(o.codex_home);
+  if (o.codex_home !== void 0 && codexHome === null)
+    return null;
+  if (typeof o.capture_started_at !== "string")
+    return null;
+  if (typeof o.source_file_identity !== "string")
+    return null;
+  if (typeof o.byte_offset !== "number" || !Number.isSafeInteger(o.byte_offset) || o.byte_offset < 0)
+    return null;
+  const sourceFileId = parseOptionalString(o.source_file_id);
+  if (o.source_file_id !== void 0 && sourceFileId === null)
+    return null;
+  const checkpoint = parseCheckpoint(o.source_continuity_checkpoint);
+  if (o.source_continuity_checkpoint !== void 0 && checkpoint === null)
+    return null;
+  const transitions = parseGrantTransitions(o.grant_transitions);
+  if (o.grant_transitions !== void 0 && transitions === null)
+    return null;
+  const intervals = parseCaptureIntervals(o.enabled_capture_intervals);
+  if (o.enabled_capture_intervals !== void 0 && intervals === null)
+    return null;
+  if (!Array.isArray(o.pending_payload_ids) || !o.pending_payload_ids.every((id) => typeof id === "string"))
+    return null;
+  const first = parseFirstName(o.first_name_observation);
+  if (o.first_name_observation !== void 0 && first === null)
+    return null;
+  return {
+    ...Object.fromEntries(Object.entries(o).filter(([key]) => !STATE_FIELDS.has(key))),
+    schema_version: 1,
+    tenant_id: o.tenant_id,
+    credential_fingerprint: o.credential_fingerprint,
+    endpoint_identity: o.endpoint_identity,
+    install_id: o.install_id,
+    agent: o.agent,
+    session_id: o.session_id,
+    ...codexHome !== null ? { codex_home: codexHome } : {},
+    capture_started_at: o.capture_started_at,
+    source_file_identity: o.source_file_identity,
+    byte_offset: o.byte_offset,
+    ...sourceFileId !== null ? { source_file_id: sourceFileId } : {},
+    ...checkpoint !== null ? { source_continuity_checkpoint: checkpoint } : {},
+    ...transitions !== null ? { grant_transitions: transitions } : {},
+    ...intervals !== null ? { enabled_capture_intervals: intervals } : {},
+    ...first !== null ? { first_name_observation: first } : {},
+    pending_payload_ids: [...o.pending_payload_ids]
+  };
+}
+var STATE_FIELDS = /* @__PURE__ */ new Set([
+  "schema_version",
+  "tenant_id",
+  "credential_fingerprint",
+  "endpoint_identity",
+  "install_id",
+  "agent",
+  "session_id",
+  "codex_home",
+  "capture_started_at",
+  "source_file_identity",
+  "byte_offset",
+  "source_file_id",
+  "source_continuity_checkpoint",
+  "grant_transitions",
+  "enabled_capture_intervals",
+  "first_name_observation",
+  "pending_payload_ids"
+]);
+function parseOptionalString(value) {
+  return value === void 0 ? null : typeof value === "string" ? value : null;
+}
+function parseCheckpoint(value) {
+  if (value === void 0)
+    return null;
+  if (typeof value !== "object" || value === null)
+    return null;
+  const o = value;
+  if (typeof o.offset !== "number" || !Number.isSafeInteger(o.offset) || o.offset < 0)
+    return null;
+  if (typeof o.sha256 !== "string")
+    return null;
+  return { offset: o.offset, sha256: o.sha256 };
+}
+function parseGrantTransitions(value) {
+  if (value === void 0)
+    return null;
+  if (!Array.isArray(value))
+    return null;
+  const transitions = [];
+  for (const item of value) {
+    if (typeof item !== "object" || item === null)
+      return null;
+    const o = item;
+    if (typeof o.at !== "string" || typeof o.enabled !== "boolean")
+      return null;
+    transitions.push({ at: o.at, enabled: o.enabled });
+  }
+  return transitions;
+}
+function parseCaptureIntervals(value) {
+  if (value === void 0)
+    return null;
+  if (!Array.isArray(value))
+    return null;
+  const intervals = [];
+  for (const item of value) {
+    if (typeof item !== "object" || item === null)
+      return null;
+    const o = item;
+    if (typeof o.started_at !== "string")
+      return null;
+    if (o.ended_at !== void 0 && typeof o.ended_at !== "string")
+      return null;
+    intervals.push({
+      started_at: o.started_at,
+      ...o.ended_at !== void 0 ? { ended_at: o.ended_at } : {}
+    });
+  }
+  return intervals;
+}
+function parseFirstName(value) {
+  if (value === void 0)
+    return null;
+  if (typeof value !== "object" || value === null)
+    return null;
+  const o = value;
+  if (typeof o.name !== "string" || typeof o.observed_at !== "string")
+    return null;
+  return { name: o.name, observed_at: o.observed_at };
+}
+function assertState(state) {
+  if (state.schema_version !== SESSION_METADATA_SCHEMA_VERSION)
+    throw new Error("unsupported session metadata state version");
+  if (!Number.isSafeInteger(state.byte_offset) || state.byte_offset < 0)
+    throw new Error("invalid session metadata byte offset");
+  if (!Array.isArray(state.pending_payload_ids))
+    throw new Error("invalid session metadata pending payload ids");
+}
+
+// dist/shared/session-metadata/schedule.mjs
+function metadataRequestOptions(input) {
+  return {
+    ...input.dataDir ? { dataDir: input.dataDir } : {},
+    ...input.installId ? { installId: input.installId } : {},
+    ...input.agent ? { agent: input.agent } : {},
+    ...input.sessionId ? { sessionId: input.sessionId } : {},
+    ...input.sourcePath ? { sourcePath: input.sourcePath } : {},
+    ...input.runtimeHome ? { runtimeHome: input.runtimeHome } : {},
+    ...input.endpoint ? { endpoint: input.endpoint } : {},
+    ...input.credentialFingerprint ? { credentialFingerprint: input.credentialFingerprint } : {},
+    ...input.expectedTenantId ? { expectedTenantId: input.expectedTenantId } : {},
+    ...input.grantObservedAt ? { grantObservedAt: input.grantObservedAt } : {},
+    settle: input.settle === true
+  };
+}
+async function readMetadataWorkerRequest(leasePath) {
+  try {
+    const request = JSON.parse(await readFile5(join8(dirname3(leasePath), "request.json"), "utf8"));
+    return { id: request.id, options: metadataRequestOptions(request.options) };
+  } catch {
+    return null;
+  }
+}
+function metadataBindingKey(input) {
+  return createHash2("sha256").update(JSON.stringify([
+    input.installId,
+    input.credentialFingerprint ?? "unknown-credential",
+    input.expectedTenantId ?? "unknown-tenant",
+    input.endpoint
+  ])).digest("hex");
+}
+function metadataWorkerLeasePath(input) {
+  return join8(input.dataDir, "session-metadata", ".workers", "worker.lock");
+}
+var METADATA_WORKER_MAX_LEASE_AGE_MS = 18e4;
+var METADATA_COOLDOWN_MS = 6e4;
+
 // dist/shared/session-metadata/delivery.mjs
 import { isDeepStrictEqual } from "node:util";
+
+// dist/shared/session-metadata/outbox.mjs
+import { mkdir as mkdir7, open as open4, readFile as readFile6, readdir as readdir3, rename as rename5, rmdir, unlink as unlink4 } from "node:fs/promises";
+import { dirname as dirname4, join as join9 } from "node:path";
+import { randomBytes as randomBytes2 } from "node:crypto";
+var METADATA_OUTBOX_MAX_BYTES = 100 * 1024 * 1024;
+var METADATA_REJECTED_MAX_BYTES = 10 * 1024 * 1024;
+var PENDING_FILE = "pending.ndjson";
+var REJECTED_FILE = "rejected.ndjson";
+var MetadataOutboxCapacity = class {
+  dir;
+  onScanForTest;
+  retries;
+  snapshot = null;
+  lockHeld = false;
+  scanCount = 0;
+  constructor(dir, onScanForTest, retries) {
+    this.dir = dir;
+    this.onScanForTest = onScanForTest;
+    this.retries = retries;
+  }
+  async run(work) {
+    if (this.lockHeld)
+      return work();
+    return withDirLock(this.dir, async () => {
+      this.lockHeld = true;
+      try {
+        return await work();
+      } finally {
+        this.lockHeld = false;
+        this.snapshot = null;
+      }
+    }, this.retries);
+  }
+  async account(work) {
+    if (!this.lockHeld)
+      return this.run(() => this.account(work));
+    if (this.snapshot === null) {
+      this.snapshot = await scanCapacity(this.dir);
+      this.scanCount++;
+      this.onScanForTest?.(this.scanCount);
+    }
+    return work(this.snapshot);
+  }
+  /** Test-only count of installation tree scans. */
+  scanCountForTest() {
+    return this.scanCount;
+  }
+};
+async function mergeMetadataOutbox(incomingDir, heldDir, afterEntryMergedForTest) {
+  try {
+    await rename5(incomingDir, heldDir);
+    await syncDirectory2(dirname4(incomingDir));
+    return;
+  } catch (error) {
+    if (isNodeError2(error, "ENOENT") && !await directoryExists(incomingDir))
+      return;
+    if (!await directoryExists(heldDir))
+      throw error;
+  }
+  while (true) {
+    const entries = await readdir3(incomingDir, { withFileTypes: true });
+    if (entries.length === 0)
+      break;
+    entries.sort((left, right) => left.name.localeCompare(right.name));
+    for (const entry of entries) {
+      const incomingPath = join9(incomingDir, entry.name);
+      const heldPath = join9(heldDir, entry.name);
+      if (!await pathExists(heldPath)) {
+        await rename5(incomingPath, heldPath);
+        await syncDirectory2(incomingDir);
+        await syncDirectory2(heldDir);
+        continue;
+      }
+      if (entry.isDirectory()) {
+        await mergeMetadataOutbox(incomingPath, heldPath, afterEntryMergedForTest);
+        continue;
+      }
+      if (entry.name === PENDING_FILE || entry.name === REJECTED_FILE) {
+        await mergePayloadFiles(incomingPath, heldPath);
+      }
+      await afterEntryMergedForTest?.(entry.name);
+      await unlink4(incomingPath);
+      await syncDirectory2(incomingDir);
+    }
+  }
+  await rmdir(incomingDir);
+  await syncDirectory2(dirname4(incomingDir));
+}
+var MetadataOutbox = class {
+  dir;
+  capacityDir;
+  rejectedCapBytes;
+  capacity;
+  pendingPath;
+  rejectedPath;
+  capBytes;
+  get capacityBytes() {
+    return this.capBytes;
+  }
+  constructor(dir, capBytes = METADATA_OUTBOX_MAX_BYTES, capacityDir = dir, rejectedCapBytes = METADATA_REJECTED_MAX_BYTES, capacity = new MetadataOutboxCapacity(capacityDir)) {
+    this.dir = dir;
+    this.capacityDir = capacityDir;
+    this.rejectedCapBytes = rejectedCapBytes;
+    this.capacity = capacity;
+    this.pendingPath = join9(dir, PENDING_FILE);
+    this.rejectedPath = join9(dir, REJECTED_FILE);
+    this.capBytes = capBytes;
+  }
+  async append(payloads) {
+    if (payloads.length === 0)
+      return { written: 0, dropped: 0, sizeAfter: await this.size() };
+    return this.capacity.account(async (capacity) => {
+      await mkdir7(this.capacityDir, { recursive: true, mode: 448 });
+      await mkdir7(this.dir, { recursive: true, mode: 448 });
+      await syncDirectory2(this.capacityDir);
+      await syncDirectory2(this.dir);
+      const sizeBeforeRepair = await fileSize(this.pendingPath);
+      await repairTrailingLine(this.pendingPath);
+      capacity.pendingBytes += await fileSize(this.pendingPath) - sizeBeforeRepair;
+      const pending = await readPayloadFile(this.pendingPath);
+      const rejected = await readPayloadFile(this.rejectedPath);
+      const known = new Set([...pending, ...rejected].map((item) => item.payload_id));
+      const additions = payloads.filter((item) => !known.has(item.payload_id));
+      const currentSize = capacity.pendingBytes;
+      const additionBytes = additions.reduce((sum, item) => sum + encodedBytes(item), 0);
+      if (currentSize + additionBytes > this.capBytes) {
+        return { written: 0, dropped: additions.length, sizeAfter: currentSize };
+      }
+      if (additions.length > 0) {
+        const fh = await open4(this.pendingPath, "a", 384);
+        try {
+          for (const item of additions)
+            await fh.writeFile(JSON.stringify(item) + "\n", "utf8");
+          await fh.sync();
+        } finally {
+          await fh.close();
+        }
+        await syncDirectory2(this.dir);
+        await syncDirectory2(this.capacityDir);
+        capacity.pendingBytes += additionBytes;
+      }
+      return {
+        written: payloads.length,
+        dropped: 0,
+        sizeAfter: currentSize + additionBytes
+      };
+    });
+  }
+  async readPending() {
+    return readPayloadFile(this.pendingPath);
+  }
+  async markDelivered(payloadIds) {
+    if (payloadIds.length === 0)
+      return;
+    await repairTrailingLine(this.pendingPath);
+    const pending = await readPayloadFile(this.pendingPath);
+    const remove = new Set(payloadIds);
+    await replacePayloadFile(this.pendingPath, pending.filter((item) => !remove.has(item.payload_id)));
+  }
+  async markRejected(payloadIds) {
+    if (payloadIds.length === 0)
+      return;
+    try {
+      await this.capacity.account(async (capacity) => {
+        const pendingSizeBefore = await fileSize(this.pendingPath);
+        await repairTrailingLine(this.pendingPath);
+        const pending = await readPayloadFile(this.pendingPath);
+        const remove = new Set(payloadIds);
+        const rejected = pending.filter((item) => remove.has(item.payload_id));
+        if (rejected.length > 0) {
+          await retainRejectedAcrossCapacity(capacity, this.rejectedPath, rejected, this.rejectedCapBytes);
+        }
+        await replacePayloadFile(this.pendingPath, pending.filter((item) => !remove.has(item.payload_id)));
+        capacity.pendingBytes += await fileSize(this.pendingPath) - pendingSizeBefore;
+      });
+    } catch (error) {
+      if (!isNodeError2(error, "ELOCKED"))
+        throw error;
+    }
+  }
+  async size() {
+    return this.capacity.account((capacity) => Promise.resolve(capacity.pendingBytes));
+  }
+};
+async function readPayloadFile(path) {
+  let raw;
+  try {
+    raw = await readFile6(path, "utf8");
+  } catch {
+    return [];
+  }
+  const out = [];
+  for (const line of raw.split("\n")) {
+    if (!line)
+      continue;
+    try {
+      const parsed = JSON.parse(line);
+      if (isPayload(parsed))
+        out.push(parsed);
+    } catch {
+    }
+  }
+  return out;
+}
+async function mergePayloadFiles(incomingPath, heldPath) {
+  await repairTrailingLine(heldPath);
+  await repairTrailingLine(incomingPath);
+  const held = await readPayloadFile(heldPath);
+  const known = new Set(held.map((payload) => payload.payload_id));
+  const additions = [];
+  for (const payload of await readPayloadFile(incomingPath)) {
+    if (known.has(payload.payload_id))
+      continue;
+    known.add(payload.payload_id);
+    additions.push(payload);
+  }
+  await replacePayloadFile(heldPath, [...held, ...additions]);
+}
+async function repairTrailingLine(path) {
+  let raw;
+  try {
+    raw = await readFile6(path);
+  } catch {
+    return;
+  }
+  if (raw.length === 0 || raw[raw.length - 1] === 10)
+    return;
+  const lastNewline = raw.lastIndexOf(10);
+  const trailing = raw.subarray(lastNewline + 1);
+  try {
+    const parsed = JSON.parse(trailing.toString("utf8"));
+    if (isPayload(parsed)) {
+      const fh2 = await open4(path, "a");
+      try {
+        await fh2.write("\n", null, "utf8");
+        await fh2.sync();
+      } finally {
+        await fh2.close();
+      }
+      return;
+    }
+  } catch {
+  }
+  const quarantine = `${path}.corrupt.${process.pid}.${randomBytes2(4).toString("hex")}`;
+  const quarantineFh = await open4(quarantine, "wx", 384);
+  try {
+    await quarantineFh.writeFile(trailing);
+    await quarantineFh.sync();
+  } finally {
+    await quarantineFh.close();
+  }
+  const fh = await open4(path, "r+");
+  try {
+    await fh.truncate(lastNewline + 1);
+    await fh.sync();
+  } finally {
+    await fh.close();
+  }
+  await syncDirectory2(dirname4(path));
+}
+function isPayload(value) {
+  if (typeof value !== "object" || value === null)
+    return false;
+  const o = value;
+  return typeof o.payload_id === "string" && typeof o.event_uuid === "string" && typeof o.observed_time_unix_nano === "string" && "envelope" in o;
+}
+function encodedBytes(payload) {
+  return Buffer.byteLength(JSON.stringify(payload), "utf8") + 1;
+}
+async function retainRejectedAcrossCapacity(capacity, currentPath, additions, maxBytes) {
+  if (capacity.rejectedEntries.length === 0 && additions.length === 0)
+    return;
+  const entries = capacity.rejectedEntries.map((entry, order) => ({ ...entry, order }));
+  const existingByPath = groupRejectedByPath(entries);
+  for (const payload of additions) {
+    entries.push({ path: currentPath, payload, order: entries.length, addition: true });
+  }
+  let sequence = entries.reduce((highest, entry) => Math.max(highest, rejectionSequence(entry.payload)), 0);
+  for (const entry of entries) {
+    if (entry.addition || rejectionSequence(entry.payload) === 0) {
+      const rejectedPayload = {
+        ...entry.payload,
+        rejected_sequence: ++sequence
+      };
+      entry.payload = rejectedPayload;
+    }
+  }
+  const kept = retainNewestRejected(entries, maxBytes);
+  const byPath = new Map(Array.from(existingByPath.keys(), (path) => [path, []]));
+  if (additions.length > 0 || byPath.size === 0)
+    byPath.set(currentPath, []);
+  for (const entry of kept)
+    byPath.get(entry.path)?.push(entry.payload);
+  for (const [path, payloads] of byPath) {
+    const existing = existingByPath.get(path) ?? [];
+    const unchanged = existing.length === payloads.length && existing.every((payload, index) => payload === payloads[index]);
+    if (!unchanged)
+      await replacePayloadFile(path, payloads);
+  }
+  capacity.rejectedEntries = kept.map((entry, order) => ({ ...entry, order, addition: false }));
+  capacity.rejectedBytes = kept.reduce((total, entry) => total + encodedBytes(entry.payload), 0);
+}
+function groupRejectedByPath(entries) {
+  const byPath = /* @__PURE__ */ new Map();
+  for (const entry of entries) {
+    const payloads = byPath.get(entry.path) ?? [];
+    payloads.push(entry.payload);
+    byPath.set(entry.path, payloads);
+  }
+  return byPath;
+}
+function retainNewestRejected(entries, maxBytes) {
+  const newestFirst = [...entries].sort((left, right) => rejectionSequence(right.payload) - rejectionSequence(left.payload) || right.order - left.order);
+  const kept = [];
+  let size = 0;
+  for (const entry of newestFirst) {
+    const bytes = encodedBytes(entry.payload);
+    if (size + bytes > maxBytes)
+      continue;
+    kept.push(entry);
+    size += bytes;
+  }
+  return kept.sort((left, right) => rejectionSequence(left.payload) - rejectionSequence(right.payload) || left.order - right.order);
+}
+function rejectionSequence(payload) {
+  const value = payload.rejected_sequence;
+  return typeof value === "number" && Number.isSafeInteger(value) && value > 0 ? value : 0;
+}
+function isNodeError2(error, code) {
+  return error instanceof Error && error.code === code;
+}
+async function fileSize(path) {
+  try {
+    const fh = await open4(path, "r");
+    try {
+      return (await fh.stat()).size;
+    } finally {
+      await fh.close();
+    }
+  } catch {
+    return 0;
+  }
+}
+async function pathExists(path) {
+  try {
+    const fh = await open4(path, "r");
+    await fh.close();
+    return true;
+  } catch {
+    return directoryExists(path);
+  }
+}
+async function directoryExists(path) {
+  try {
+    await readdir3(path);
+    return true;
+  } catch {
+    return false;
+  }
+}
+async function scanCapacity(root) {
+  const snapshot = {
+    pendingBytes: 0,
+    rejectedBytes: 0,
+    rejectedEntries: []
+  };
+  await scanCapacityDirectory(root, snapshot);
+  return snapshot;
+}
+async function scanCapacityDirectory(root, snapshot) {
+  const entries = await readdir3(root, { withFileTypes: true, encoding: "utf8" }).catch(() => null);
+  if (entries === null)
+    return;
+  entries.sort((left, right) => left.name.localeCompare(right.name));
+  for (const entry of entries) {
+    const path = join9(root, entry.name);
+    if (entry.isDirectory()) {
+      await scanCapacityDirectory(path, snapshot);
+    } else if (entry.name === PENDING_FILE) {
+      snapshot.pendingBytes += await fileSize(path);
+    } else if (entry.name === REJECTED_FILE) {
+      await repairTrailingLine(path);
+      for (const payload of await readPayloadFile(path)) {
+        snapshot.rejectedEntries.push({
+          path,
+          payload,
+          order: snapshot.rejectedEntries.length,
+          addition: false
+        });
+        snapshot.rejectedBytes += encodedBytes(payload);
+      }
+    }
+  }
+}
+async function replacePayloadFile(path, payloads) {
+  await mkdir7(dirname4(path), { recursive: true, mode: 448 });
+  const tmp = `${path}.${process.pid}.${randomBytes2(4).toString("hex")}.tmp`;
+  let renamed = false;
+  try {
+    const fh = await open4(tmp, "wx", 384);
+    try {
+      await fh.writeFile(payloads.length === 0 ? "" : `${payloads.map((item) => JSON.stringify(item)).join("\n")}
+`, "utf8");
+      await fh.sync();
+    } finally {
+      await fh.close();
+    }
+    await rename5(tmp, path);
+    renamed = true;
+    await syncDirectory2(dirname4(path));
+  } finally {
+    if (!renamed)
+      await unlink4(tmp).catch(() => {
+      });
+  }
+}
+async function syncDirectory2(path) {
+  try {
+    const fh = await open4(path, "r");
+    try {
+      await fh.sync();
+    } finally {
+      await fh.close();
+    }
+  } catch (error) {
+    if (process.platform !== "win32")
+      throw error;
+  }
+}
+
+// dist/shared/session-metadata/delivery.mjs
 var MAX_ENCODED_LOG_RECORD_BYTES = 4096;
 var MAX_RECAP_BYTES = 4 * 1024 * 1024;
 var MAX_RECAP_CHUNKS = 4096;
@@ -2607,10 +3753,20 @@ async function captureMetadata(input) {
   const current = await input.state.read();
   if (current === null)
     return { kind: "captured", staged: 0 };
+  if (current.blocked_capture_bytes !== void 0) {
+    if ((current.capture_retry_at ?? 0) > Date.now() || input.outbox.size !== void 0 && await input.outbox.size() + current.blocked_capture_bytes > (input.outbox.capacityBytes ?? METADATA_OUTBOX_MAX_BYTES)) {
+      return { kind: "outbox-full", staged: 0 };
+    }
+  }
   const result = await input.reader.read(current, input.diagnostic);
   if (result.payloads.length > 0) {
     const appended = await input.outbox.append(result.payloads);
     if (appended.written < result.payloads.length) {
+      await input.state.write({
+        ...current,
+        capture_retry_at: Date.now() + METADATA_COOLDOWN_MS,
+        blocked_capture_bytes: result.payloads.reduce((bytes, payload) => bytes + Buffer.byteLength(JSON.stringify(payload)) + 1, 0)
+      });
       if (input.diagnostic !== void 0) {
         try {
           await input.diagnostic("outbox-full");
@@ -2620,12 +3776,15 @@ async function captureMetadata(input) {
       return { kind: "outbox-full", staged: 0 };
     }
   }
-  const stateChanged = !isDeepStrictEqual(current, result.nextState);
+  const nextState = { ...result.nextState };
+  delete nextState.capture_retry_at;
+  delete nextState.blocked_capture_bytes;
+  const stateChanged = !isDeepStrictEqual(current, nextState);
   if ((result.payloads.length > 0 || stateChanged) && input.isBindingValid !== void 0 && !await input.isBindingValid()) {
     return { kind: "grant-invalid", staged: 0 };
   }
   if (stateChanged)
-    await input.state.write(result.nextState);
+    await input.state.write(nextState);
   return { kind: "captured", staged: result.payloads.length };
 }
 async function deliverMetadata(input) {
@@ -3006,22 +4165,22 @@ function encodeAnyValue(key, v) {
 }
 
 // dist/shared/session-metadata/claude-reader.mjs
-import { createHash as createHash3 } from "node:crypto";
-import { open as open3, stat as stat2 } from "node:fs/promises";
+import { createHash as createHash4 } from "node:crypto";
+import { open as open5, stat as stat3 } from "node:fs/promises";
 
 // dist/shared/session-metadata/identity.mjs
-import { createHash as createHash2 } from "node:crypto";
+import { createHash as createHash3 } from "node:crypto";
 
 // dist/shared/schema-version.mjs
 var SCHEMA_VERSION = "1.2.1";
 
 // dist/shared/plugin-version.mjs
 import { readFileSync as readFileSync4 } from "node:fs";
-import { join as join7 } from "node:path";
+import { join as join10 } from "node:path";
 function pluginVersion() {
   for (const path of [
-    join7(import.meta.dirname, "../../package.json"),
-    join7(import.meta.dirname, "../../../package.json")
+    join10(import.meta.dirname, "../../package.json"),
+    join10(import.meta.dirname, "../../../package.json")
   ]) {
     try {
       const value = JSON.parse(readFileSync4(path, "utf8"));
@@ -3046,7 +4205,7 @@ function resourceAttributes(state) {
   };
 }
 function uuidV5Url(tuple) {
-  const bytes = createHash2("sha1").update(URL_NAMESPACE).update(JSON.stringify(tuple)).digest().subarray(0, 16);
+  const bytes = createHash3("sha1").update(URL_NAMESPACE).update(JSON.stringify(tuple)).digest().subarray(0, 16);
   bytes[6] = bytes[6] & 15 | 80;
   bytes[8] = bytes[8] & 63 | 128;
   const hex = bytes.toString("hex");
@@ -3057,35 +4216,55 @@ function uuidV5Url(tuple) {
 var UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 var RFC3339_RE = /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(?:\.(\d{1,9}))?(Z|[+-]\d{2}:\d{2})$/;
 var CONTINUITY_CHECKPOINT_BYTES = 4096;
-var CLAUDE_READ_CHUNK_BYTES = 64 * 1024;
+var METADATA_READ_BUDGET_BYTES = 256 * 1024 * 1024;
+var JSON_UNICODE_ESCAPE = "\\u";
+function mayContainRecap(bytes) {
+  return bytes.includes("away_summary") || bytes.includes(JSON_UNICODE_ESCAPE);
+}
+var CLAUDE_READ_CHUNK_BYTES = 1024 * 1024;
 var MAX_ENCODED_RECAP_LINE_BYTES = MAX_RECAP_BYTES * 6 + 64 * 1024;
 var CLAUDE_READ_WINDOW_BYTES = MAX_ENCODED_RECAP_LINE_BYTES + 64 * 1024;
-function createClaudeMetadataReader() {
-  return { read: readClaudeTranscript };
+function createClaudeMetadataReader(options = {}) {
+  return { read: (state, diagnostic) => readClaudeTranscript(state, diagnostic, options.catchUp === true, options.budget) };
 }
-async function readClaudeTranscript(state, diagnostic) {
+async function readClaudeTranscript(state, diagnostic, catchUp = false, budget = { remainingBytes: METADATA_READ_BUDGET_BYTES }) {
+  if (budget.remainingBytes <= 0)
+    return { payloads: [], nextState: state };
   if (state.agent !== "claude-code")
     return { payloads: [], nextState: state };
   const liveBoundary = parseTimestamp(state.capture_started_at);
   if (liveBoundary === null)
     return { payloads: [], nextState: state };
-  const source = await inspectSource(state.source_file_identity, state.byte_offset);
+  if (state.source_tail_size !== void 0) {
+    const metadata = await stat3(state.source_file_identity).catch(() => null);
+    if (metadata !== null && metadata.size === state.source_tail_size && metadata.mtimeMs === state.source_tail_mtime_ms && `${metadata.dev}:${metadata.ino}` === state.source_file_id) {
+      return { payloads: [], nextState: state };
+    }
+  }
+  const source = await inspectSource(state.source_file_identity, state.byte_offset, state.capture_start_offset);
   if (source === null)
     return { payloads: [], nextState: state };
   const continuityInvalid = source.size < state.byte_offset || state.source_file_id !== void 0 && state.source_file_id !== source.fileId || state.source_continuity_checkpoint !== void 0 && (state.source_continuity_checkpoint.offset !== state.byte_offset || source.checkpoint === void 0 || state.source_continuity_checkpoint.sha256 !== source.checkpoint.sha256);
   const readState = continuityInvalid ? {
     ...state,
     byte_offset: 0,
+    capture_start_offset: 0,
     source_file_id: void 0,
+    source_discard_line: void 0,
     source_continuity_checkpoint: void 0
   } : state;
   const observedTime = BigInt(Date.now()) * 1000000n;
   const payloads = [];
+  let capturedBytes = 0;
   const resource = resourceAttributes(state);
   const diagnosticCounts = /* @__PURE__ */ new Map();
   const result = await readClaudeLines({
     path: readState.source_file_identity,
     startOffset: readState.byte_offset,
+    captureStartOffset: readState.capture_start_offset,
+    catchUp,
+    budget,
+    discardLine: readState.source_discard_line,
     onLine: (line) => {
       const parsed = parseAwaySummary(line);
       if (parsed === null)
@@ -3111,6 +4290,8 @@ async function readClaudeTranscript(state, diagnostic) {
         return;
       }
       payloads.push(buildPayload(readState, recap, timestamp.nanoseconds, observedTime, resource));
+      capturedBytes += Buffer.byteLength(recap.content, "utf8");
+      return catchUp && (capturedBytes >= MAX_RECAP_BYTES || payloads.length >= 128);
     },
     onBlockedLine: (boundedPrefix) => incrementDiagnostic(diagnosticCounts, identifiesEligibleAwaySummary(boundedPrefix) ? "blocked-capture" : "oversized-line")
   });
@@ -3132,24 +4313,28 @@ async function readClaudeTranscript(state, diagnostic) {
     nextState: {
       ...readState,
       byte_offset: result.endOffset,
+      source_discard_line: result.discardLine || void 0,
+      source_tail_size: result.tailSize,
+      source_tail_mtime_ms: result.tailMtimeMs,
       ...after !== null ? {
         source_file_id: after.fileId,
         source_continuity_checkpoint: result.checkpoint ?? void 0
       } : {},
-      pending_payload_ids: [...readState.pending_payload_ids, ...pendingPayloadIds]
+      pending_payload_ids: [...readState.pending_payload_ids, ...pendingPayloadIds],
+      source_read_mtime_ms: source.mtimeMs
     }
   };
 }
-async function inspectSource(path, offset) {
+async function inspectSource(path, offset, captureStartOffset = 0) {
   try {
-    const metadata = await stat2(path);
+    const metadata = await stat3(path);
     if (offset === void 0 || metadata.size < offset) {
-      return { fileId: `${metadata.dev}:${metadata.ino}`, size: metadata.size };
+      return { fileId: `${metadata.dev}:${metadata.ino}`, size: metadata.size, mtimeMs: metadata.mtimeMs };
     }
-    const checkpoint = await readCheckpointFromPath(path, offset, metadata.size);
+    const checkpoint = await readCheckpointFromPath(path, offset, metadata.size, captureStartOffset);
     if (checkpoint === null)
       return null;
-    return { fileId: `${metadata.dev}:${metadata.ino}`, size: metadata.size, checkpoint };
+    return { fileId: `${metadata.dev}:${metadata.ino}`, size: metadata.size, mtimeMs: metadata.mtimeMs, checkpoint };
   } catch (error) {
     if (error.code === "ENOENT")
       return null;
@@ -3160,7 +4345,7 @@ async function readClaudeLines(input) {
   let fh = null;
   try {
     try {
-      fh = await open3(input.path, "r");
+      fh = await open5(input.path, "r");
     } catch (error) {
       if (error.code === "ENOENT") {
         return { endOffset: input.startOffset };
@@ -3171,32 +4356,69 @@ async function readClaudeLines(input) {
     const fileId = `${metadata.dev}:${metadata.ino}`;
     const effectiveStart = metadata.size < input.startOffset ? 0 : input.startOffset;
     if (metadata.size <= effectiveStart) {
-      return { endOffset: effectiveStart, fileId, checkpoint: await readCheckpoint(fh, effectiveStart, metadata.size) };
+      return { endOffset: effectiveStart, fileId, checkpoint: await readCheckpoint(fh, effectiveStart, metadata.size, input.captureStartOffset) };
     }
-    const chunk = Buffer.alloc(CLAUDE_READ_CHUNK_BYTES);
+    const chunk = Buffer.allocUnsafe(Math.min(CLAUDE_READ_CHUNK_BYTES, metadata.size - effectiveStart));
     let position = effectiveStart;
     let endOffset = effectiveStart;
     let lineParts = [];
     let lineBytes = 0;
     let lineTooLong = false;
+    let discardLine = input.discardLine === true;
     let bytesReadTotal = 0;
     let readLineAfterBlocked = false;
     let stopAfterLine = false;
     while (position < metadata.size && !stopAfterLine) {
       const beyondWindow = lineTooLong || readLineAfterBlocked;
-      const remainingWindow = CLAUDE_READ_WINDOW_BYTES - bytesReadTotal;
+      const remainingWindow = input.catchUp ? input.budget.remainingBytes : CLAUDE_READ_WINDOW_BYTES - bytesReadTotal;
+      if (input.budget.remainingBytes <= 0)
+        break;
       if (!beyondWindow && remainingWindow <= 0)
         break;
-      const result = await fh.read(chunk, 0, Math.min(chunk.length, metadata.size - position, beyondWindow ? metadata.size - position : remainingWindow), position);
+      const result = await fh.read(chunk, 0, Math.min(input.budget.remainingBytes, chunk.length, metadata.size - position, beyondWindow ? metadata.size - position : remainingWindow), position);
       if (result.bytesRead === 0)
         break;
       bytesReadTotal += result.bytesRead;
+      input.budget.remainingBytes -= result.bytesRead;
       const bytes = chunk.subarray(0, result.bytesRead);
+      const hasCandidate = mayContainRecap(bytes);
       let partStart = 0;
       for (; ; ) {
+        if (discardLine) {
+          const newline2 = bytes.indexOf(10, partStart);
+          endOffset = position + (newline2 < 0 ? bytes.length : newline2 + 1);
+          if (newline2 < 0)
+            break;
+          discardLine = false;
+          partStart = newline2 + 1;
+          if (partStart >= bytes.length)
+            break;
+        }
+        if (!hasCandidate && lineBytes === 0 && !lineTooLong) {
+          const lastNewline = bytes.lastIndexOf(10);
+          if (lastNewline >= partStart) {
+            endOffset = position + lastNewline + 1;
+            stopAfterLine = readLineAfterBlocked;
+            readLineAfterBlocked = false;
+            partStart = lastNewline + 1;
+            if (stopAfterLine || partStart >= bytes.length)
+              break;
+          }
+        }
         const newline = bytes.indexOf(10, partStart);
         const partEnd = newline < 0 ? bytes.length : newline;
         const part = bytes.subarray(partStart, partEnd);
+        if (newline >= 0 && lineBytes === 0 && !lineTooLong && part.length <= MAX_ENCODED_RECAP_LINE_BYTES) {
+          if (mayContainRecap(part))
+            stopAfterLine = input.onLine(part.toString("utf8")) === true;
+          endOffset = position + newline + 1;
+          stopAfterLine ||= readLineAfterBlocked;
+          readLineAfterBlocked = false;
+          partStart = newline + 1;
+          if (stopAfterLine || partStart >= bytes.length)
+            break;
+          continue;
+        }
         if (!lineTooLong) {
           if (lineBytes + part.length > MAX_ENCODED_RECAP_LINE_BYTES) {
             lineParts.push(Buffer.from(part.subarray(0, MAX_ENCODED_RECAP_LINE_BYTES - lineBytes)));
@@ -3213,8 +4435,10 @@ async function readClaudeLines(input) {
           stopAfterLine = readLineAfterBlocked;
           readLineAfterBlocked = !stopAfterLine;
         } else {
-          input.onLine(Buffer.concat(lineParts).toString("utf8"));
-          stopAfterLine = readLineAfterBlocked;
+          const line = Buffer.concat(lineParts);
+          if (mayContainRecap(line))
+            stopAfterLine = input.onLine(line.toString("utf8")) === true;
+          stopAfterLine ||= readLineAfterBlocked;
           readLineAfterBlocked = false;
         }
         endOffset = position + newline + 1;
@@ -3222,12 +4446,24 @@ async function readClaudeLines(input) {
         lineBytes = 0;
         lineTooLong = false;
         partStart = newline + 1;
-        if (partStart >= bytes.length)
+        if (stopAfterLine || partStart >= bytes.length)
           break;
       }
       position += result.bytesRead;
     }
-    return { endOffset, fileId, checkpoint: await readCheckpoint(fh, endOffset, metadata.size) };
+    if (lineTooLong) {
+      input.onBlockedLine(Buffer.concat(lineParts).toString("utf8"));
+      endOffset = position;
+      discardLine = true;
+    }
+    const partialAtEof = !stopAfterLine && position >= metadata.size && endOffset < metadata.size;
+    return {
+      endOffset,
+      fileId,
+      discardLine,
+      checkpoint: await readCheckpoint(fh, endOffset, metadata.size, input.captureStartOffset),
+      ...partialAtEof ? { tailSize: metadata.size, tailMtimeMs: metadata.mtimeMs } : {}
+    };
   } finally {
     if (fh !== null)
       await fh.close();
@@ -3241,10 +4477,10 @@ function identifiesEligibleAwaySummary(boundedPrefix) {
 function incrementDiagnostic(counts, kind) {
   counts.set(kind, (counts.get(kind) ?? 0) + 1);
 }
-async function readCheckpoint(fh, offset, size) {
+async function readCheckpoint(fh, offset, size, captureStartOffset = 0) {
   if (size < offset)
     return null;
-  const length = Math.min(CONTINUITY_CHECKPOINT_BYTES, offset);
+  const length = Math.min(CONTINUITY_CHECKPOINT_BYTES, Math.max(0, offset - captureStartOffset));
   const start = offset - length;
   const bytes = Buffer.alloc(length);
   if (length > 0) {
@@ -3254,13 +4490,13 @@ async function readCheckpoint(fh, offset, size) {
   }
   return {
     offset,
-    sha256: createHash3("sha256").update(bytes).digest("hex")
+    sha256: createHash4("sha256").update(bytes).digest("hex")
   };
 }
-async function readCheckpointFromPath(path, offset, size) {
-  const fh = await open3(path, "r");
+async function readCheckpointFromPath(path, offset, size, captureStartOffset = 0) {
+  const fh = await open5(path, "r");
   try {
-    return await readCheckpoint(fh, offset, size);
+    return await readCheckpoint(fh, offset, size, captureStartOffset);
   } finally {
     await fh.close();
   }
@@ -3319,7 +4555,7 @@ function buildPayload(state, recap, timestampNanoseconds, observedTime, resource
   if (contentBytes > MAX_RECAP_BYTES) {
     throw new Error(`Claude recap exceeds ${MAX_RECAP_BYTES} decoded bytes`);
   }
-  const contentHash = createHash3("sha256").update(recap.content, "utf8").digest("hex");
+  const contentHash = createHash4("sha256").update(recap.content, "utf8").digest("hex");
   const chunks = splitContent({
     state,
     recap,
@@ -3485,7 +4721,7 @@ function createCodexThreadNameReader(options) {
         return;
       const names = await readNamesWithHelper({
         helperPath,
-        databasePath: join8(options.codexHome, "state_5.sqlite"),
+        databasePath: join11(options.codexHome, "state_5.sqlite"),
         threads: pending.map(({ id, rolloutPath }) => ({ id, rolloutPath })),
         nodeVersion
       }, diagnostic);
@@ -3516,7 +4752,7 @@ async function readCodexThreadName(state, codexHome, helperPath, nodeVersion, di
   const key = lookupKey(state.session_id, state.source_file_identity);
   const name = batchResults?.has(key) ? batchResults.get(key) ?? null : await readNamesWithHelper({
     helperPath,
-    databasePath: join8(codexHome, "state_5.sqlite"),
+    databasePath: join11(codexHome, "state_5.sqlite"),
     threads: [{ id: state.session_id, rolloutPath: state.source_file_identity }],
     nodeVersion
   }, diagnostic).then((names) => names.get(key) ?? null);
@@ -3642,1068 +4878,149 @@ function buildNamePayload(state, name, observedTime) {
   };
 }
 function resolveHelperPath() {
-  const moduleDir = dirname2(fileURLToPath2(import.meta.url));
+  const moduleDir = dirname5(fileURLToPath2(import.meta.url));
   const candidates = [
-    join8(moduleDir, "codex-thread-name-reader.mjs"),
+    join11(moduleDir, "codex-thread-name-reader.mjs"),
     resolve(moduleDir, "../../../dist/shared/bin/codex-thread-name-reader.mjs")
   ];
   return candidates.find((path) => existsSync(path)) ?? candidates[0];
 }
 
-// dist/shared/session-metadata/outbox.mjs
-import { mkdir as mkdir5, open as open4, readFile as readFile4, readdir as readdir2, rename as rename3, rmdir, unlink as unlink2 } from "node:fs/promises";
-import { dirname as dirname3, join as join9 } from "node:path";
-import { randomBytes } from "node:crypto";
-var METADATA_OUTBOX_MAX_BYTES = 100 * 1024 * 1024;
-var METADATA_REJECTED_MAX_BYTES = 10 * 1024 * 1024;
-var PENDING_FILE = "pending.ndjson";
-var REJECTED_FILE = "rejected.ndjson";
-var MetadataOutboxCapacity = class {
-  dir;
-  onScanForTest;
-  retries;
-  snapshot = null;
-  lockHeld = false;
-  scanCount = 0;
-  constructor(dir, onScanForTest, retries) {
-    this.dir = dir;
-    this.onScanForTest = onScanForTest;
-    this.retries = retries;
-  }
-  async run(work) {
-    if (this.lockHeld)
-      return work();
-    return withDirLock(this.dir, async () => {
-      this.snapshot = await scanCapacity(this.dir);
-      this.scanCount++;
-      this.onScanForTest?.(this.scanCount);
-      this.lockHeld = true;
-      try {
-        return await work();
-      } finally {
-        this.lockHeld = false;
-        this.snapshot = null;
-      }
-    }, this.retries);
-  }
-  async account(work) {
-    if (this.lockHeld && this.snapshot !== null)
-      return work(this.snapshot);
-    return this.run(() => work(this.requireSnapshot()));
-  }
-  /** Test-only count of installation tree scans. */
-  scanCountForTest() {
-    return this.scanCount;
-  }
-  requireSnapshot() {
-    if (this.snapshot === null)
-      throw new Error("metadata capacity lock is not held");
-    return this.snapshot;
-  }
-};
-async function mergeMetadataOutbox(incomingDir, heldDir, afterEntryMergedForTest) {
-  try {
-    await rename3(incomingDir, heldDir);
-    await syncDirectory(dirname3(incomingDir));
-    return;
-  } catch (error) {
-    if (isNodeError(error, "ENOENT") && !await directoryExists(incomingDir))
-      return;
-    if (!await directoryExists(heldDir))
-      throw error;
-  }
-  while (true) {
-    const entries = await readdir2(incomingDir, { withFileTypes: true });
-    if (entries.length === 0)
-      break;
-    entries.sort((left, right) => left.name.localeCompare(right.name));
-    for (const entry of entries) {
-      const incomingPath = join9(incomingDir, entry.name);
-      const heldPath = join9(heldDir, entry.name);
-      if (!await pathExists(heldPath)) {
-        await rename3(incomingPath, heldPath);
-        await syncDirectory(incomingDir);
-        await syncDirectory(heldDir);
-        continue;
-      }
-      if (entry.isDirectory()) {
-        await mergeMetadataOutbox(incomingPath, heldPath, afterEntryMergedForTest);
-        continue;
-      }
-      if (entry.name === PENDING_FILE || entry.name === REJECTED_FILE) {
-        await mergePayloadFiles(incomingPath, heldPath);
-      }
-      await afterEntryMergedForTest?.(entry.name);
-      await unlink2(incomingPath);
-      await syncDirectory(incomingDir);
-    }
-  }
-  await rmdir(incomingDir);
-  await syncDirectory(dirname3(incomingDir));
-}
-var MetadataOutbox = class {
-  dir;
-  capacityDir;
-  rejectedCapBytes;
-  capacity;
-  pendingPath;
-  rejectedPath;
-  capBytes;
-  constructor(dir, capBytes = METADATA_OUTBOX_MAX_BYTES, capacityDir = dir, rejectedCapBytes = METADATA_REJECTED_MAX_BYTES, capacity = new MetadataOutboxCapacity(capacityDir)) {
-    this.dir = dir;
-    this.capacityDir = capacityDir;
-    this.rejectedCapBytes = rejectedCapBytes;
-    this.capacity = capacity;
-    this.pendingPath = join9(dir, PENDING_FILE);
-    this.rejectedPath = join9(dir, REJECTED_FILE);
-    this.capBytes = capBytes;
-  }
-  async append(payloads) {
-    if (payloads.length === 0)
-      return { written: 0, dropped: 0, sizeAfter: await this.size() };
-    return this.capacity.account(async (capacity) => {
-      await mkdir5(this.capacityDir, { recursive: true, mode: 448 });
-      await mkdir5(this.dir, { recursive: true, mode: 448 });
-      await syncDirectory(this.capacityDir);
-      await syncDirectory(this.dir);
-      const sizeBeforeRepair = await fileSize(this.pendingPath);
-      await repairTrailingLine(this.pendingPath);
-      capacity.pendingBytes += await fileSize(this.pendingPath) - sizeBeforeRepair;
-      const pending = await readPayloadFile(this.pendingPath);
-      const rejected = await readPayloadFile(this.rejectedPath);
-      const known = new Set([...pending, ...rejected].map((item) => item.payload_id));
-      const additions = payloads.filter((item) => !known.has(item.payload_id));
-      const currentSize = capacity.pendingBytes;
-      const additionBytes = additions.reduce((sum, item) => sum + encodedBytes(item), 0);
-      if (currentSize + additionBytes > this.capBytes) {
-        return { written: 0, dropped: additions.length, sizeAfter: currentSize };
-      }
-      if (additions.length > 0) {
-        const fh = await open4(this.pendingPath, "a", 384);
-        try {
-          for (const item of additions)
-            await fh.writeFile(JSON.stringify(item) + "\n", "utf8");
-          await fh.sync();
-        } finally {
-          await fh.close();
-        }
-        await syncDirectory(this.dir);
-        await syncDirectory(this.capacityDir);
-        capacity.pendingBytes += additionBytes;
-      }
-      return {
-        written: payloads.length,
-        dropped: 0,
-        sizeAfter: currentSize + additionBytes
-      };
-    });
-  }
-  async readPending() {
-    return readPayloadFile(this.pendingPath);
-  }
-  async markDelivered(payloadIds) {
-    if (payloadIds.length === 0)
-      return;
-    await repairTrailingLine(this.pendingPath);
-    const pending = await readPayloadFile(this.pendingPath);
-    const remove = new Set(payloadIds);
-    await replacePayloadFile(this.pendingPath, pending.filter((item) => !remove.has(item.payload_id)));
-  }
-  async markRejected(payloadIds) {
-    if (payloadIds.length === 0)
-      return;
-    try {
-      await this.capacity.account(async (capacity) => {
-        const pendingSizeBefore = await fileSize(this.pendingPath);
-        await repairTrailingLine(this.pendingPath);
-        const pending = await readPayloadFile(this.pendingPath);
-        const remove = new Set(payloadIds);
-        const rejected = pending.filter((item) => remove.has(item.payload_id));
-        if (rejected.length > 0) {
-          await retainRejectedAcrossCapacity(capacity, this.rejectedPath, rejected, this.rejectedCapBytes);
-        }
-        await replacePayloadFile(this.pendingPath, pending.filter((item) => !remove.has(item.payload_id)));
-        capacity.pendingBytes += await fileSize(this.pendingPath) - pendingSizeBefore;
-      });
-    } catch (error) {
-      if (!isNodeError(error, "ELOCKED"))
-        throw error;
-    }
-  }
-  async size() {
-    return this.capacity.account((capacity) => Promise.resolve(capacity.pendingBytes));
-  }
-};
-async function readPayloadFile(path) {
-  let raw;
-  try {
-    raw = await readFile4(path, "utf8");
-  } catch {
-    return [];
-  }
-  const out = [];
-  for (const line of raw.split("\n")) {
-    if (!line)
-      continue;
-    try {
-      const parsed = JSON.parse(line);
-      if (isPayload(parsed))
-        out.push(parsed);
-    } catch {
-    }
-  }
-  return out;
-}
-async function mergePayloadFiles(incomingPath, heldPath) {
-  await repairTrailingLine(heldPath);
-  await repairTrailingLine(incomingPath);
-  const held = await readPayloadFile(heldPath);
-  const known = new Set(held.map((payload) => payload.payload_id));
-  const additions = [];
-  for (const payload of await readPayloadFile(incomingPath)) {
-    if (known.has(payload.payload_id))
-      continue;
-    known.add(payload.payload_id);
-    additions.push(payload);
-  }
-  await replacePayloadFile(heldPath, [...held, ...additions]);
-}
-async function repairTrailingLine(path) {
-  let raw;
-  try {
-    raw = await readFile4(path);
-  } catch {
-    return;
-  }
-  if (raw.length === 0 || raw[raw.length - 1] === 10)
-    return;
-  const lastNewline = raw.lastIndexOf(10);
-  const trailing = raw.subarray(lastNewline + 1);
-  try {
-    const parsed = JSON.parse(trailing.toString("utf8"));
-    if (isPayload(parsed)) {
-      const fh2 = await open4(path, "a");
-      try {
-        await fh2.write("\n", null, "utf8");
-        await fh2.sync();
-      } finally {
-        await fh2.close();
-      }
-      return;
-    }
-  } catch {
-  }
-  const quarantine = `${path}.corrupt.${process.pid}.${randomBytes(4).toString("hex")}`;
-  const quarantineFh = await open4(quarantine, "wx", 384);
-  try {
-    await quarantineFh.writeFile(trailing);
-    await quarantineFh.sync();
-  } finally {
-    await quarantineFh.close();
-  }
-  const fh = await open4(path, "r+");
-  try {
-    await fh.truncate(lastNewline + 1);
-    await fh.sync();
-  } finally {
-    await fh.close();
-  }
-  await syncDirectory(dirname3(path));
-}
-function isPayload(value) {
-  if (typeof value !== "object" || value === null)
-    return false;
-  const o = value;
-  return typeof o.payload_id === "string" && typeof o.event_uuid === "string" && typeof o.observed_time_unix_nano === "string" && "envelope" in o;
-}
-function encodedBytes(payload) {
-  return Buffer.byteLength(JSON.stringify(payload), "utf8") + 1;
-}
-async function retainRejectedAcrossCapacity(capacity, currentPath, additions, maxBytes) {
-  if (capacity.rejectedEntries.length === 0 && additions.length === 0)
-    return;
-  const entries = capacity.rejectedEntries.map((entry, order) => ({ ...entry, order }));
-  const existingByPath = groupRejectedByPath(entries);
-  for (const payload of additions) {
-    entries.push({ path: currentPath, payload, order: entries.length, addition: true });
-  }
-  let sequence = entries.reduce((highest, entry) => Math.max(highest, rejectionSequence(entry.payload)), 0);
-  for (const entry of entries) {
-    if (entry.addition || rejectionSequence(entry.payload) === 0) {
-      const rejectedPayload = {
-        ...entry.payload,
-        rejected_sequence: ++sequence
-      };
-      entry.payload = rejectedPayload;
-    }
-  }
-  const kept = retainNewestRejected(entries, maxBytes);
-  const byPath = new Map(Array.from(existingByPath.keys(), (path) => [path, []]));
-  if (additions.length > 0 || byPath.size === 0)
-    byPath.set(currentPath, []);
-  for (const entry of kept)
-    byPath.get(entry.path)?.push(entry.payload);
-  for (const [path, payloads] of byPath) {
-    const existing = existingByPath.get(path) ?? [];
-    const unchanged = existing.length === payloads.length && existing.every((payload, index) => payload === payloads[index]);
-    if (!unchanged)
-      await replacePayloadFile(path, payloads);
-  }
-  capacity.rejectedEntries = kept.map((entry, order) => ({ ...entry, order, addition: false }));
-  capacity.rejectedBytes = kept.reduce((total, entry) => total + encodedBytes(entry.payload), 0);
-}
-function groupRejectedByPath(entries) {
-  const byPath = /* @__PURE__ */ new Map();
-  for (const entry of entries) {
-    const payloads = byPath.get(entry.path) ?? [];
-    payloads.push(entry.payload);
-    byPath.set(entry.path, payloads);
-  }
-  return byPath;
-}
-function retainNewestRejected(entries, maxBytes) {
-  const newestFirst = [...entries].sort((left, right) => rejectionSequence(right.payload) - rejectionSequence(left.payload) || right.order - left.order);
-  const kept = [];
-  let size = 0;
-  for (const entry of newestFirst) {
-    const bytes = encodedBytes(entry.payload);
-    if (size + bytes > maxBytes)
-      continue;
-    kept.push(entry);
-    size += bytes;
-  }
-  return kept.sort((left, right) => rejectionSequence(left.payload) - rejectionSequence(right.payload) || left.order - right.order);
-}
-function rejectionSequence(payload) {
-  const value = payload.rejected_sequence;
-  return typeof value === "number" && Number.isSafeInteger(value) && value > 0 ? value : 0;
-}
-function isNodeError(error, code) {
-  return error instanceof Error && error.code === code;
-}
-async function fileSize(path) {
-  try {
-    const fh = await open4(path, "r");
-    try {
-      return (await fh.stat()).size;
-    } finally {
-      await fh.close();
-    }
-  } catch {
-    return 0;
-  }
-}
-async function pathExists(path) {
-  try {
-    const fh = await open4(path, "r");
-    await fh.close();
-    return true;
-  } catch {
-    return directoryExists(path);
-  }
-}
-async function directoryExists(path) {
-  try {
-    await readdir2(path);
-    return true;
-  } catch {
-    return false;
-  }
-}
-async function scanCapacity(root) {
-  const snapshot = {
-    pendingBytes: 0,
-    rejectedBytes: 0,
-    rejectedEntries: []
-  };
-  await scanCapacityDirectory(root, snapshot);
-  return snapshot;
-}
-async function scanCapacityDirectory(root, snapshot) {
-  const entries = await readdir2(root, { withFileTypes: true, encoding: "utf8" }).catch(() => null);
-  if (entries === null)
-    return;
-  entries.sort((left, right) => left.name.localeCompare(right.name));
-  for (const entry of entries) {
-    const path = join9(root, entry.name);
-    if (entry.isDirectory()) {
-      await scanCapacityDirectory(path, snapshot);
-    } else if (entry.name === PENDING_FILE) {
-      snapshot.pendingBytes += await fileSize(path);
-    } else if (entry.name === REJECTED_FILE) {
-      await repairTrailingLine(path);
-      for (const payload of await readPayloadFile(path)) {
-        snapshot.rejectedEntries.push({
-          path,
-          payload,
-          order: snapshot.rejectedEntries.length,
-          addition: false
-        });
-        snapshot.rejectedBytes += encodedBytes(payload);
-      }
-    }
-  }
-}
-async function replacePayloadFile(path, payloads) {
-  await mkdir5(dirname3(path), { recursive: true, mode: 448 });
-  const tmp = `${path}.${process.pid}.${randomBytes(4).toString("hex")}.tmp`;
-  let renamed = false;
-  try {
-    const fh = await open4(tmp, "wx", 384);
-    try {
-      await fh.writeFile(payloads.length === 0 ? "" : `${payloads.map((item) => JSON.stringify(item)).join("\n")}
-`, "utf8");
-      await fh.sync();
-    } finally {
-      await fh.close();
-    }
-    await rename3(tmp, path);
-    renamed = true;
-    await syncDirectory(dirname3(path));
-  } finally {
-    if (!renamed)
-      await unlink2(tmp).catch(() => {
-      });
-  }
-}
-async function syncDirectory(path) {
-  try {
-    const fh = await open4(path, "r");
-    try {
-      await fh.sync();
-    } finally {
-      await fh.close();
-    }
-  } catch (error) {
-    if (process.platform !== "win32")
-      throw error;
-  }
-}
-
-// dist/shared/session-metadata/schedule.mjs
-import { createHash as createHash4 } from "node:crypto";
-import { dirname as dirname5, join as join11 } from "node:path";
-
-// dist/shared/session-metadata/state.mjs
-var import_proper_lockfile4 = __toESM(require_proper_lockfile(), 1);
-import { mkdir as mkdir6, open as open5, readFile as readFile5, readdir as readdir3, rename as rename4, unlink as unlink3 } from "node:fs/promises";
-import { basename, dirname as dirname4, join as join10 } from "node:path";
-import { randomBytes as randomBytes2 } from "node:crypto";
-var SESSION_METADATA_SCHEMA_VERSION = 1;
-var PENDING_GRANT_TRANSITION_FILE = "grant-transition.pending.ndjson";
-var PENDING_SESSION_REGISTRATION_FILE = "session-registration.pending.ndjson";
-var STATE_FILE = "state.json";
-function transitionGrant(state, enabled, at) {
-  const transitions = state.grant_transitions ?? [
-    { at: state.capture_started_at, enabled: true }
-  ];
-  const intervals = state.enabled_capture_intervals ?? [
-    { started_at: state.capture_started_at }
-  ];
-  const lastTransition = transitions[transitions.length - 1];
-  if (lastTransition?.enabled === enabled && state.grant_transitions !== void 0 && state.enabled_capture_intervals !== void 0) {
-    return state;
-  }
-  const nextIntervals = intervals.map((interval) => ({ ...interval }));
-  if (enabled) {
-    nextIntervals.push({ started_at: at });
-  } else {
-    const open7 = nextIntervals[nextIntervals.length - 1];
-    if (open7 !== void 0 && open7.ended_at === void 0)
-      open7.ended_at = at;
-  }
-  return {
-    ...state,
-    grant_transitions: [...transitions, { at, enabled }],
-    enabled_capture_intervals: nextIntervals
-  };
-}
-function grantTransitionChanges(state, enabled) {
-  if (state.grant_transitions === void 0 || state.grant_transitions.length === 0 || state.enabled_capture_intervals === void 0 || state.enabled_capture_intervals.length === 0) {
-    return true;
-  }
-  return state.grant_transitions[state.grant_transitions.length - 1]?.enabled !== enabled;
-}
-async function foldPendingGrantTransitions(dir) {
-  const paths = await pendingGrantTransitionPaths(dir);
-  if (paths.length === 0)
-    return;
-  const claimed = paths.filter((path) => basename(path) !== PENDING_GRANT_TRANSITION_FILE);
-  const pendingPath = join10(dir, PENDING_GRANT_TRANSITION_FILE);
-  const processingPath = `${pendingPath}.processing.${unixNanosecondClaim()}.${process.pid}.${randomBytes2(4).toString("hex")}`;
-  try {
-    await rename4(pendingPath, processingPath);
-    const firstMarker = claimed.findIndex((path) => basename(path).startsWith(`${PENDING_GRANT_TRANSITION_FILE}.marker.`));
-    claimed.splice(firstMarker < 0 ? claimed.length : firstMarker, 0, processingPath);
-    await syncDirectory2(dir);
-  } catch (error) {
-    if (!isNodeError2(error, "ENOENT"))
-      throw error;
-  }
-  if (claimed.length === 0)
-    return;
-  const markers = await readPendingGrantTransitions(claimed, true);
-  const store = new SessionMetadataStateStore(dir);
-  const current = await store.read();
-  if (current === null)
-    throw new Error("cannot fold grant transition without session state");
-  let next = current;
-  for (const marker of markers) {
-    const alreadyApplied = next.grant_transitions?.some((transition) => transition.at === marker.at && transition.enabled === marker.enabled) ?? false;
-    if (!alreadyApplied && grantTransitionChanges(next, marker.enabled)) {
-      next = transitionGrant(next, marker.enabled, marker.at);
-    }
-  }
-  if (next !== current)
-    await store.write(next);
-  for (const path of claimed) {
-    await unlink3(path).catch((error) => {
-      if (!isNodeError2(error, "ENOENT"))
-        throw error;
-    });
-  }
-  await syncDirectory2(dir);
-}
-async function foldPendingSessionRegistrations(dir) {
-  const paths = await pendingSessionRegistrationPaths(dir);
-  if (paths.length === 0)
-    return;
-  const claimed = paths.filter((path) => basename(path) !== PENDING_SESSION_REGISTRATION_FILE);
-  const pendingPath = join10(dir, PENDING_SESSION_REGISTRATION_FILE);
-  const processingPath = `${pendingPath}.processing.${unixNanosecondClaim()}.${process.pid}.${randomBytes2(4).toString("hex")}`;
-  try {
-    await rename4(pendingPath, processingPath);
-    claimed.push(processingPath);
-    await syncDirectory2(dir);
-  } catch (error) {
-    if (!isNodeError2(error, "ENOENT"))
-      throw error;
-  }
-  if (claimed.length === 0)
-    return;
-  const markers = await readPendingSessionRegistrations(claimed, true);
-  const store = new SessionMetadataStateStore(dir);
-  const current = await store.read();
-  let next = current;
-  for (const marker of markers) {
-    if (next !== null)
-      continue;
-    next = {
-      schema_version: SESSION_METADATA_SCHEMA_VERSION,
-      tenant_id: marker.tenant_id,
-      credential_fingerprint: marker.credential_fingerprint,
-      endpoint_identity: marker.endpoint_identity,
-      install_id: marker.install_id,
-      agent: marker.agent,
-      session_id: marker.session_id,
-      ...marker.codex_home !== void 0 ? { codex_home: marker.codex_home } : {},
-      capture_started_at: marker.capture_started_at,
-      source_file_identity: marker.source_file_identity,
-      byte_offset: 0,
-      grant_transitions: [{ at: marker.capture_started_at, enabled: true }],
-      enabled_capture_intervals: [{ started_at: marker.capture_started_at }],
-      pending_payload_ids: []
-    };
-  }
-  if (next !== current && next !== null)
-    await store.write(next);
-  for (const path of claimed) {
-    await unlink3(path).catch((error) => {
-      if (!isNodeError2(error, "ENOENT"))
-        throw error;
-    });
-  }
-  await syncDirectory2(dir);
-}
-async function withSessionWorkerLock(dir, work, retries = 0) {
-  const workerLockDir = join10(dir, "worker-lock");
-  await mkdir6(workerLockDir, { recursive: true, mode: 448 });
-  let release;
-  try {
-    release = await import_proper_lockfile4.default.lock(workerLockDir, { realpath: false, retries, stale: 1e4 });
-  } catch (error) {
-    if (isNodeError2(error, "ELOCKED"))
-      return null;
-    throw error;
-  }
-  try {
-    await foldPendingGrantTransitions(dir);
-    await foldPendingSessionRegistrations(dir);
-    return await work();
-  } finally {
-    await release();
-  }
-}
-async function pendingSessionRegistrationPaths(dir) {
-  let entries;
-  try {
-    entries = await readdir3(dir, { withFileTypes: true });
-  } catch (error) {
-    if (isNodeError2(error, "ENOENT"))
-      return [];
-    throw error;
-  }
-  const processingPrefix = `${PENDING_SESSION_REGISTRATION_FILE}.processing.`;
-  const processing = entries.filter((entry) => entry.isFile() && entry.name.startsWith(processingPrefix) && !entry.name.includes(".corrupt.")).map((entry) => join10(dir, entry.name)).sort();
-  if (entries.some((entry) => entry.isFile() && entry.name === PENDING_SESSION_REGISTRATION_FILE)) {
-    processing.push(join10(dir, PENDING_SESSION_REGISTRATION_FILE));
-  }
-  return processing;
-}
-async function pendingGrantTransitionPaths(dir) {
-  let entries;
-  try {
-    entries = await readdir3(dir, { withFileTypes: true });
-  } catch (error) {
-    if (isNodeError2(error, "ENOENT"))
-      return [];
-    throw error;
-  }
-  const processingPrefix = `${PENDING_GRANT_TRANSITION_FILE}.processing.`;
-  const markerPrefix = `${PENDING_GRANT_TRANSITION_FILE}.marker.`;
-  const processing = entries.filter((entry) => entry.isFile() && entry.name.startsWith(processingPrefix) && !entry.name.includes(".corrupt.")).map((entry) => join10(dir, entry.name)).sort();
-  const markers = entries.filter((entry) => entry.isFile() && entry.name.startsWith(markerPrefix) && !entry.name.includes(".corrupt.")).map((entry) => join10(dir, entry.name)).sort();
-  if (entries.some((entry) => entry.isFile() && entry.name === PENDING_GRANT_TRANSITION_FILE)) {
-    processing.push(join10(dir, PENDING_GRANT_TRANSITION_FILE));
-  }
-  return [...processing, ...markers];
-}
-async function readPendingGrantTransitions(paths, quarantineInvalid = false) {
-  const markers = [];
-  for (const path of paths) {
-    let raw;
-    try {
-      raw = await readFile5(path);
-    } catch (error) {
-      if (isNodeError2(error, "ENOENT"))
-        continue;
-      throw error;
-    }
-    const corrupt = [];
-    let offset = 0;
-    while (offset < raw.length) {
-      const newline = raw.indexOf(10, offset);
-      if (newline === -1) {
-        corrupt.push(raw.subarray(offset));
-        break;
-      }
-      const line = raw.subarray(offset, newline);
-      const marker = parsePendingGrantTransition(line);
-      if (marker === null)
-        corrupt.push(raw.subarray(offset, newline + 1));
-      else
-        markers.push(marker);
-      offset = newline + 1;
-    }
-    if (quarantineInvalid && corrupt.length > 0) {
-      await appendCorruptGrantTransitions(path, Buffer.concat(corrupt));
-    }
-  }
-  return markers;
-}
-async function readPendingSessionRegistrations(paths, quarantineInvalid = false) {
-  const markers = [];
-  for (const path of paths) {
-    let raw;
-    try {
-      raw = await readFile5(path);
-    } catch (error) {
-      if (isNodeError2(error, "ENOENT"))
-        continue;
-      throw error;
-    }
-    const corrupt = [];
-    let offset = 0;
-    while (offset < raw.length) {
-      const newline = raw.indexOf(10, offset);
-      if (newline === -1) {
-        corrupt.push(raw.subarray(offset));
-        break;
-      }
-      const line = raw.subarray(offset, newline);
-      const marker = parsePendingSessionRegistration(line);
-      if (marker === null)
-        corrupt.push(raw.subarray(offset, newline + 1));
-      else
-        markers.push(marker);
-      offset = newline + 1;
-    }
-    if (quarantineInvalid && corrupt.length > 0) {
-      await appendCorruptSessionRegistrations(path, Buffer.concat(corrupt));
-    }
-  }
-  return markers;
-}
-async function appendCorruptGrantTransitions(path, raw) {
-  const processingPrefix = `${PENDING_GRANT_TRANSITION_FILE}.processing.`;
-  const markerPrefix = `${PENDING_GRANT_TRANSITION_FILE}.marker.`;
-  const name = basename(path);
-  const prefix = name.startsWith(processingPrefix) ? processingPrefix : markerPrefix;
-  const suffix = name.slice(prefix.length);
-  const separator = suffix.indexOf(".");
-  const claim = (separator === -1 ? suffix : suffix.slice(0, separator)) || unixNanosecondClaim();
-  const quarantine = `${path}.corrupt.${claim}`;
-  const fh = await open5(quarantine, "a", 384);
-  try {
-    await fh.writeFile(raw);
-    await fh.sync();
-  } finally {
-    await fh.close();
-  }
-  await syncDirectory2(dirname4(path));
-}
-async function appendCorruptSessionRegistrations(path, raw) {
-  const processingPrefix = `${PENDING_SESSION_REGISTRATION_FILE}.processing.`;
-  const suffix = basename(path).slice(processingPrefix.length);
-  const separator = suffix.indexOf(".");
-  const claim = (separator === -1 ? suffix : suffix.slice(0, separator)) || unixNanosecondClaim();
-  const quarantine = `${path}.corrupt.${claim}`;
-  const fh = await open5(quarantine, "a", 384);
-  try {
-    await fh.writeFile(raw);
-    await fh.sync();
-  } finally {
-    await fh.close();
-  }
-  await syncDirectory2(dirname4(path));
-}
-function parsePendingGrantTransition(lineBytes) {
-  let parsed;
-  let line;
-  try {
-    line = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(lineBytes);
-    parsed = JSON.parse(line);
-  } catch {
-    return null;
-  }
-  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed))
-    return null;
-  if (hasDuplicateObjectKeys(line))
-    return null;
-  const marker = parsed;
-  const keys = Object.keys(marker);
-  if (keys.length !== 2 || !keys.includes("at") || !keys.includes("enabled"))
-    return null;
-  if (typeof marker.at !== "string" || marker.at === "" || typeof marker.enabled !== "boolean")
-    return null;
-  return { at: marker.at, enabled: marker.enabled };
-}
-function hasDuplicateObjectKeys(line) {
-  const keys = /* @__PURE__ */ new Set();
-  let depth = 0;
-  for (let index = 0; index < line.length; ) {
-    const char = line[index];
-    if (char === '"') {
-      const start = index++;
-      while (index < line.length) {
-        if (line[index] === "\\")
-          index += 2;
-        else if (line[index++] === '"')
-          break;
-      }
-      if (depth === 1) {
-        let next = index;
-        while (/\s/.test(line[next] ?? ""))
-          next += 1;
-        if (line[next] === ":") {
-          const key = JSON.parse(line.slice(start, index));
-          if (keys.has(key))
-            return true;
-          keys.add(key);
-        }
-      }
-      continue;
-    }
-    if (char === "{" || char === "[")
-      depth += 1;
-    else if (char === "}" || char === "]")
-      depth -= 1;
-    index += 1;
-  }
-  return false;
-}
-function parsePendingSessionRegistration(lineBytes) {
-  let parsed;
-  try {
-    parsed = JSON.parse(lineBytes.toString("utf8"));
-  } catch {
-    return null;
-  }
-  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed))
-    return null;
-  const marker = parsed;
-  const normalized = {
-    tenant_id: marker.tenant_id,
-    credential_fingerprint: marker.credential_fingerprint,
-    endpoint_identity: marker.endpoint_identity,
-    install_id: marker.install_id,
-    agent: marker.agent,
-    session_id: marker.session_id,
-    source_file_identity: marker.source_file_identity,
-    capture_started_at: marker.capture_started_at,
-    ...marker.codex_home !== void 0 ? { codex_home: marker.codex_home } : {}
-  };
-  const keys = Object.keys(marker);
-  const normalizedKeys = Object.keys(normalized);
-  if (keys.length !== normalizedKeys.length || keys.some((key, index) => key !== normalizedKeys[index]))
-    return null;
-  if (typeof normalized.tenant_id !== "string" || normalized.tenant_id === "")
-    return null;
-  if (typeof normalized.credential_fingerprint !== "string" || normalized.credential_fingerprint === "")
-    return null;
-  if (typeof normalized.endpoint_identity !== "string" || normalized.endpoint_identity === "")
-    return null;
-  if (typeof normalized.install_id !== "string" || normalized.install_id === "")
-    return null;
-  if (normalized.agent !== "claude-code" && normalized.agent !== "codex-cli")
-    return null;
-  if (typeof normalized.session_id !== "string" || normalized.session_id === "")
-    return null;
-  if (typeof normalized.source_file_identity !== "string" || normalized.source_file_identity === "")
-    return null;
-  if (typeof normalized.capture_started_at !== "string" || normalized.capture_started_at === "")
-    return null;
-  if (normalized.agent === "claude-code" && normalized.codex_home !== void 0)
-    return null;
-  if (normalized.agent === "codex-cli" && (typeof normalized.codex_home !== "string" || normalized.codex_home === ""))
-    return null;
-  if (!Buffer.from(JSON.stringify(normalized)).equals(lineBytes))
-    return null;
-  return normalized;
-}
-function unixNanosecondClaim() {
-  return (BigInt(Date.now()) * 1000000n).toString().padStart(20, "0");
-}
-function isNodeError2(error, code) {
-  return error instanceof Error && "code" in error && error.code === code;
-}
-var SessionMetadataStateStore = class {
-  dir;
+// dist/shared/session-metadata/active.mjs
+import { mkdir as mkdir8, readFile as readFile7, readdir as readdir4, rename as rename6, stat as stat4, writeFile as writeFile5 } from "node:fs/promises";
+import { dirname as dirname6, join as join12 } from "node:path";
+var IDLE_SESSION_MS = 24 * 60 * 60 * 1e3;
+var ActiveMetadataSources = class {
+  root;
+  binding;
+  entries = {};
   path;
-  constructor(dir) {
-    this.dir = dir;
-    this.path = join10(dir, STATE_FILE);
+  ended = /* @__PURE__ */ new Set();
+  constructor(root, binding) {
+    this.root = root;
+    this.binding = binding;
+    this.path = join12(root, ".bindings", metadataBindingKey(binding), "sources.json");
   }
-  async read() {
-    let raw;
+  async read(currentDir, endedOnly = false) {
     try {
-      raw = await readFile5(this.path, "utf8");
-    } catch {
-      return null;
+      this.entries = JSON.parse(await readFile7(this.path, "utf8"));
+    } catch (error) {
+      if (!(error instanceof SyntaxError) && error.code !== "ENOENT")
+        throw error;
+      this.entries = {};
     }
-    try {
-      const parsed = JSON.parse(raw);
-      return parseState(parsed);
-    } catch {
-      return null;
-    }
-  }
-  async write(state) {
-    assertState(state);
-    await withDirLock(this.dir, async () => {
-      await mkdir6(this.dir, { recursive: true, mode: 448 });
-      const tmp = `${this.path}.${process.pid}.${randomBytes2(4).toString("hex")}.tmp`;
-      let renamed = false;
-      try {
-        const fh = await open5(tmp, "wx", 384);
+    for (const agent of ["claude-code", "codex-cli"]) {
+      for (const session of await readdir4(join12(this.root, agent), { withFileTypes: true }).catch(() => [])) {
+        if (!session.isDirectory())
+          continue;
+        const dir = join12(this.root, agent, session.name);
+        if (this.entries[dir] !== void 0 && dir !== currentDir)
+          continue;
         try {
-          await fh.writeFile(JSON.stringify(state));
-          await fh.sync();
-        } finally {
-          await fh.close();
+          const state = await new SessionMetadataStateStore(dir).read();
+          if (state !== null) {
+            this.entries[dir] = {
+              ...this.entries[dir],
+              state,
+              retired: false,
+              pending: ((await statIfPresent(join12(dir, "outbox", "pending.ndjson")))?.size ?? 0) > 0
+            };
+          }
+        } catch {
+          continue;
         }
-        await rename4(tmp, this.path);
-        renamed = true;
-        await syncDirectory2(this.dir);
-      } finally {
-        if (!renamed)
-          await unlink3(tmp).catch(() => {
-          });
       }
-    });
+    }
+    const active = [];
+    const endedSources = /* @__PURE__ */ new Set();
+    for (const agent of ["claude-code", "codex-cli"]) {
+      for (const session of await readdir4(join12(this.root, ".ended", agent)).catch(() => [])) {
+        endedSources.add(join12(this.root, agent, session));
+      }
+    }
+    this.ended = endedSources;
+    for (const [dir, cached] of Object.entries(this.entries)) {
+      if (endedOnly && !endedSources.has(dir))
+        continue;
+      try {
+        let entry = cached;
+        if (entry.retired) {
+          if (entry.source !== void 0) {
+            const source2 = await statIfPresent(entry.source.path);
+            if ((source2?.size ?? -1) === entry.source.size && (source2?.mtimeMs ?? 0) === entry.source.mtimeMs && (source2 === null ? "" : `${source2.dev}:${source2.ino}`) === entry.source.fileId)
+              continue;
+          }
+          const state2 = await new SessionMetadataStateStore(dir).read();
+          if (state2 === null)
+            continue;
+          entry = { state: state2 };
+          this.entries[dir] = entry;
+        }
+        const state = entry.state;
+        if (state === void 0 || state.credential_fingerprint !== this.binding.credentialFingerprint || state.tenant_id !== this.binding.expectedTenantId || state.endpoint_identity !== this.binding.endpoint || state.install_id !== this.binding.installId)
+          continue;
+        const source = await statIfPresent(state.source_file_identity);
+        const ended = endedSources.has(dir);
+        const pending = entry.pending === true || state.pending_payload_ids.length > 0 || state.blocked_capture_bytes !== void 0;
+        const mtimeMs = state.source_read_mtime_ms ?? entry.mtimeMs;
+        const fileId = state.source_file_id ?? entry.fileId;
+        const changed = state.agent === "claude-code" && source !== null && (source.size !== state.byte_offset && !(state.source_tail_size === source.size && state.source_tail_mtime_ms === source.mtimeMs) || fileId !== void 0 && fileId !== `${source.dev}:${source.ino}` || mtimeMs !== void 0 && mtimeMs !== source.mtimeMs);
+        if (source !== null && !changed) {
+          entry.mtimeMs = source.mtimeMs;
+          entry.fileId = `${source.dev}:${source.ino}`;
+        }
+        const inspected = state.agent === "claude-code" || state.first_name_observation !== void 0 || state.last_metadata_run_at !== void 0;
+        if (!pending && !changed && inspected && (ended || source !== null && Date.now() - source.mtimeMs > IDLE_SESSION_MS)) {
+          this.entries[dir] = retiredSource(state, source);
+          continue;
+        }
+        if (!ended && Date.now() - (state.last_metadata_run_at ?? 0) < METADATA_COOLDOWN_MS)
+          continue;
+        if (pending || changed || state.agent === "codex-cli" && state.first_name_observation === void 0 || ended)
+          active.push(dir);
+      } catch {
+        continue;
+      }
+    }
+    return active;
+  }
+  async save(processed) {
+    for (const dir of processed) {
+      try {
+        const state = await new SessionMetadataStateStore(dir).read();
+        if (state === null)
+          continue;
+        const pending = ((await statIfPresent(join12(dir, "outbox", "pending.ndjson")))?.size ?? 0) > 0;
+        const source = this.ended.has(dir) ? await statIfPresent(state.source_file_identity) : null;
+        const drained = state.agent === "codex-cli" || source === null || source.size === state.byte_offset || source.size === state.source_tail_size && source.mtimeMs === state.source_tail_mtime_ms;
+        this.entries[dir] = this.ended.has(dir) && !pending && state.blocked_capture_bytes === void 0 && drained ? retiredSource(state, source) : { ...this.entries[dir], state, pending };
+      } catch {
+        continue;
+      }
+    }
+    await mkdir8(dirname6(this.path), { recursive: true, mode: 448 });
+    const temporary = `${this.path}.${process.pid}.tmp`;
+    await writeFile5(temporary, JSON.stringify(this.entries), { mode: 384 });
+    await rename6(temporary, this.path);
   }
 };
-async function syncDirectory2(path) {
+function retiredSource(state, source) {
+  return { retired: true, source: {
+    path: state.source_file_identity,
+    size: source?.size ?? -1,
+    mtimeMs: source?.mtimeMs ?? 0,
+    fileId: source === null ? "" : `${source.dev}:${source.ino}`
+  } };
+}
+async function statIfPresent(path) {
   try {
-    const fh = await open5(path, "r");
-    try {
-      await fh.sync();
-    } finally {
-      await fh.close();
-    }
+    return await stat4(path);
   } catch (error) {
-    if (process.platform !== "win32")
-      throw error;
+    if (error.code === "ENOENT")
+      return null;
+    throw error;
   }
 }
-function parseState(value) {
-  if (typeof value !== "object" || value === null)
-    return null;
-  const o = value;
-  if (o.schema_version !== SESSION_METADATA_SCHEMA_VERSION)
-    return null;
-  if (typeof o.tenant_id !== "string")
-    return null;
-  if (typeof o.credential_fingerprint !== "string")
-    return null;
-  if (typeof o.endpoint_identity !== "string")
-    return null;
-  if (typeof o.install_id !== "string")
-    return null;
-  if (o.agent !== "claude-code" && o.agent !== "codex-cli")
-    return null;
-  if (typeof o.session_id !== "string")
-    return null;
-  const codexHome = parseOptionalString(o.codex_home);
-  if (o.codex_home !== void 0 && codexHome === null)
-    return null;
-  if (typeof o.capture_started_at !== "string")
-    return null;
-  if (typeof o.source_file_identity !== "string")
-    return null;
-  if (typeof o.byte_offset !== "number" || !Number.isSafeInteger(o.byte_offset) || o.byte_offset < 0)
-    return null;
-  const sourceFileId = parseOptionalString(o.source_file_id);
-  if (o.source_file_id !== void 0 && sourceFileId === null)
-    return null;
-  const checkpoint = parseCheckpoint(o.source_continuity_checkpoint);
-  if (o.source_continuity_checkpoint !== void 0 && checkpoint === null)
-    return null;
-  const transitions = parseGrantTransitions(o.grant_transitions);
-  if (o.grant_transitions !== void 0 && transitions === null)
-    return null;
-  const intervals = parseCaptureIntervals(o.enabled_capture_intervals);
-  if (o.enabled_capture_intervals !== void 0 && intervals === null)
-    return null;
-  if (!Array.isArray(o.pending_payload_ids) || !o.pending_payload_ids.every((id) => typeof id === "string"))
-    return null;
-  const first = parseFirstName(o.first_name_observation);
-  if (o.first_name_observation !== void 0 && first === null)
-    return null;
-  return {
-    ...Object.fromEntries(Object.entries(o).filter(([key]) => !STATE_FIELDS.has(key))),
-    schema_version: 1,
-    tenant_id: o.tenant_id,
-    credential_fingerprint: o.credential_fingerprint,
-    endpoint_identity: o.endpoint_identity,
-    install_id: o.install_id,
-    agent: o.agent,
-    session_id: o.session_id,
-    ...codexHome !== null ? { codex_home: codexHome } : {},
-    capture_started_at: o.capture_started_at,
-    source_file_identity: o.source_file_identity,
-    byte_offset: o.byte_offset,
-    ...sourceFileId !== null ? { source_file_id: sourceFileId } : {},
-    ...checkpoint !== null ? { source_continuity_checkpoint: checkpoint } : {},
-    ...transitions !== null ? { grant_transitions: transitions } : {},
-    ...intervals !== null ? { enabled_capture_intervals: intervals } : {},
-    ...first !== null ? { first_name_observation: first } : {},
-    pending_payload_ids: [...o.pending_payload_ids]
-  };
-}
-var STATE_FIELDS = /* @__PURE__ */ new Set([
-  "schema_version",
-  "tenant_id",
-  "credential_fingerprint",
-  "endpoint_identity",
-  "install_id",
-  "agent",
-  "session_id",
-  "codex_home",
-  "capture_started_at",
-  "source_file_identity",
-  "byte_offset",
-  "source_file_id",
-  "source_continuity_checkpoint",
-  "grant_transitions",
-  "enabled_capture_intervals",
-  "first_name_observation",
-  "pending_payload_ids"
-]);
-function parseOptionalString(value) {
-  return value === void 0 ? null : typeof value === "string" ? value : null;
-}
-function parseCheckpoint(value) {
-  if (value === void 0)
-    return null;
-  if (typeof value !== "object" || value === null)
-    return null;
-  const o = value;
-  if (typeof o.offset !== "number" || !Number.isSafeInteger(o.offset) || o.offset < 0)
-    return null;
-  if (typeof o.sha256 !== "string")
-    return null;
-  return { offset: o.offset, sha256: o.sha256 };
-}
-function parseGrantTransitions(value) {
-  if (value === void 0)
-    return null;
-  if (!Array.isArray(value))
-    return null;
-  const transitions = [];
-  for (const item of value) {
-    if (typeof item !== "object" || item === null)
-      return null;
-    const o = item;
-    if (typeof o.at !== "string" || typeof o.enabled !== "boolean")
-      return null;
-    transitions.push({ at: o.at, enabled: o.enabled });
-  }
-  return transitions;
-}
-function parseCaptureIntervals(value) {
-  if (value === void 0)
-    return null;
-  if (!Array.isArray(value))
-    return null;
-  const intervals = [];
-  for (const item of value) {
-    if (typeof item !== "object" || item === null)
-      return null;
-    const o = item;
-    if (typeof o.started_at !== "string")
-      return null;
-    if (o.ended_at !== void 0 && typeof o.ended_at !== "string")
-      return null;
-    intervals.push({
-      started_at: o.started_at,
-      ...o.ended_at !== void 0 ? { ended_at: o.ended_at } : {}
-    });
-  }
-  return intervals;
-}
-function parseFirstName(value) {
-  if (value === void 0)
-    return null;
-  if (typeof value !== "object" || value === null)
-    return null;
-  const o = value;
-  if (typeof o.name !== "string" || typeof o.observed_at !== "string")
-    return null;
-  return { name: o.name, observed_at: o.observed_at };
-}
-function assertState(state) {
-  if (state.schema_version !== SESSION_METADATA_SCHEMA_VERSION)
-    throw new Error("unsupported session metadata state version");
-  if (!Number.isSafeInteger(state.byte_offset) || state.byte_offset < 0)
-    throw new Error("invalid session metadata byte offset");
-  if (!Array.isArray(state.pending_payload_ids))
-    throw new Error("invalid session metadata pending payload ids");
-}
-
-// dist/shared/session-metadata/schedule.mjs
-function metadataBindingKey(input) {
-  return createHash4("sha256").update(JSON.stringify([
-    input.installId,
-    input.credentialFingerprint ?? "unknown-credential",
-    input.expectedTenantId ?? "unknown-tenant",
-    input.endpoint
-  ])).digest("hex");
-}
-function metadataWorkerLeasePath(input) {
-  return join11(input.dataDir, "session-metadata", ".workers", `${metadataBindingKey(input)}.lock`);
-}
-var METADATA_WORKER_MAX_LEASE_AGE_MS = 6e4;
 
 // dist/shared/bin/session-metadata-worker.mjs
 async function runSessionMetadataWorker(opts) {
@@ -4753,9 +5070,9 @@ async function runSessionMetadataWorker(opts) {
     releaseLeaseIfHolder(scheduledLeasePath, process.pid);
     return { captured: 0, published: 0, held: cache?.grant_binding !== void 0 };
   }
-  const bindingDir = join12(opts.dataDir, "session-metadata", opts.agent, opts.sessionId);
+  const bindingDir = join13(opts.dataDir, "session-metadata", opts.agent, opts.sessionId);
   const effectiveCodexHome = resolveCodexHome(process.env, opts.runtimeHome ?? homedir3());
-  await mkdir7(bindingDir, { recursive: true, mode: 448 });
+  await mkdir9(bindingDir, { recursive: true, mode: 448 });
   const bindingIdentity = {
     dataDir: opts.dataDir,
     installId: opts.installId,
@@ -4764,13 +5081,15 @@ async function runSessionMetadataWorker(opts) {
     endpoint: opts.endpoint
   };
   const workerLeasePath = metadataWorkerLeasePath(bindingIdentity);
-  const workerLockDir = join12(bindingDir, "worker-lock");
-  const metadataDir = join12(opts.dataDir, "session-metadata");
+  const workerLockDir = join13(bindingDir, "worker-lock");
+  const metadataDir = join13(opts.dataDir, "session-metadata");
   const capacity = new MetadataOutboxCapacity(metadataDir, opts.testHooks?.onCapacityScan, opts.testHooks?.capacityLockRetries);
   let leaseHeartbeat;
   let releaseWorkerLock;
+  let activeIndex;
+  let processedDirs = [];
   try {
-    await mkdir7(workerLockDir, { recursive: true, mode: 448 });
+    await mkdir9(workerLockDir, { recursive: true, mode: 448 });
     try {
       releaseWorkerLock = await import_proper_lockfile5.default.lock(workerLockDir, { realpath: false, retries: 0, stale: 1e4 });
     } catch {
@@ -4818,13 +5137,19 @@ async function runSessionMetadataWorker(opts) {
     }
     if (rebound !== existing)
       await emitDiagnostic(opts.dataDir, "binding-rotated");
-    const initial = rebound ?? initialState(opts, fingerprint, tenantId, observedAt, effectiveCodexHome);
+    const startOffset = rebound === null ? await stat5(opts.sourcePath).then((source) => source.size).catch(() => 0) : 0;
+    const initial = rebound ?? {
+      ...initialState(opts, fingerprint, tenantId, observedAt, effectiveCodexHome),
+      byte_offset: startOffset,
+      capture_start_offset: startOffset
+    };
     const withOriginHome = initial.agent === "codex-cli" && initial.codex_home === void 0 ? { ...initial, codex_home: effectiveCodexHome } : initial;
     const enabled = transitionGrant(withOriginHome, true, observedAt);
     if (enabled !== initial || existing === null)
       await state.write(enabled);
-    const outbox = new MetadataOutbox(join12(bindingDir, "outbox"), void 0, metadataDir, void 0, capacity);
-    const claudeReader = createClaudeMetadataReader();
+    const outbox = new MetadataOutbox(join13(bindingDir, "outbox"), void 0, metadataDir, void 0, capacity);
+    const readBudget = { remainingBytes: opts.testHooks?.readBudgetBytes ?? METADATA_READ_BUDGET_BYTES };
+    const claudeReader = createClaudeMetadataReader({ catchUp: opts.scheduled, budget: readBudget });
     const codexReaders = /* @__PURE__ */ new Map();
     const codexReaderForHome = (codexHome) => {
       const existingReader = codexReaders.get(codexHome);
@@ -4841,10 +5166,15 @@ async function runSessionMetadataWorker(opts) {
         return void 0;
       return codexReaderForHome(sourceState.codex_home);
     };
+    activeIndex = opts.scheduled ? new ActiveMetadataSources(metadataDir, bindingIdentity) : void 0;
+    const activeDirs = activeIndex === void 0 ? void 0 : new Set(await activeIndex.read(bindingDir, opts.endedOnly));
     const sources = [
-      { sessionDir: bindingDir, state, outbox },
-      ...(await registeredSources(metadataDir, bindingIdentity, capacity)).filter((source) => source.sessionDir !== bindingDir)
+      ...activeDirs === void 0 || activeDirs.has(bindingDir) ? [{ sessionDir: bindingDir, state, outbox }] : [],
+      ...(await registeredSources(metadataDir, bindingIdentity, capacity, activeDirs)).filter((source) => source.sessionDir !== bindingDir)
     ];
+    processedDirs = sources.map((source) => source.sessionDir);
+    if (sources.length === 0)
+      return { captured: 0, published: 0, held: false };
     leaseHeartbeat = startLeaseHeartbeat(scheduledLeasePath);
     try {
       let capturedCount = 0;
@@ -4872,6 +5202,8 @@ async function runSessionMetadataWorker(opts) {
         }
       }
       let grantInvalid = false;
+      let catchUpPending = false;
+      let catchUpProgress = false;
       try {
         await capacity.run(async () => {
           for (const { source, state: sourceState } of sourceStates) {
@@ -4882,13 +5214,38 @@ async function runSessionMetadataWorker(opts) {
               continue;
             const capture = async () => {
               await foldPendingGrantTransitions(source.sessionDir);
-              return captureMetadata({
-                state: source.state,
-                outbox: source.outbox,
-                reader,
-                isBindingValid: isCaptureGrantValid,
-                diagnostic: (kind, count) => emitDiagnostic(opts.dataDir, kind, count)
-              });
+              let staged = 0;
+              for (; ; ) {
+                const before = await source.state.read();
+                const captured2 = await captureMetadata({
+                  state: source.state,
+                  outbox: source.outbox,
+                  reader,
+                  isBindingValid: isCaptureGrantValid,
+                  diagnostic: (kind, count) => emitDiagnostic(opts.dataDir, kind, count)
+                });
+                staged += captured2.staged;
+                if (captured2.kind !== "captured")
+                  return { ...captured2, staged };
+                const after = await source.state.read();
+                catchUpProgress ||= after !== null && before !== null && after.byte_offset > before.byte_offset;
+                if (readBudget.remainingBytes <= 0 || !opts.scheduled || after === null || before === null || after.byte_offset <= before.byte_offset || after.source_tail_size !== void 0 || after.agent !== "claude-code")
+                  break;
+                const size = await stat5(after.source_file_identity).then((source2) => source2.size).catch(() => 0);
+                if (after.byte_offset >= size)
+                  break;
+              }
+              if (opts.scheduled) {
+                const current = await source.state.read();
+                if (current !== null) {
+                  const size = await stat5(current.source_file_identity).then((source2) => source2.size).catch(() => 0);
+                  const behind = current.agent === "claude-code" && current.byte_offset < size && current.source_tail_size === void 0;
+                  catchUpPending ||= behind && readBudget.remainingBytes <= 0;
+                  if (!opts.endedOnly && !behind)
+                    await source.state.write({ ...current, last_metadata_run_at: Date.now() });
+                }
+              }
+              return { kind: "captured", staged };
             };
             const captured = source.sessionDir === bindingDir ? await capture() : await withWorkerLock(source.sessionDir, capture);
             if (captured === null)
@@ -4922,7 +5279,7 @@ async function runSessionMetadataWorker(opts) {
       const backoff = new BackoffState(bindingBackoffDir(bindingIdentity));
       const backoffSnapshot = await backoff.read();
       if (backoffSnapshot.nextRetryAt !== void 0 && backoffSnapshot.nextRetryAt > Date.now()) {
-        return { captured: capturedCount, published: 0, held: false };
+        return { captured: capturedCount, published: 0, held: false, ...catchUpPending ? { catchUpPending: true, catchUpProgress } : {} };
       }
       let published = await deliverBoundOutboxes({
         sources,
@@ -4932,9 +5289,9 @@ async function runSessionMetadataWorker(opts) {
         backoff
       });
       const afterDeliveryBackoff = await backoff.read();
-      if (opts.settle === true && opts.agent === "claude-code" && currentSessionCaptured === 0 && afterDeliveryBackoff.nextRetryAt === void 0 && grant() !== null) {
+      if (opts.settle === true && !catchUpPending && opts.agent === "claude-code" && currentSessionCaptured === 0 && afterDeliveryBackoff.nextRetryAt === void 0 && grant() !== null) {
         const settled = await settleCurrentSession({
-          source: sources[0],
+          source: sources.find((source) => source.sessionDir === bindingDir),
           reader: opts.reader ?? readerForState(await state.read() ?? initial),
           capacity,
           publish,
@@ -4950,17 +5307,18 @@ async function runSessionMetadataWorker(opts) {
       if (grantSkipReason !== null)
         await recordMetadataSkip({ dataDir: opts.dataDir, agent: opts.agent, sessionId: opts.sessionId, reason: grantSkipReason }).catch(() => {
         });
-      return { captured: capturedCount, published, held: false };
+      return { captured: capturedCount, published, held: false, ...catchUpPending ? { catchUpPending: true, catchUpProgress } : {} };
     } finally {
       if (leaseHeartbeat !== void 0)
         clearInterval(leaseHeartbeat);
     }
   } finally {
+    await activeIndex?.save(processedDirs);
     if (releaseWorkerLock !== void 0)
       await releaseWorkerLock();
-    releaseLeaseIfHolder(workerLeasePath, process.pid);
-    if (workerLeasePath !== scheduledLeasePath)
-      releaseLeaseIfHolder(scheduledLeasePath, process.pid);
+    if (!opts.retainLease) {
+      releaseLeaseIfHolder(workerLeasePath, process.pid);
+    }
   }
 }
 function isNodeError3(error, code) {
@@ -4977,7 +5335,7 @@ async function rebindSession(input) {
     expectedTenantId: input.existing.tenant_id,
     endpoint: input.existing.endpoint_identity
   });
-  await mergeMetadataOutbox(join12(input.bindingDir, "outbox"), join12(input.bindingDir, `outbox.held.${oldBindingKey}`), input.afterHeldOutboxEntryMergedForTest);
+  await mergeMetadataOutbox(join13(input.bindingDir, "outbox"), join13(input.bindingDir, `outbox.held.${oldBindingKey}`), input.afterHeldOutboxEntryMergedForTest);
   const closed = transitionGrant(input.existing, false, input.observedAt);
   const rebound = transitionGrant({
     ...closed,
@@ -5078,19 +5436,21 @@ async function pruneSettledPayloadIds(source) {
     return;
   await source.state.write({ ...state, pending_payload_ids: pendingPayloadIds });
 }
-async function registeredSources(metadataDir, binding, capacity) {
-  const root = join12(metadataDir);
+async function registeredSources(metadataDir, binding, capacity, activeDirs) {
+  const root = join13(metadataDir);
   const sources = [];
-  const agentEntries = await readdir4(root, { withFileTypes: true }).catch(() => []);
+  const agentEntries = await readdir5(root, { withFileTypes: true }).catch(() => []);
   for (const agentEntry of agentEntries) {
     if (!agentEntry.isDirectory() || agentEntry.name !== "claude-code" && agentEntry.name !== "codex-cli")
       continue;
-    const agentDir = join12(root, agentEntry.name);
-    const sessionEntries = await readdir4(agentDir, { withFileTypes: true }).catch(() => []);
+    const agentDir = join13(root, agentEntry.name);
+    const sessionEntries = await readdir5(agentDir, { withFileTypes: true }).catch(() => []);
     for (const sessionEntry of sessionEntries) {
       if (!sessionEntry.isDirectory())
         continue;
-      const sessionDir = join12(agentDir, sessionEntry.name);
+      const sessionDir = join13(agentDir, sessionEntry.name);
+      if (activeDirs !== void 0 && !activeDirs.has(sessionDir))
+        continue;
       const stateStore = new SessionMetadataStateStore(sessionDir);
       const state = await stateStore.read();
       if (state === null)
@@ -5100,7 +5460,7 @@ async function registeredSources(metadataDir, binding, capacity) {
       sources.push({
         sessionDir,
         state: stateStore,
-        outbox: new MetadataOutbox(join12(sessionDir, "outbox"), void 0, metadataDir, void 0, capacity)
+        outbox: new MetadataOutbox(join13(sessionDir, "outbox"), void 0, metadataDir, void 0, capacity)
       });
     }
   }
@@ -5116,13 +5476,13 @@ function startLeaseHeartbeat(path) {
   return timer;
 }
 function bindingBackoffDir(binding) {
-  return join12(binding.dataDir, "session-metadata", ".bindings", metadataBindingKey(binding));
+  return join13(binding.dataDir, "session-metadata", ".bindings", metadataBindingKey(binding));
 }
 async function emitDiagnostic(dataDir, kind, count = 1) {
   if (kind === "codex-name-capture-unavailable") {
-    const markerDir = join12(dataDir, "session-metadata", ".diagnostics");
-    const markerPath = join12(markerDir, "codex-name-capture-unavailable");
-    await mkdir7(markerDir, { recursive: true, mode: 448 });
+    const markerDir = join13(dataDir, "session-metadata", ".diagnostics");
+    const markerPath = join13(markerDir, "codex-name-capture-unavailable");
+    await mkdir9(markerDir, { recursive: true, mode: 448 });
     try {
       const marker = await open6(markerPath, "wx", 384);
       await marker.close();
@@ -5132,7 +5492,7 @@ async function emitDiagnostic(dataDir, kind, count = 1) {
     }
   }
   const label = kind === "codex-name-capture-unavailable" ? "codex name capture unavailable on this Node version" : kind;
-  await appendFile(join12(dataDir, "collect-error.log"), `${(/* @__PURE__ */ new Date()).toISOString()} fancysauce: session metadata ${label} count=${count}
+  await appendFile(join13(dataDir, "collect-error.log"), `${(/* @__PURE__ */ new Date()).toISOString()} fancysauce: session metadata ${label} count=${count}
 `);
 }
 function initialState(opts, fingerprint, tenantId, captureStartedAt, effectiveCodexHome) {
@@ -5204,16 +5564,77 @@ if (isMain) {
     process.stderr.write("session-metadata-worker requires binding arguments\n");
     process.exit(2);
   }
-  void runSessionMetadataWorker(options).then(() => process.exit(0)).catch(async (error) => {
+  void (process.argv.includes("--once") ? runSessionMetadataWorker(options) : runScheduledMetadataWorker(options)).then(() => process.exit(0)).catch(async (error) => {
     const message = error instanceof Error ? error.stack ?? error.message : String(error);
     try {
-      await appendFile(join12(options.dataDir, "collect-error.log"), `${(/* @__PURE__ */ new Date()).toISOString()} session metadata: ${message}
+      await appendFile(join13(options.dataDir, "collect-error.log"), `${(/* @__PURE__ */ new Date()).toISOString()} session metadata: ${message}
 `);
     } catch {
     }
     process.exit(1);
   });
 }
+async function runScheduledMetadataWorker(options) {
+  if (process.platform !== "win32") {
+    try {
+      setPriority(0, 10);
+    } catch {
+    }
+  }
+  const leasePath = metadataWorkerLeasePath(options);
+  const heartbeat = startLeaseHeartbeat(leasePath);
+  const wakePath = join13(dirname7(leasePath), "wake");
+  const readWake = () => readFile8(wakePath, "utf8").catch(() => "");
+  let lastWake = await readWake();
+  let catchUpPending = false;
+  let catchUpProgress = false;
+  try {
+    const readRequest = () => readMetadataWorkerRequest(leasePath);
+    const run = async (endedOnly = false) => {
+      const request = await readRequest();
+      const result = await runSessionMetadataWorker({ ...options, ...request?.options, scheduled: true, retainLease: true, endedOnly });
+      if (!endedOnly) {
+        catchUpPending = result.catchUpPending === true;
+        catchUpProgress = result.catchUpProgress === true;
+      }
+      options.testHooks?.afterScheduledPass?.();
+      return request?.id;
+    };
+    for (; ; ) {
+      let processed = await run();
+      if (!leaseHeldBy(leasePath, process.pid))
+        break;
+      if (catchUpPending && catchUpProgress)
+        continue;
+      const deadline = Date.now() + METADATA_COOLDOWN_MS + 1e3;
+      while (Date.now() < deadline) {
+        await new Promise((resolve2) => setTimeout(resolve2, Math.min(1e3, Math.max(0, deadline - Date.now()))));
+        if (!leaseHeldBy(leasePath, process.pid))
+          return;
+        const currentWake = await readWake();
+        if (Date.now() >= deadline) {
+          processed = await run();
+        } else if (currentWake !== lastWake) {
+          await run(true);
+        }
+        lastWake = currentWake;
+        if (!leaseHeldBy(leasePath, process.pid))
+          return;
+      }
+      if (catchUpPending)
+        continue;
+      releaseLeaseIfHolder(leasePath, process.pid);
+      if ((await readRequest())?.id === processed)
+        break;
+      if (acquireLease(leasePath, METADATA_WORKER_MAX_LEASE_AGE_MS).kind !== "acquired")
+        break;
+    }
+  } finally {
+    clearInterval(heartbeat);
+    releaseLeaseIfHolder(leasePath, process.pid);
+  }
+}
 export {
+  runScheduledMetadataWorker,
   runSessionMetadataWorker
 };

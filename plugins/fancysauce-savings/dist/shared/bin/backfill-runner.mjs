@@ -1581,27 +1581,27 @@ var require_adapter = __commonJS({
 var require_proper_lockfile = __commonJS({
   "node_modules/proper-lockfile/index.js"(exports, module) {
     "use strict";
-    var lockfile4 = require_lockfile();
+    var lockfile5 = require_lockfile();
     var { toPromise, toSync, toSyncOptions } = require_adapter();
     async function lock(file, options) {
-      const release = await toPromise(lockfile4.lock)(file, options);
+      const release = await toPromise(lockfile5.lock)(file, options);
       return toPromise(release);
     }
     function lockSync(file, options) {
-      const release = toSync(lockfile4.lock)(file, toSyncOptions(options));
+      const release = toSync(lockfile5.lock)(file, toSyncOptions(options));
       return toSync(release);
     }
     function unlock(file, options) {
-      return toPromise(lockfile4.unlock)(file, options);
+      return toPromise(lockfile5.unlock)(file, options);
     }
     function unlockSync(file, options) {
-      return toSync(lockfile4.unlock)(file, toSyncOptions(options));
+      return toSync(lockfile5.unlock)(file, toSyncOptions(options));
     }
     function check(file, options) {
-      return toPromise(lockfile4.check)(file, options);
+      return toPromise(lockfile5.check)(file, options);
     }
     function checkSync(file, options) {
-      return toSync(lockfile4.check)(file, toSyncOptions(options));
+      return toSync(lockfile5.check)(file, toSyncOptions(options));
     }
     module.exports = lock;
     module.exports.lock = lock;
@@ -2283,9 +2283,9 @@ function defaultUnknownEnvVarHandler(_name, _value) {
 }
 
 // dist/shared/flusher.mjs
-var import_proper_lockfile3 = __toESM(require_proper_lockfile(), 1);
+var import_proper_lockfile4 = __toESM(require_proper_lockfile(), 1);
 import { appendFile, open as open2, readFile as readFile5, rename as rename5, writeFile as writeFile4 } from "node:fs/promises";
-import { join as join5 } from "node:path";
+import { join as join6 } from "node:path";
 
 // dist/shared/flush-cursor.mjs
 import { readFile as readFile2, rename as rename2, writeFile } from "node:fs/promises";
@@ -2711,6 +2711,15 @@ function validateMatchList(value) {
   return matches;
 }
 
+// dist/agents/codex/auth-claim.mjs
+import { join as join5 } from "node:path";
+function resolveCodexHome(env, homeDir) {
+  return env.CODEX_HOME && env.CODEX_HOME.length > 0 ? env.CODEX_HOME : join5(homeDir, ".codex");
+}
+function resolveCodexAuthPath(env, homeDir) {
+  return join5(resolveCodexHome(env, homeDir), "auth.json");
+}
+
 // dist/shared/whoami/cache.mjs
 var SUCCESS_TTL_MS = 6 * 60 * 60 * 1e3;
 var ERROR_TTL_MS = 15 * 60 * 1e3;
@@ -2719,6 +2728,13 @@ var TMP_ORPHAN_MAX_AGE_MS = 60 * 60 * 1e3;
 // dist/shared/whoami/flags.mjs
 var PLUGIN_FLAGS_MAX_AGE_MS = 24 * 60 * 60 * 1e3;
 var NO_PLUGIN_FLAGS = Object.freeze({});
+
+// dist/shared/session-metadata/state.mjs
+var import_proper_lockfile3 = __toESM(require_proper_lockfile(), 1);
+
+// dist/shared/session-metadata/outbox.mjs
+var METADATA_OUTBOX_MAX_BYTES = 100 * 1024 * 1024;
+var METADATA_REJECTED_MAX_BYTES = 10 * 1024 * 1024;
 
 // dist/shared/session-metadata/delivery.mjs
 var MAX_ENCODED_LOG_RECORD_BYTES = 4096;
@@ -3075,8 +3091,8 @@ var COMPACT_THRESHOLD_BYTES = 1e6;
 async function tryFlush(input) {
   const start = Date.now();
   const deadline = start + input.budgetMs;
-  const queuePath = join5(input.dataDir, "queue.ndjson");
-  const flushLockPath = join5(input.dataDir, ".flush.lock");
+  const queuePath = join6(input.dataDir, "queue.ndjson");
+  const flushLockPath = join6(input.dataDir, ".flush.lock");
   const backoff = new BackoffState(input.dataDir);
   const cursor = new FlushCursor(input.dataDir);
   const health = new HealthState(input.stateDir);
@@ -3096,7 +3112,7 @@ async function tryFlush(input) {
   }
   let release;
   try {
-    release = await import_proper_lockfile3.default.lock(flushLockPath, { retries: 0, realpath: false });
+    release = await import_proper_lockfile4.default.lock(flushLockPath, { retries: 0, realpath: false });
   } catch {
     return { skipped: true, reason: "flush lock held by another hook" };
   }
@@ -3104,7 +3120,7 @@ async function tryFlush(input) {
     let startOffset = await cursor.read();
     let batch = await readBatch(queuePath, startOffset, input.batchMaxEvents ?? DEFAULT_MAX_EVENTS, input.batchMaxBytes ?? DEFAULT_MAX_BYTES);
     if (batch.events.length === 0 && batch.cursorPastEof) {
-      await appendFile(join5(input.dataDir, "collect-error.log"), `${(/* @__PURE__ */ new Date()).toISOString()} fancysauce: flush cursor (${startOffset}) past queue EOF (${batch.queueSize}); resetting (at-least-once dedup applies)
+      await appendFile(join6(input.dataDir, "collect-error.log"), `${(/* @__PURE__ */ new Date()).toISOString()} fancysauce: flush cursor (${startOffset}) past queue EOF (${batch.queueSize}); resetting (at-least-once dedup applies)
 `).catch(() => {
       });
       await cursor.resetUnlocked();
@@ -3122,7 +3138,7 @@ async function tryFlush(input) {
     try {
       envelope = encodeOtlp(events, input.resource);
     } catch (err) {
-      await appendFile(join5(input.dataDir, "collect-error.log"), `${(/* @__PURE__ */ new Date()).toISOString()} fancysauce: encoder rejected batch of ${events.length} events (cursor ${startOffset}\u2192${endOffset}); dropping: ${err.message}
+      await appendFile(join6(input.dataDir, "collect-error.log"), `${(/* @__PURE__ */ new Date()).toISOString()} fancysauce: encoder rejected batch of ${events.length} events (cursor ${startOffset}\u2192${endOffset}); dropping: ${err.message}
 `).catch(() => {
       });
       await cursor.advance(endOffset);
@@ -3283,7 +3299,7 @@ async function logRebind(dataDir, rebind) {
   const truncated = body.length > REBIND_LOG_BODY_BUDGET ? `${body.slice(0, REBIND_LOG_BODY_BUDGET)}...[truncated ${body.length - REBIND_LOG_BODY_BUDGET}B]` : body;
   const line = `${(/* @__PURE__ */ new Date()).toISOString()} fancysauce: rebind directive received and ignored (v0.5.0 closed-schema): ${truncated}
 `;
-  await appendFile(join5(dataDir, "collect-error.log"), line).catch(() => {
+  await appendFile(join6(dataDir, "collect-error.log"), line).catch(() => {
   });
 }
 async function dropQueue(dataDir, queuePath, cursor) {
@@ -3324,12 +3340,12 @@ function revive(v) {
 
 // dist/shared/backfill/pid-guard.mjs
 import { readFile as readFile6, rm, mkdir as mkdir5, open as open3, link, stat as stat2 } from "node:fs/promises";
-import { join as join6 } from "node:path";
+import { join as join7 } from "node:path";
 import { randomUUID } from "node:crypto";
 var RECOVERY_LOCK_MAX_AGE_MS = 1e4;
 async function readPidGuard(stateDir) {
   try {
-    const raw = await readFile6(join6(stateDir, "backfill.pid"), "utf8");
+    const raw = await readFile6(join7(stateDir, "backfill.pid"), "utf8");
     const pid = Number(raw.trim());
     return { raw, pid: Number.isFinite(pid) && pid > 0 ? pid : null };
   } catch {
@@ -3373,9 +3389,9 @@ async function isBackfillActive(stateDir) {
 }
 async function acquirePidGuard(stateDir) {
   await mkdir5(stateDir, { recursive: true });
-  const path = join6(stateDir, "backfill.pid");
-  const recoveryLockPath = join6(stateDir, "backfill.pid.recover");
-  const tempPath = join6(stateDir, `backfill.pid.${process.pid}.${randomUUID()}.tmp`);
+  const path = join7(stateDir, "backfill.pid");
+  const recoveryLockPath = join7(stateDir, "backfill.pid.recover");
+  const tempPath = join7(stateDir, `backfill.pid.${process.pid}.${randomUUID()}.tmp`);
   try {
     const fh = await open3(tempPath, "wx", 384);
     try {
@@ -3418,23 +3434,23 @@ async function acquirePidGuard(stateDir) {
   }
 }
 async function releasePidGuard(stateDir) {
-  await rm(join6(stateDir, "backfill.pid"), { force: true });
+  await rm(join7(stateDir, "backfill.pid"), { force: true });
 }
 
 // dist/shared/backfill/status.mjs
 import { readFile as readFile7, open as open4, rename as rename6, mkdir as mkdir6, unlink as unlink2 } from "node:fs/promises";
-import { join as join7, dirname as dirname2 } from "node:path";
+import { join as join8, dirname as dirname2 } from "node:path";
 import { randomBytes as randomBytes2 } from "node:crypto";
 async function readStatus(stateDir) {
   try {
-    const raw = await readFile7(join7(stateDir, "backfill.status"), "utf8");
+    const raw = await readFile7(join8(stateDir, "backfill.status"), "utf8");
     return JSON.parse(raw);
   } catch {
     return null;
   }
 }
 async function writeStatus(stateDir, s) {
-  const path = join7(stateDir, "backfill.status");
+  const path = join8(stateDir, "backfill.status");
   await mkdir6(dirname2(path), { recursive: true });
   const tmp = `${path}.${process.pid}.${randomBytes2(4).toString("hex")}.tmp`;
   let renamed = false;
@@ -3467,28 +3483,28 @@ import { randomBytes as randomBytes4 } from "node:crypto";
 
 // dist/shared/data-dir.mjs
 import { readFileSync } from "node:fs";
-import { basename, join as join9, dirname as dirname3, relative, isAbsolute, sep } from "node:path";
+import { basename, join as join10, dirname as dirname3, relative, isAbsolute, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { homedir as homedir3 } from "node:os";
 
 // dist/shared/claude-paths.mjs
-import { join as join8 } from "node:path";
+import { join as join9 } from "node:path";
 function resolveClaudeHome(env, homeDir) {
-  return env.CLAUDE_CONFIG_DIR ? env.CLAUDE_CONFIG_DIR : join8(homeDir, ".claude");
+  return env.CLAUDE_CONFIG_DIR ? env.CLAUDE_CONFIG_DIR : join9(homeDir, ".claude");
 }
 function resolveClaudeConfigPaths(env, homeDir) {
-  const home = join8(homeDir, ".claude.json");
+  const home = join9(homeDir, ".claude.json");
   const dir = env.CLAUDE_CONFIG_DIR;
   if (!dir)
     return [home];
-  const scoped = join8(dir, ".claude.json");
+  const scoped = join9(dir, ".claude.json");
   return scoped === home ? [home] : [scoped, home];
 }
 
 // dist/shared/data-dir.mjs
 function defaultPluginRoot() {
   const here = dirname3(fileURLToPath(import.meta.url));
-  return join9(here, "..", "..", "..");
+  return join10(here, "..", "..", "..");
 }
 function trimTrailingSlash(p) {
   return p.endsWith("/") || p.endsWith("\\") ? p.slice(0, -1) : p;
@@ -3504,7 +3520,7 @@ function registeredPluginKey(opts = {}) {
 }
 function registryKey(root, claudeHome) {
   try {
-    const regPath = join9(claudeHome, "plugins", "installed_plugins.json");
+    const regPath = join10(claudeHome, "plugins", "installed_plugins.json");
     const reg = JSON.parse(readFileSync(regPath, "utf8"));
     const plugins = reg?.plugins;
     if (typeof plugins !== "object" || plugins === null)
@@ -3619,7 +3635,7 @@ function seal(plaintext, key) {
 
 // dist/shared/server-key.mjs
 import { readFileSync as readFileSync2 } from "node:fs";
-import { join as join10 } from "node:path";
+import { join as join11 } from "node:path";
 var BAKED_SERVER_KEY = {
   keyid: "env-production-1",
   alg: "RSA-OAEP-256+A256GCM",
@@ -3637,7 +3653,7 @@ function loadServerKey(deps) {
   const ttl = deps.ttlMs ?? DEFAULT_TTL_MS;
   const read = deps.readFileImpl ?? ((p) => readFileSync2(p, "utf8"));
   try {
-    const parsed = JSON.parse(read(join10(deps.cacheDir, CACHE_FILE)));
+    const parsed = JSON.parse(read(join11(deps.cacheDir, CACHE_FILE)));
     if (!isServerKeyShape(parsed) || typeof parsed.fetched_at !== "number")
       return BAKED_SERVER_KEY;
     if (deps.now - parsed.fetched_at > ttl)
@@ -3652,17 +3668,6 @@ function loadServerKey(deps) {
 import { readFileSync as readFileSync3 } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { homedir as homedir4 } from "node:os";
-
-// dist/agents/codex/auth-claim.mjs
-import { join as join11 } from "node:path";
-function resolveCodexHome(env, homeDir) {
-  return env.CODEX_HOME && env.CODEX_HOME.length > 0 ? env.CODEX_HOME : join11(homeDir, ".codex");
-}
-function resolveCodexAuthPath(env, homeDir) {
-  return join11(resolveCodexHome(env, homeDir), "auth.json");
-}
-
-// dist/shared/native-identity.mjs
 var CLI_TIMEOUT_MS = 500;
 function defaultClaudeStatus() {
   try {

@@ -3567,7 +3567,7 @@ var HealthState = class {
 };
 
 // dist/shared/flusher.mjs
-var import_proper_lockfile4 = __toESM(require_proper_lockfile(), 1);
+var import_proper_lockfile5 = __toESM(require_proper_lockfile(), 1);
 
 // dist/shared/backoff-state.mjs
 var MAX_BACKOFF_MS = 5 * 60 * 1e3;
@@ -3577,6 +3577,9 @@ import { gzip } from "node:zlib";
 import { promisify } from "node:util";
 var gzipAsync = promisify(gzip);
 var MAX_RESPONSE_BYTES = 64 * 1024;
+
+// dist/shared/session-metadata/schedule.mjs
+init_runner_env();
 
 // dist/shared/whoami/credential.mjs
 init_credential_paths();
@@ -3589,6 +3592,13 @@ var TMP_ORPHAN_MAX_AGE_MS = 60 * 60 * 1e3;
 // dist/shared/whoami/flags.mjs
 var PLUGIN_FLAGS_MAX_AGE_MS = 24 * 60 * 60 * 1e3;
 var NO_PLUGIN_FLAGS = Object.freeze({});
+
+// dist/shared/session-metadata/state.mjs
+var import_proper_lockfile4 = __toESM(require_proper_lockfile(), 1);
+
+// dist/shared/session-metadata/outbox.mjs
+var METADATA_OUTBOX_MAX_BYTES = 100 * 1024 * 1024;
+var METADATA_REJECTED_MAX_BYTES = 10 * 1024 * 1024;
 
 // dist/shared/session-metadata/delivery.mjs
 var MAX_RECAP_BYTES = 4 * 1024 * 1024;
@@ -3627,12 +3637,6 @@ init_runner_env();
 
 // dist/shared/attribution/trigger.mjs
 var PENDING_TTL_MS = 24 * 60 * 60 * 1e3;
-
-// dist/shared/session-metadata/schedule.mjs
-init_runner_env();
-
-// dist/shared/session-metadata/state.mjs
-var import_proper_lockfile5 = __toESM(require_proper_lockfile(), 1);
 
 // dist/shared/session-metadata/skip.mjs
 var import_proper_lockfile6 = __toESM(require_proper_lockfile(), 1);

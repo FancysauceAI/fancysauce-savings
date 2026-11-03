@@ -4586,7 +4586,7 @@ var HealthState = class {
 };
 
 // dist/shared/flusher.mjs
-var import_proper_lockfile3 = __toESM(require_proper_lockfile(), 1);
+var import_proper_lockfile4 = __toESM(require_proper_lockfile(), 1);
 import { appendFile as appendFile2, open as open5, readFile as readFile7, rename as rename7, writeFile as writeFile5 } from "node:fs/promises";
 import { join as join15 } from "node:path";
 
@@ -4758,6 +4758,9 @@ function parseRetryAfter2(h) {
   return null;
 }
 
+// dist/shared/session-metadata/schedule.mjs
+init_runner_env();
+
 // dist/shared/whoami/flags.mjs
 var PLUGIN_FLAG_ATTRIBUTION_AGENT = "attribution-agent";
 var PLUGIN_FLAGS_MAX_AGE_MS = 24 * 60 * 60 * 1e3;
@@ -4798,6 +4801,13 @@ function matchesGrantBinding(entry, opts) {
     return false;
   return true;
 }
+
+// dist/shared/session-metadata/state.mjs
+var import_proper_lockfile3 = __toESM(require_proper_lockfile(), 1);
+
+// dist/shared/session-metadata/outbox.mjs
+var METADATA_OUTBOX_MAX_BYTES = 100 * 1024 * 1024;
+var METADATA_REJECTED_MAX_BYTES = 10 * 1024 * 1024;
 
 // dist/shared/session-metadata/delivery.mjs
 var MAX_ENCODED_LOG_RECORD_BYTES = 4096;
@@ -5175,7 +5185,7 @@ async function tryFlush(input) {
   }
   let release;
   try {
-    release = await import_proper_lockfile3.default.lock(flushLockPath, { retries: 0, realpath: false });
+    release = await import_proper_lockfile4.default.lock(flushLockPath, { retries: 0, realpath: false });
   } catch {
     return { skipped: true, reason: "flush lock held by another hook" };
   }
@@ -5404,12 +5414,6 @@ function revive(v) {
 // dist/shared/attribution/trigger.mjs
 init_runner_spawn();
 var PENDING_TTL_MS = 24 * 60 * 60 * 1e3;
-
-// dist/shared/session-metadata/schedule.mjs
-init_runner_env();
-
-// dist/shared/session-metadata/state.mjs
-var import_proper_lockfile4 = __toESM(require_proper_lockfile(), 1);
 
 // dist/shared/session-metadata/skip.mjs
 var import_proper_lockfile5 = __toESM(require_proper_lockfile(), 1);
