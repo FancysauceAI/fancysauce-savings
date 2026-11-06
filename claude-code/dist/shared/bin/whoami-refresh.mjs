@@ -195,12 +195,15 @@ function resolveCredentialSync(opts = {}) {
     return withFingerprint("env_api_key", apiKey, null);
   return null;
 }
+function fingerprintOf(token) {
+  return sha256Hex(token).slice(0, FINGERPRINT_HEX_CHARS);
+}
 function withFingerprint(tier, token, apiEndpoint, ingestEndpoint) {
   return {
     tier,
     token,
     apiEndpoint,
-    fingerprint: sha256Hex(token).slice(0, FINGERPRINT_HEX_CHARS),
+    fingerprint: fingerprintOf(token),
     ...ingestEndpoint !== void 0 ? { ingestEndpoint } : {}
   };
 }
@@ -240,7 +243,7 @@ function readOneSync(path) {
 
 // dist/shared/whoami/cache.mjs
 import { closeSync, mkdirSync, openSync, readFileSync as readFileSync2, readdirSync, renameSync, rmSync, statSync as statSync2, writeSync } from "node:fs";
-import { randomBytes } from "node:crypto";
+import { createHash as createHash2, randomBytes } from "node:crypto";
 var WHOAMI_SCHEMA_VERSION = 1;
 var SUCCESS_TTL_MS = 6 * 60 * 60 * 1e3;
 var ERROR_TTL_MS = 15 * 60 * 1e3;
@@ -251,7 +254,12 @@ var TMP_SUFFIX = ".tmp";
 var TMP_ORPHAN_MAX_AGE_MS = 60 * 60 * 1e3;
 function whoamiCachePath(fingerprint, opts = {}) {
   const p = pathFlavor();
-  return p.join(credentialDir(opts), `${CACHE_PREFIX}${fingerprint}${CACHE_SUFFIX}`);
+  const endpoint = opts.apiEndpoint ?? API_ENDPOINT;
+  const endpointFingerprint = createHash2("sha256").update(endpoint, "utf8").digest("hex").slice(0, 12);
+  return p.join(credentialDir(opts), `${CACHE_PREFIX}${fingerprint}-${endpointFingerprint}${CACHE_SUFFIX}`);
+}
+function legacyWhoamiCachePath(fingerprint, opts = {}) {
+  return pathFlavor().join(credentialDir(opts), `${CACHE_PREFIX}${fingerprint}${CACHE_SUFFIX}`);
 }
 function credentialDir(opts = {}) {
   if (opts.dir !== void 0)
@@ -269,8 +277,23 @@ function readWhoamiCacheAnyAge(fingerprint, opts = {}) {
     if (validated === null)
       return null;
     entry = validated;
-  } catch {
-    return null;
+  } catch (error) {
+    if (error.code !== "ENOENT")
+      return null;
+    try {
+      const parsed = JSON.parse(readFileSync2(legacyWhoamiCachePath(fingerprint, opts), "utf8"));
+      if (typeof parsed === "object" && parsed !== null && Object.prototype.hasOwnProperty.call(parsed, "error"))
+        return null;
+      const legacy = validateEntry(parsed);
+      if (legacy === null || legacy.result === void 0 || legacy.error !== void 0)
+        return null;
+      const binding = legacy.grant_binding;
+      if (binding === void 0 || binding.api_endpoint !== (opts.apiEndpoint ?? API_ENDPOINT) || binding.ingest_endpoint !== (opts.ingestEndpoint ?? INGEST_ENDPOINT))
+        return null;
+      entry = legacy;
+    } catch {
+      return null;
+    }
   }
   if (entry.credential_fingerprint !== fingerprint)
     return null;
@@ -483,7 +506,9 @@ async function runWhoamiRefresh(opts = {}) {
   });
   if (resolved === null)
     return { kind: "no-credential" };
-  const cacheOpts = opts.dir !== void 0 ? { dir: opts.dir } : {};
+  const base = resolved.apiEndpoint ?? opts.apiBase ?? opts.apiEndpoint ?? API_ENDPOINT;
+  const ingestEndpoint = opts.ingestEndpoint ?? resolved.ingestEndpoint ?? INGEST_ENDPOINT;
+  const cacheOpts = { apiEndpoint: base, ingestEndpoint, ...opts.dir !== void 0 ? { dir: opts.dir } : {} };
   try {
     const entry = await fetchEntry(resolved, opts, cacheOpts);
     try {
@@ -497,7 +522,7 @@ async function runWhoamiRefresh(opts = {}) {
 }
 async function fetchEntry(resolved, opts, cacheOpts) {
   const now = opts.now ?? Date.now();
-  const base = resolved.apiEndpoint ?? opts.apiBase ?? API_ENDPOINT;
+  const base = resolved.apiEndpoint ?? opts.apiBase ?? opts.apiEndpoint ?? API_ENDPOINT;
   const ingestEndpoint = opts.ingestEndpoint ?? resolved.ingestEndpoint ?? INGEST_ENDPOINT;
   const carried = readWhoamiCacheAnyAge(resolved.fingerprint, cacheOpts);
   const carriesBinding = carried?.grant_binding?.api_endpoint === base && carried.grant_binding.ingest_endpoint === ingestEndpoint;

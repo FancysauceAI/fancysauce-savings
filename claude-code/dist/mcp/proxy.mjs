@@ -3,6 +3,7 @@ import { createRequire as __cr } from 'node:module'; const require = __cr(import
 
 // dist/mcp/proxy.mjs
 import { realpathSync } from "node:fs";
+import { dirname as dirname3 } from "node:path";
 import { fileURLToPath } from "node:url";
 
 // dist/shared/config.mjs
@@ -159,8 +160,34 @@ function credentialPaths() {
 }
 
 // dist/shared/config.mjs
+var INGEST_ENDPOINT = "https://ingest.preview.fancysauce.ai";
 var API_ENDPOINT = "https://api.preview.fancysauce.ai";
 var DEFAULT_LOGIN_STATE_DIR = join(homedir2(), ".config", "fancysauce");
+function parseCredentialPathsEnv(env = process.env) {
+  if (env.VITEST !== "true")
+    return null;
+  const raw = env.FANCYSAUCE_CREDENTIAL_PATHS;
+  if (!raw)
+    return null;
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return null;
+  }
+  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed))
+    return null;
+  const o = parsed;
+  if (typeof o.system !== "string" || typeof o.user !== "string")
+    return null;
+  if (o.login_state_dir !== void 0 && typeof o.login_state_dir !== "string")
+    return null;
+  return {
+    system: o.system,
+    user: o.user,
+    ...typeof o.login_state_dir === "string" ? { login_state_dir: o.login_state_dir } : {}
+  };
+}
 
 // dist/shared/endpoint.mjs
 function isLoopbackHost(hostname) {
@@ -180,10 +207,12 @@ var LOGIN_COMMAND = "/fancysauce-savings:login";
 var RESET_COMMAND = `${COMMAND_PREFIX}reset`;
 var UPLOAD_HISTORY_COMMAND = `${COMMAND_PREFIX}upload-history`;
 
-// dist/mcp/breaker.mjs
-import { mkdir as mkdir2, readFile as readFile2, rename as rename2, writeFile } from "node:fs/promises";
-import { randomBytes } from "node:crypto";
-import { dirname as dirname2, join as join2 } from "node:path";
+// dist/shared/whoami/cache.mjs
+import { closeSync, mkdirSync, openSync, readFileSync, readdirSync, renameSync, rmSync, statSync, writeSync } from "node:fs";
+import { createHash as createHash2, randomBytes } from "node:crypto";
+
+// dist/shared/whoami/credential.mjs
+import { posix as posix2, win32 as win323 } from "node:path";
 
 // dist/shared/hash.mjs
 import { createHash, createHmac } from "node:crypto";
@@ -191,7 +220,201 @@ function sha256Hex(input) {
   return createHash("sha256").update(input, "utf8").digest("hex");
 }
 
+// dist/shared/whoami/credential.mjs
+var FINGERPRINT_HEX_CHARS = 12;
+function whoamiCredentialPaths(env = process.env) {
+  const parsed = parseCredentialPathsEnv(env);
+  return parsed ? { system: parsed.system, user: parsed.user } : credentialPaths();
+}
+function pathFlavor() {
+  return process.platform === "win32" ? win323 : posix2;
+}
+function fingerprintOf(token) {
+  return sha256Hex(token).slice(0, FINGERPRINT_HEX_CHARS);
+}
+
+// dist/shared/whoami/cache.mjs
+var WHOAMI_SCHEMA_VERSION = 1;
+var SUCCESS_TTL_MS = 6 * 60 * 60 * 1e3;
+var ERROR_TTL_MS = 15 * 60 * 1e3;
+var CACHE_PREFIX = "whoami-cache-";
+var CACHE_SUFFIX = ".json";
+var TMP_ORPHAN_MAX_AGE_MS = 60 * 60 * 1e3;
+function whoamiCachePath(fingerprint, opts = {}) {
+  const p = pathFlavor();
+  const endpoint = opts.apiEndpoint ?? API_ENDPOINT;
+  const endpointFingerprint = createHash2("sha256").update(endpoint, "utf8").digest("hex").slice(0, 12);
+  return p.join(credentialDir(opts), `${CACHE_PREFIX}${fingerprint}-${endpointFingerprint}${CACHE_SUFFIX}`);
+}
+function legacyWhoamiCachePath(fingerprint, opts = {}) {
+  return pathFlavor().join(credentialDir(opts), `${CACHE_PREFIX}${fingerprint}${CACHE_SUFFIX}`);
+}
+function credentialDir(opts = {}) {
+  if (opts.dir !== void 0)
+    return opts.dir;
+  return pathFlavor().dirname(whoamiCredentialPaths().user);
+}
+function readWhoamiCacheAnyAge(fingerprint, opts = {}) {
+  let entry;
+  try {
+    const parsed = JSON.parse(readFileSync(whoamiCachePath(fingerprint, opts), "utf8"));
+    const validated = validateEntry(parsed);
+    if (validated === null)
+      return null;
+    entry = validated;
+  } catch (error) {
+    if (error.code !== "ENOENT")
+      return null;
+    try {
+      const parsed = JSON.parse(readFileSync(legacyWhoamiCachePath(fingerprint, opts), "utf8"));
+      if (typeof parsed === "object" && parsed !== null && Object.prototype.hasOwnProperty.call(parsed, "error"))
+        return null;
+      const legacy = validateEntry(parsed);
+      if (legacy === null || legacy.result === void 0 || legacy.error !== void 0)
+        return null;
+      const binding = legacy.grant_binding;
+      if (binding === void 0 || binding.api_endpoint !== (opts.apiEndpoint ?? API_ENDPOINT) || binding.ingest_endpoint !== (opts.ingestEndpoint ?? INGEST_ENDPOINT))
+        return null;
+      entry = legacy;
+    } catch {
+      return null;
+    }
+  }
+  if (entry.credential_fingerprint !== fingerprint)
+    return null;
+  return entry;
+}
+function validateEntry(v) {
+  if (typeof v !== "object" || v === null)
+    return null;
+  const o = v;
+  if (o.schema_version !== WHOAMI_SCHEMA_VERSION)
+    return null;
+  if (typeof o.fetched_at !== "number")
+    return null;
+  if (typeof o.credential_fingerprint !== "string")
+    return null;
+  const result = o.result === void 0 ? void 0 : parseWhoamiResult(o.result);
+  const error = parseErrorKind(o.error);
+  if (result === void 0 && error === void 0)
+    return null;
+  const hasPluginFlagsTimestamp = o.plugin_flags_fetched_at !== void 0;
+  const pluginFlagsFetchedAt = typeof o.plugin_flags_fetched_at === "number" ? o.plugin_flags_fetched_at : void 0;
+  const pluginFlags = hasPluginFlagsTimestamp && pluginFlagsFetchedAt === void 0 ? void 0 : parsePluginFlags(o.plugin_flags);
+  const grantBinding = parseGrantBinding(o.grant_binding);
+  if (o.grant_binding !== void 0 && grantBinding === void 0)
+    return null;
+  return {
+    schema_version: WHOAMI_SCHEMA_VERSION,
+    fetched_at: o.fetched_at,
+    credential_fingerprint: o.credential_fingerprint,
+    ...result !== void 0 ? { result } : {},
+    ...error !== void 0 ? { error } : {},
+    ...pluginFlags !== void 0 ? {
+      plugin_flags: pluginFlags,
+      ...pluginFlagsFetchedAt !== void 0 ? { plugin_flags_fetched_at: pluginFlagsFetchedAt } : {}
+    } : {},
+    ...grantBinding !== void 0 ? { grant_binding: grantBinding } : {}
+  };
+}
+function parseGrantBinding(value) {
+  if (typeof value !== "object" || value === null || Array.isArray(value))
+    return void 0;
+  const o = value;
+  if (typeof o.api_endpoint !== "string" || typeof o.ingest_endpoint !== "string" || typeof o.tenant_assertion !== "string") {
+    return void 0;
+  }
+  return {
+    api_endpoint: o.api_endpoint,
+    ingest_endpoint: o.ingest_endpoint,
+    tenant_assertion: o.tenant_assertion
+  };
+}
+function parsePluginFlags(v) {
+  if (typeof v !== "object" || v === null || Array.isArray(v))
+    return void 0;
+  const out = {};
+  for (const [key, value] of Object.entries(v)) {
+    if (typeof value === "boolean")
+      out[key] = value;
+  }
+  return out;
+}
+function parseErrorKind(v) {
+  return v === "rejected" || v === "rate_limited" || v === "server" || v === "transport" ? v : void 0;
+}
+function parseWhoamiResult(v) {
+  if (typeof v !== "object" || v === null)
+    return void 0;
+  const o = v;
+  if (typeof o.logged_in !== "boolean")
+    return void 0;
+  if (typeof o.tenant_id !== "string")
+    return void 0;
+  const user = parseUser(o.user);
+  if (user === void 0)
+    return void 0;
+  const key = parseKey(o.key);
+  if (key === void 0)
+    return void 0;
+  const pluginFlags = parsePluginFlags(o.plugin_flags);
+  return {
+    logged_in: o.logged_in,
+    user,
+    tenant_id: o.tenant_id,
+    key,
+    ...pluginFlags !== void 0 ? { plugin_flags: pluginFlags } : {}
+  };
+}
+function parseUser(v) {
+  if (v === null)
+    return null;
+  if (typeof v !== "object")
+    return void 0;
+  const o = v;
+  if (typeof o.id !== "string")
+    return void 0;
+  const name = o.name === null || typeof o.name === "string" ? o.name : void 0;
+  if (name === void 0)
+    return void 0;
+  const email = o.email_masked === null || typeof o.email_masked === "string" ? o.email_masked : void 0;
+  if (email === void 0)
+    return void 0;
+  return { id: o.id, name, email_masked: email };
+}
+function parseKey(v) {
+  if (typeof v !== "object" || v === null)
+    return void 0;
+  const o = v;
+  if (typeof o.id !== "string")
+    return void 0;
+  if (typeof o.env !== "string")
+    return void 0;
+  if (o.scope !== null && typeof o.scope !== "string")
+    return void 0;
+  if (typeof o.user_resolution_mode !== "string")
+    return void 0;
+  if (typeof o.vended_via !== "string")
+    return void 0;
+  if (typeof o.source_type !== "string")
+    return void 0;
+  if (typeof o.superseded !== "boolean")
+    return void 0;
+  return {
+    id: o.id,
+    env: o.env,
+    scope: o.scope,
+    user_resolution_mode: o.user_resolution_mode,
+    vended_via: o.vended_via,
+    source_type: o.source_type,
+    superseded: o.superseded
+  };
+}
+
 // dist/mcp/breaker.mjs
+import { mkdir as mkdir2, readFile as readFile2, rename as rename2, writeFile } from "node:fs/promises";
+import { randomBytes as randomBytes2 } from "node:crypto";
+import { dirname as dirname2, join as join2 } from "node:path";
 var TRIP_AFTER_FAILURES = 3;
 var TRIP_SCHEDULE_MS = [60 * 60 * 1e3, 6 * 60 * 60 * 1e3, 24 * 60 * 60 * 1e3];
 var DEFAULT = { consecutiveAuthFailures: 0 };
@@ -204,7 +427,7 @@ var McpBreaker = class {
   constructor(userCredentialPath) {
     this.dir = dirname2(userCredentialPath);
     this.path = join2(this.dir, "mcp-breaker.json");
-    this.tmpPath = `${this.path}.${process.pid}.${randomBytes(4).toString("hex")}.tmp`;
+    this.tmpPath = `${this.path}.${process.pid}.${randomBytes2(4).toString("hex")}.tmp`;
   }
   /** Reads the trip state for `credential`, resetting it first if the
    *  credential has changed since the counters were written. */
@@ -294,7 +517,13 @@ async function resolveProxyCredential(paths = credentialPaths()) {
   const read = await readCredential(paths);
   if (read.credential === null)
     return { kind: "logged-out" };
-  if (KEY_RE.test(read.credential.credential))
+  const token = read.credential.credential;
+  const entry = readWhoamiCacheAnyAge(fingerprintOf(token), {
+    dir: dirname3(paths.user),
+    apiEndpoint: read.credential.api_endpoint ?? API_ENDPOINT,
+    ingestEndpoint: read.credential.endpoint
+  });
+  if (entry?.result !== void 0 ? entry.result.key.scope !== "user" || entry.result.user === null : KEY_RE.test(token))
     return { kind: "logged-out" };
   return {
     kind: "ok",

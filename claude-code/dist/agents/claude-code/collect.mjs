@@ -1901,7 +1901,7 @@ __export(status_exports, {
 });
 import { readFile as readFile16, open as open8, rename as rename13, mkdir as mkdir14, unlink as unlink7 } from "node:fs/promises";
 import { join as join27, dirname as dirname10 } from "node:path";
-import { randomBytes as randomBytes6 } from "node:crypto";
+import { randomBytes as randomBytes7 } from "node:crypto";
 async function readStatus(stateDir) {
   try {
     const raw = await readFile16(join27(stateDir, "backfill.status"), "utf8");
@@ -1913,7 +1913,7 @@ async function readStatus(stateDir) {
 async function writeStatus(stateDir, s) {
   const path = join27(stateDir, "backfill.status");
   await mkdir14(dirname10(path), { recursive: true });
-  const tmp = `${path}.${process.pid}.${randomBytes6(4).toString("hex")}.tmp`;
+  const tmp = `${path}.${process.pid}.${randomBytes7(4).toString("hex")}.tmp`;
   let renamed = false;
   try {
     const fh = await open8(tmp, "wx", 384);
@@ -3949,7 +3949,7 @@ function parseRetryAfter(h) {
 
 // dist/shared/session-metadata/schedule.mjs
 init_runner_env();
-import { createHash as createHash3, randomUUID as randomUUID2 } from "node:crypto";
+import { createHash as createHash4, randomUUID as randomUUID2 } from "node:crypto";
 import { mkdir as mkdir6, readFile as readFile7, rename as rename7, stat as stat3, unlink as unlink4, writeFile as writeFile4 } from "node:fs/promises";
 import { dirname as dirname4, join as join14 } from "node:path";
 import { fileURLToPath as fileURLToPath2 } from "node:url";
@@ -4089,12 +4089,15 @@ function resolveCredentialSync(opts = {}) {
     return withFingerprint("env_api_key", apiKey, null);
   return null;
 }
+function fingerprintOf(token) {
+  return sha256Hex(token).slice(0, FINGERPRINT_HEX_CHARS);
+}
 function withFingerprint(tier, token, apiEndpoint, ingestEndpoint) {
   return {
     tier,
     token,
     apiEndpoint,
-    fingerprint: sha256Hex(token).slice(0, FINGERPRINT_HEX_CHARS),
+    fingerprint: fingerprintOf(token),
     ...ingestEndpoint !== void 0 ? { ingestEndpoint } : {}
   };
 }
@@ -4134,6 +4137,7 @@ function readOneSync(path) {
 
 // dist/shared/whoami/cache.mjs
 import { closeSync as closeSync2, mkdirSync, openSync as openSync2, readFileSync as readFileSync7, readdirSync, renameSync, rmSync as rmSync2, statSync as statSync3, writeSync as writeSync2 } from "node:fs";
+import { createHash as createHash3, randomBytes as randomBytes4 } from "node:crypto";
 var WHOAMI_SCHEMA_VERSION = 1;
 var SUCCESS_TTL_MS = 6 * 60 * 60 * 1e3;
 var ERROR_TTL_MS = 15 * 60 * 1e3;
@@ -4142,7 +4146,12 @@ var CACHE_SUFFIX = ".json";
 var TMP_ORPHAN_MAX_AGE_MS = 60 * 60 * 1e3;
 function whoamiCachePath(fingerprint2, opts = {}) {
   const p = pathFlavor();
-  return p.join(credentialDir(opts), `${CACHE_PREFIX}${fingerprint2}${CACHE_SUFFIX}`);
+  const endpoint = opts.apiEndpoint ?? API_ENDPOINT;
+  const endpointFingerprint = createHash3("sha256").update(endpoint, "utf8").digest("hex").slice(0, 12);
+  return p.join(credentialDir(opts), `${CACHE_PREFIX}${fingerprint2}-${endpointFingerprint}${CACHE_SUFFIX}`);
+}
+function legacyWhoamiCachePath(fingerprint2, opts = {}) {
+  return pathFlavor().join(credentialDir(opts), `${CACHE_PREFIX}${fingerprint2}${CACHE_SUFFIX}`);
 }
 function credentialDir(opts = {}) {
   if (opts.dir !== void 0)
@@ -4169,8 +4178,23 @@ function readWhoamiCacheAnyAge(fingerprint2, opts = {}) {
     if (validated === null)
       return null;
     entry = validated;
-  } catch {
-    return null;
+  } catch (error) {
+    if (error.code !== "ENOENT")
+      return null;
+    try {
+      const parsed = JSON.parse(readFileSync7(legacyWhoamiCachePath(fingerprint2, opts), "utf8"));
+      if (typeof parsed === "object" && parsed !== null && Object.prototype.hasOwnProperty.call(parsed, "error"))
+        return null;
+      const legacy = validateEntry(parsed);
+      if (legacy === null || legacy.result === void 0 || legacy.error !== void 0)
+        return null;
+      const binding = legacy.grant_binding;
+      if (binding === void 0 || binding.api_endpoint !== (opts.apiEndpoint ?? API_ENDPOINT) || binding.ingest_endpoint !== (opts.ingestEndpoint ?? INGEST_ENDPOINT))
+        return null;
+      entry = legacy;
+    } catch {
+      return null;
+    }
   }
   if (entry.credential_fingerprint !== fingerprint2)
     return null;
@@ -4304,6 +4328,7 @@ function parseKey(v) {
 }
 
 // dist/shared/whoami/flags.mjs
+var PLUGIN_FLAG_WORK_ITEM_ATTRIBUTION = "work-item-attribution";
 var PLUGIN_FLAG_GITHUB_PR_REF = "fancytab-github-pr-ref";
 var PLUGIN_FLAG_SESSION_NAMING = "fancytab-session-naming";
 var PLUGIN_FLAG_SESSION_LINK = "fancytab-session-link";
@@ -4317,7 +4342,11 @@ function readPluginFlags(opts = {}) {
   });
   if (resolved === null)
     return NO_PLUGIN_FLAGS;
-  const cacheOpts = opts.dir !== void 0 ? { dir: opts.dir } : {};
+  const cacheOpts = {
+    apiEndpoint: opts.apiEndpoint ?? resolved.apiEndpoint ?? API_ENDPOINT,
+    ingestEndpoint: opts.ingestEndpoint ?? resolved.ingestEndpoint ?? INGEST_ENDPOINT,
+    ...opts.dir !== void 0 ? { dir: opts.dir } : {}
+  };
   const entry = readWhoamiCacheAnyAge(resolved.fingerprint, cacheOpts);
   if (!matchesGrantBinding(entry, opts))
     return NO_PLUGIN_FLAGS;
@@ -4339,7 +4368,11 @@ function metadataGrantSkipReason(opts = {}) {
     return "no_credential";
   if (opts.credentialFingerprint !== void 0 && resolved.fingerprint !== opts.credentialFingerprint)
     return "credential_changed";
-  const cacheOpts = opts.dir !== void 0 ? { dir: opts.dir } : {};
+  const cacheOpts = {
+    apiEndpoint: opts.apiEndpoint ?? resolved.apiEndpoint ?? API_ENDPOINT,
+    ingestEndpoint: opts.ingestEndpoint ?? resolved.ingestEndpoint ?? INGEST_ENDPOINT,
+    ...opts.dir !== void 0 ? { dir: opts.dir } : {}
+  };
   const entry = readWhoamiCacheAnyAge(resolved.fingerprint, cacheOpts);
   const tenant = opts.expectedTenantId ?? entry?.result?.tenant_id ?? entry?.grant_binding?.tenant_assertion;
   if (!tenant)
@@ -4375,12 +4408,18 @@ function matchesGrantBinding(entry, opts) {
 function pluginFlagOn(flags, key) {
   return flags[key] === true;
 }
+function workItemAttributionOn(flags) {
+  if (Object.prototype.hasOwnProperty.call(flags, PLUGIN_FLAG_WORK_ITEM_ATTRIBUTION)) {
+    return flags[PLUGIN_FLAG_WORK_ITEM_ATTRIBUTION] === true;
+  }
+  return flags[PLUGIN_FLAG_GITHUB_PR_REF] === true;
+}
 
 // dist/shared/session-metadata/state.mjs
 var import_proper_lockfile3 = __toESM(require_proper_lockfile(), 1);
 import { mkdir as mkdir5, open as open4, readFile as readFile6, readdir, rename as rename6, unlink as unlink3 } from "node:fs/promises";
 import { basename as basename2, dirname as dirname3, join as join13 } from "node:path";
-import { randomBytes as randomBytes4 } from "node:crypto";
+import { randomBytes as randomBytes5 } from "node:crypto";
 var SESSION_METADATA_SCHEMA_VERSION = 1;
 var PENDING_GRANT_TRANSITION_FILE = "grant-transition.pending.ndjson";
 var PENDING_SESSION_REGISTRATION_FILE = "session-registration.pending.ndjson";
@@ -4423,7 +4462,7 @@ async function appendPendingGrantTransition(dir, marker, afterOpenForTest) {
   const raw = `${JSON.stringify({ at: marker.at, enabled: marker.enabled })}
 `;
   const order = marker.at.replace(/\D/g, "").padEnd(20, "0").slice(0, 20);
-  const suffix = `${order}.${process.pid}.${randomBytes4(8).toString("hex")}`;
+  const suffix = `${order}.${process.pid}.${randomBytes5(8).toString("hex")}`;
   const temporaryPath = join13(dir, `${PENDING_GRANT_TRANSITION_FILE}.tmp.${suffix}`);
   const markerPath = join13(dir, `${PENDING_GRANT_TRANSITION_FILE}.marker.${suffix}`);
   const fh = await open4(temporaryPath, "wx", 384);
@@ -4498,7 +4537,7 @@ async function foldPendingGrantTransitions(dir) {
     return;
   const claimed = paths.filter((path) => basename2(path) !== PENDING_GRANT_TRANSITION_FILE);
   const pendingPath = join13(dir, PENDING_GRANT_TRANSITION_FILE);
-  const processingPath = `${pendingPath}.processing.${unixNanosecondClaim()}.${process.pid}.${randomBytes4(4).toString("hex")}`;
+  const processingPath = `${pendingPath}.processing.${unixNanosecondClaim()}.${process.pid}.${randomBytes5(4).toString("hex")}`;
   try {
     await rename6(pendingPath, processingPath);
     const firstMarker = claimed.findIndex((path) => basename2(path).startsWith(`${PENDING_GRANT_TRANSITION_FILE}.marker.`));
@@ -4538,7 +4577,7 @@ async function foldPendingSessionRegistrations(dir) {
     return;
   const claimed = paths.filter((path) => basename2(path) !== PENDING_SESSION_REGISTRATION_FILE);
   const pendingPath = join13(dir, PENDING_SESSION_REGISTRATION_FILE);
-  const processingPath = `${pendingPath}.processing.${unixNanosecondClaim()}.${process.pid}.${randomBytes4(4).toString("hex")}`;
+  const processingPath = `${pendingPath}.processing.${unixNanosecondClaim()}.${process.pid}.${randomBytes5(4).toString("hex")}`;
   try {
     await rename6(pendingPath, processingPath);
     claimed.push(processingPath);
@@ -4874,7 +4913,7 @@ var SessionMetadataStateStore = class {
     assertState(state);
     await withDirLock(this.dir, async () => {
       await mkdir5(this.dir, { recursive: true, mode: 448 });
-      const tmp = `${this.path}.${process.pid}.${randomBytes4(4).toString("hex")}.tmp`;
+      const tmp = `${this.path}.${process.pid}.${randomBytes5(4).toString("hex")}.tmp`;
       let renamed = false;
       try {
         const fh = await open4(tmp, "wx", 384);
@@ -5549,9 +5588,9 @@ function encodeAnyValue(key, v) {
 }
 
 // dist/shared/config-fingerprint.mjs
-import { createHash as createHash4 } from "node:crypto";
+import { createHash as createHash5 } from "node:crypto";
 function fingerprint(value) {
-  return createHash4("sha256").update(value).digest("hex").slice(0, 16);
+  return createHash5("sha256").update(value).digest("hex").slice(0, 16);
 }
 
 // dist/shared/flusher.mjs
@@ -6244,7 +6283,7 @@ function isMatchList(value) {
   return value === void 0 || Array.isArray(value) && value.every((item) => isRecord(item) && typeof item.valueId === "string" && isCount(item.confidence));
 }
 function isLastRun(value) {
-  return isRecord(value) && isCount(value.index) && typeof value.status === "string" && LAST_RUN_STATUSES.includes(value.status) && typeof value.finished_at === "string" && optionalString(value.reason) && optionalString(value.title) && optionalString(value.model) && optionalString(value.worker_session_id) && isMatchList(value.matches);
+  return isRecord(value) && isCount(value.index) && typeof value.status === "string" && LAST_RUN_STATUSES.includes(value.status) && typeof value.finished_at === "string" && optionalString(value.reason) && optionalString(value.title) && optionalString(value.model) && (value.model_fallback === void 0 || typeof value.model_fallback === "boolean") && optionalString(value.worker_session_id) && isMatchList(value.matches);
 }
 function parseAttributionState(raw) {
   if (!isRecord(raw) || raw.schema_version !== 1 || typeof raw.agent !== "string")
@@ -6444,7 +6483,7 @@ async function stepAttribution(opts) {
 var SCHEMA_VERSION = "1.2.1";
 
 // dist/shared/session-link.mjs
-import { randomBytes as randomBytes5 } from "node:crypto";
+import { randomBytes as randomBytes6 } from "node:crypto";
 import { mkdir as mkdir10, readFile as readFile12, readdir as readdir2, rename as rename12, stat as stat4, unlink as unlink5, writeFile as writeFile9 } from "node:fs/promises";
 import { basename as basename3, join as join22 } from "node:path";
 var PS_TIMEOUT_MS = 300;
@@ -6554,7 +6593,7 @@ async function registerAgent(snapshot, own, opts) {
   await mkdir10(opts.registryDir, { recursive: true, mode: 448 });
   const entry = { start: row.start, session_id: opts.sessionId, agent: opts.agent };
   const path = join22(opts.registryDir, `${own}.json`);
-  const tmp = `${path}.${process.pid}.${randomBytes5(4).toString("hex")}.tmp`;
+  const tmp = `${path}.${process.pid}.${randomBytes6(4).toString("hex")}.tmp`;
   await writeFile9(tmp, JSON.stringify(entry), { encoding: "utf8", mode: 384 });
   await rename12(tmp, path);
   await pruneDeadEntries(snapshot, opts.registryDir);
@@ -6749,9 +6788,12 @@ async function runCollect(adapter, opts) {
       agent: adapter.agent
     });
     const resolvedCredential = resolveCredentialSync();
-    const cachedGrant = resolvedCredential === null ? null : readWhoamiCacheAnyAge(resolvedCredential.fingerprint);
-    const expectedTenantId = cachedGrant?.result?.tenant_id ?? cachedGrant?.grant_binding?.tenant_assertion;
     const apiEndpoint = resolvedCredential?.apiEndpoint ?? API_ENDPOINT;
+    const cachedGrant = resolvedCredential === null ? null : readWhoamiCacheAnyAge(resolvedCredential.fingerprint, {
+      apiEndpoint,
+      ingestEndpoint: config.endpoint
+    });
+    const expectedTenantId = cachedGrant?.result?.tenant_id ?? cachedGrant?.grant_binding?.tenant_assertion;
     const boundFlags = readPluginFlags({ apiEndpoint, ingestEndpoint: config.endpoint, ...expectedTenantId ? { expectedTenantId } : {} });
     const skipReason = metadataGrantSkipReason({ apiEndpoint, ingestEndpoint: config.endpoint, ...expectedTenantId ? { expectedTenantId } : {} });
     const metadataSchedule = {
@@ -7600,7 +7642,7 @@ function mapHookToEvent(input, sequence, opts = {}) {
     if (input.tool_response !== void 0) {
       const toolResponseRaw = stableStringify(input.tool_response);
       attributes.tool_response_raw = toolResponseRaw;
-      if (input.hook_event_name === "PostToolUse" && pluginFlagOn(pluginFlags, PLUGIN_FLAG_GITHUB_PR_REF)) {
+      if (input.hook_event_name === "PostToolUse" && workItemAttributionOn(pluginFlags)) {
         Object.assign(attributes, workItemRefAttributes(extractWorkItemRefs(input.tool_name ?? "", bashCommand(input.tool_input), toolResponseRaw, input.tool_input)));
       }
     }
@@ -7819,10 +7861,10 @@ import { homedir as homedir6 } from "node:os";
 import { randomUUID as randomUUID8 } from "node:crypto";
 
 // dist/shared/session-metadata/identity.mjs
-import { createHash as createHash5 } from "node:crypto";
+import { createHash as createHash6 } from "node:crypto";
 var URL_NAMESPACE = Buffer.from("6ba7b8119dad11d180b400c04fd430c8", "hex");
 function uuidV5Url(tuple) {
-  const bytes = createHash5("sha1").update(URL_NAMESPACE).update(JSON.stringify(tuple)).digest().subarray(0, 16);
+  const bytes = createHash6("sha1").update(URL_NAMESPACE).update(JSON.stringify(tuple)).digest().subarray(0, 16);
   bytes[6] = bytes[6] & 15 | 80;
   bytes[8] = bytes[8] & 63 | 128;
   const hex = bytes.toString("hex");
@@ -8824,7 +8866,9 @@ async function refreshWhoamiIfStale(opts = {}) {
   });
   if (resolved === null)
     return "no-credential";
-  const cacheOpts = opts.dir !== void 0 ? { dir: opts.dir } : {};
+  const apiEndpoint = resolved.apiEndpoint ?? opts.apiEndpoint ?? API_ENDPOINT;
+  const ingestEndpoint = opts.ingestEndpoint ?? resolved.ingestEndpoint ?? INGEST_ENDPOINT;
+  const cacheOpts = { apiEndpoint, ingestEndpoint, ...opts.dir !== void 0 ? { dir: opts.dir } : {} };
   const cached = readWhoamiCache(resolved.fingerprint, opts.now ?? Date.now(), cacheOpts);
   if (cached !== null && !lacksGrantBinding(cached, resolved))
     return "fresh";
@@ -8934,7 +8978,7 @@ function real(p) {
 // dist/shared/heartbeat.mjs
 import { mkdir as mkdir19, rename as rename19, writeFile as writeFile18 } from "node:fs/promises";
 import { join as join37 } from "node:path";
-import { randomBytes as randomBytes7 } from "node:crypto";
+import { randomBytes as randomBytes8 } from "node:crypto";
 var WRITE_DENIED_CODES = /* @__PURE__ */ new Set(["EACCES", "EPERM", "EROFS"]);
 async function recordHeartbeat(dataDir2, now = /* @__PURE__ */ new Date()) {
   const beat = {
@@ -8945,7 +8989,7 @@ async function recordHeartbeat(dataDir2, now = /* @__PURE__ */ new Date()) {
   };
   const stateDir = join37(dataDir2, "state");
   const path = join37(stateDir, "last-fire.json");
-  const tmp = `${path}.${process.pid}.${randomBytes7(4).toString("hex")}.tmp`;
+  const tmp = `${path}.${process.pid}.${randomBytes8(4).toString("hex")}.tmp`;
   try {
     await mkdir19(stateDir, { recursive: true, mode: 448 });
     await writeFile18(tmp, JSON.stringify(beat), { encoding: "utf8", mode: 384 });
@@ -9413,6 +9457,8 @@ function pluginRootFrom(containerDir) {
 async function maybeRefreshWhoami(deps = {}) {
   return refreshWhoamiIfStale({
     ...deps.dir !== void 0 ? { dir: deps.dir } : {},
+    ...deps.apiEndpoint !== void 0 ? { apiEndpoint: deps.apiEndpoint } : {},
+    ...deps.ingestEndpoint !== void 0 ? { ingestEndpoint: deps.ingestEndpoint } : {},
     ...deps.pluginRoot !== void 0 ? { pluginRoot: deps.pluginRoot } : { pluginRoot: pluginRootFrom(dirname13(fileURLToPath7(import.meta.url))) },
     ...deps.now !== void 0 ? { now: deps.now } : {},
     ...deps.paths !== void 0 ? { paths: deps.paths } : {},
@@ -9462,7 +9508,11 @@ function whoamiNotice(deps = {}) {
   });
   if (resolved === null)
     return null;
-  const cacheOpts = deps.dir !== void 0 ? { dir: deps.dir } : {};
+  const cacheOpts = {
+    apiEndpoint: resolved.apiEndpoint ?? deps.apiEndpoint ?? API_ENDPOINT,
+    ingestEndpoint: deps.ingestEndpoint ?? resolved.ingestEndpoint ?? INGEST_ENDPOINT,
+    ...deps.dir !== void 0 ? { dir: deps.dir } : {}
+  };
   const entry = readWhoamiCache(resolved.fingerprint, deps.now ?? Date.now(), cacheOpts);
   if (entry === null)
     return null;

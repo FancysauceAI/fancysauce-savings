@@ -2222,12 +2222,15 @@ function resolveCredentialSync(opts = {}) {
     return withFingerprint("env_api_key", apiKey, null);
   return null;
 }
+function fingerprintOf(token) {
+  return sha256Hex(token).slice(0, FINGERPRINT_HEX_CHARS);
+}
 function withFingerprint(tier, token, apiEndpoint, ingestEndpoint) {
   return {
     tier,
     token,
     apiEndpoint,
-    fingerprint: sha256Hex(token).slice(0, FINGERPRINT_HEX_CHARS),
+    fingerprint: fingerprintOf(token),
     ...ingestEndpoint !== void 0 ? { ingestEndpoint } : {}
   };
 }
@@ -2267,6 +2270,7 @@ function readOneSync(path) {
 
 // dist/shared/whoami/cache.mjs
 import { closeSync, mkdirSync, openSync, readFileSync as readFileSync2, readdirSync, renameSync, rmSync, statSync as statSync2, writeSync } from "node:fs";
+import { createHash as createHash2, randomBytes } from "node:crypto";
 var WHOAMI_SCHEMA_VERSION = 1;
 var SUCCESS_TTL_MS = 6 * 60 * 60 * 1e3;
 var ERROR_TTL_MS = 15 * 60 * 1e3;
@@ -2275,7 +2279,12 @@ var CACHE_SUFFIX = ".json";
 var TMP_ORPHAN_MAX_AGE_MS = 60 * 60 * 1e3;
 function whoamiCachePath(fingerprint2, opts = {}) {
   const p = pathFlavor();
-  return p.join(credentialDir(opts), `${CACHE_PREFIX}${fingerprint2}${CACHE_SUFFIX}`);
+  const endpoint = opts.apiEndpoint ?? API_ENDPOINT;
+  const endpointFingerprint = createHash2("sha256").update(endpoint, "utf8").digest("hex").slice(0, 12);
+  return p.join(credentialDir(opts), `${CACHE_PREFIX}${fingerprint2}-${endpointFingerprint}${CACHE_SUFFIX}`);
+}
+function legacyWhoamiCachePath(fingerprint2, opts = {}) {
+  return pathFlavor().join(credentialDir(opts), `${CACHE_PREFIX}${fingerprint2}${CACHE_SUFFIX}`);
 }
 function credentialDir(opts = {}) {
   if (opts.dir !== void 0)
@@ -2290,8 +2299,23 @@ function readWhoamiCacheAnyAge(fingerprint2, opts = {}) {
     if (validated === null)
       return null;
     entry = validated;
-  } catch {
-    return null;
+  } catch (error) {
+    if (error.code !== "ENOENT")
+      return null;
+    try {
+      const parsed = JSON.parse(readFileSync2(legacyWhoamiCachePath(fingerprint2, opts), "utf8"));
+      if (typeof parsed === "object" && parsed !== null && Object.prototype.hasOwnProperty.call(parsed, "error"))
+        return null;
+      const legacy = validateEntry(parsed);
+      if (legacy === null || legacy.result === void 0 || legacy.error !== void 0)
+        return null;
+      const binding = legacy.grant_binding;
+      if (binding === void 0 || binding.api_endpoint !== (opts.apiEndpoint ?? API_ENDPOINT) || binding.ingest_endpoint !== (opts.ingestEndpoint ?? INGEST_ENDPOINT))
+        return null;
+      entry = legacy;
+    } catch {
+      return null;
+    }
   }
   if (entry.credential_fingerprint !== fingerprint2)
     return null;
@@ -2429,7 +2453,11 @@ function credentialContext(env) {
   const paths = whoamiCredentialPaths(env);
   const dir = pathFlavor().dirname(paths.user);
   const credential = resolveCredentialSync({ paths, env });
-  const entry = credential === null ? null : readWhoamiCacheAnyAge(credential.fingerprint, { dir });
+  const entry = credential === null ? null : readWhoamiCacheAnyAge(credential.fingerprint, {
+    dir,
+    apiEndpoint: credential.apiEndpoint ?? API_ENDPOINT,
+    ingestEndpoint: credential.ingestEndpoint ?? INGEST_ENDPOINT
+  });
   return {
     paths,
     dir,
@@ -2610,7 +2638,7 @@ function isMatchList(value) {
   return value === void 0 || Array.isArray(value) && value.every((item) => isRecord(item) && typeof item.valueId === "string" && isCount(item.confidence));
 }
 function isLastRun(value) {
-  return isRecord(value) && isCount(value.index) && typeof value.status === "string" && LAST_RUN_STATUSES.includes(value.status) && typeof value.finished_at === "string" && optionalString(value.reason) && optionalString(value.title) && optionalString(value.model) && optionalString(value.worker_session_id) && isMatchList(value.matches);
+  return isRecord(value) && isCount(value.index) && typeof value.status === "string" && LAST_RUN_STATUSES.includes(value.status) && typeof value.finished_at === "string" && optionalString(value.reason) && optionalString(value.title) && optionalString(value.model) && (value.model_fallback === void 0 || typeof value.model_fallback === "boolean") && optionalString(value.worker_session_id) && isMatchList(value.matches);
 }
 function parseAttributionState(raw) {
   if (!isRecord(raw) || raw.schema_version !== 1 || typeof raw.agent !== "string")
@@ -2842,7 +2870,7 @@ async function loadVocabulary(opts) {
 }
 
 // dist/shared/session-metadata/identity.mjs
-import { createHash as createHash2 } from "node:crypto";
+import { createHash as createHash3 } from "node:crypto";
 
 // dist/shared/schema-version.mjs
 var SCHEMA_VERSION = "1.2.1";
@@ -2868,7 +2896,7 @@ function pluginVersion() {
 // dist/shared/session-metadata/identity.mjs
 var URL_NAMESPACE = Buffer.from("6ba7b8119dad11d180b400c04fd430c8", "hex");
 function uuidV5Url(tuple) {
-  const bytes = createHash2("sha1").update(URL_NAMESPACE).update(JSON.stringify(tuple)).digest().subarray(0, 16);
+  const bytes = createHash3("sha1").update(URL_NAMESPACE).update(JSON.stringify(tuple)).digest().subarray(0, 16);
   bytes[6] = bytes[6] & 15 | 80;
   bytes[8] = bytes[8] & 63 | 128;
   const hex = bytes.toString("hex");
@@ -3277,7 +3305,19 @@ function parseClaudeEnvelope(stdout) {
     out.answerText = parsed.result;
   if (typeof parsed.session_id === "string")
     out.workerSessionId = parsed.session_id;
-  if (typeof parsed.model === "string")
+  if (isRecord(parsed.modelUsage) && Object.keys(parsed.modelUsage).length > 0) {
+    let selected;
+    let mostOutput = -Infinity;
+    for (const [key, entry2] of Object.entries(parsed.modelUsage)) {
+      const output = isRecord(entry2) ? numberOrUndefined(entry2.outputTokens) ?? 0 : 0;
+      if (selected === void 0 || output > mostOutput) {
+        selected = key;
+        mostOutput = output;
+      }
+    }
+    const entry = parsed.modelUsage[selected];
+    out.model = isRecord(entry) && typeof entry.canonicalModel === "string" ? entry.canonicalModel : selected;
+  } else if (typeof parsed.model === "string")
     out.model = parsed.model;
   if (typeof parsed.is_error === "boolean")
     out.isError = parsed.is_error;
@@ -3506,7 +3546,7 @@ function buildAttributionEvents(input) {
     const eventUuid = uuidV5Url(["fancysauce/attribution-worker/v1", input.sessionId, input.fireIndex]);
     const attributes = {
       request_id: eventUuid,
-      model: input.worker.model ?? workerForAgent(input.agent).defaultModel,
+      ...input.agent === "claude-code" && input.worker.model === void 0 ? {} : { model: input.worker.model ?? workerForAgent(input.agent).defaultModel },
       "fancysauce.worker_of": input.sessionId,
       "fancysauce.worker_role": "attribution_agent",
       "fancysauce.worker_fire_index": input.fireIndex,
@@ -3963,11 +4003,11 @@ function filterEvent(raw, policy) {
 }
 
 // dist/shared/identity-resolver.mjs
-import { createHash as createHash3, randomUUID } from "node:crypto";
+import { createHash as createHash4, randomUUID } from "node:crypto";
 import { execFile as execFile2 } from "node:child_process";
 import { open as open3, readFile as readFile4, rename as rename4, unlink as unlink2 } from "node:fs/promises";
 import { join as join11 } from "node:path";
-import { randomBytes as randomBytes2 } from "node:crypto";
+import { randomBytes as randomBytes3 } from "node:crypto";
 
 // dist/shared/identity-sources.mjs
 var TIMEOUT_MS = 200;
@@ -4038,10 +4078,10 @@ async function readWindowsUpn(deps = {}) {
 }
 
 // dist/shared/secure-envelope.mjs
-import { randomBytes, createCipheriv, publicEncrypt, constants, createPublicKey } from "node:crypto";
+import { randomBytes as randomBytes2, createCipheriv, publicEncrypt, constants, createPublicKey } from "node:crypto";
 function seal(plaintext, key) {
-  const aesKey = randomBytes(32);
-  const iv = randomBytes(12);
+  const aesKey = randomBytes2(32);
+  const iv = randomBytes2(12);
   const cipher = createCipheriv("aes-256-gcm", aesKey, iv);
   const body = Buffer.concat([cipher.update(plaintext), cipher.final()]);
   const tag = cipher.getAuthTag();
@@ -4306,7 +4346,7 @@ var IdentityResolver = class {
     const url = await this.git.gitRemoteUrl(cwd);
     if (!url)
       return {};
-    return { repo_url_hash: createHash3("sha256").update(url, "utf8").digest("hex") };
+    return { repo_url_hash: createHash4("sha256").update(url, "utf8").digest("hex") };
   }
   async loadOrCreateInstallId() {
     return withDirLock(this.dir, async () => {
@@ -4339,7 +4379,7 @@ async function readInstallId(path) {
   return typeof id === "string" && id.length > 0 ? id : null;
 }
 async function writeInstallFile(path, body) {
-  const tmp = `${path}.${process.pid}.${randomBytes2(4).toString("hex")}.tmp`;
+  const tmp = `${path}.${process.pid}.${randomBytes3(4).toString("hex")}.tmp`;
   let renamed = false;
   try {
     const fh = await open3(tmp, "wx", 384);
@@ -4772,7 +4812,11 @@ function readPluginFlags(opts = {}) {
   });
   if (resolved === null)
     return NO_PLUGIN_FLAGS;
-  const cacheOpts = opts.dir !== void 0 ? { dir: opts.dir } : {};
+  const cacheOpts = {
+    apiEndpoint: opts.apiEndpoint ?? resolved.apiEndpoint ?? API_ENDPOINT,
+    ingestEndpoint: opts.ingestEndpoint ?? resolved.ingestEndpoint ?? INGEST_ENDPOINT,
+    ...opts.dir !== void 0 ? { dir: opts.dir } : {}
+  };
   const entry = readWhoamiCacheAnyAge(resolved.fingerprint, cacheOpts);
   if (!matchesGrantBinding(entry, opts))
     return NO_PLUGIN_FLAGS;
@@ -5154,9 +5198,9 @@ function encodeAnyValue(key, v) {
 }
 
 // dist/shared/config-fingerprint.mjs
-import { createHash as createHash4 } from "node:crypto";
+import { createHash as createHash5 } from "node:crypto";
 function fingerprint(value) {
-  return createHash4("sha256").update(value).digest("hex").slice(0, 16);
+  return createHash5("sha256").update(value).digest("hex").slice(0, 16);
 }
 
 // dist/shared/flusher.mjs
@@ -5713,7 +5757,7 @@ async function runCycle(ctx) {
       status: "ok",
       title: answer.title,
       matches: hasVocabulary ? answer.matches : void 0,
-      model: envelope.model ?? ctx.worker.defaultModel,
+      ...ctx.agent === "claude-code" && envelope.model === void 0 ? {} : { model: envelope.model ?? ctx.worker.defaultModel },
       worker_session_id: envelope.workerSessionId,
       finished_at: new Date(ctx.now()).toISOString(),
       binary_path: ctx.binaryPath

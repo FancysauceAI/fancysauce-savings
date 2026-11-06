@@ -1821,6 +1821,7 @@ function credentialPaths() {
 }
 
 // dist/shared/config.mjs
+var INGEST_ENDPOINT = "https://ingest.preview.fancysauce.ai";
 var API_ENDPOINT = "https://api.preview.fancysauce.ai";
 var DEFAULT_LOGIN_STATE_DIR = join(homedir2(), ".config", "fancysauce");
 function parseCredentialPathsEnv(env = process.env) {
@@ -2177,12 +2178,15 @@ function resolveCredentialSync(opts = {}) {
     return withFingerprint("env_api_key", apiKey, null);
   return null;
 }
+function fingerprintOf(token) {
+  return sha256Hex(token).slice(0, FINGERPRINT_HEX_CHARS);
+}
 function withFingerprint(tier, token, apiEndpoint, ingestEndpoint) {
   return {
     tier,
     token,
     apiEndpoint,
-    fingerprint: sha256Hex(token).slice(0, FINGERPRINT_HEX_CHARS),
+    fingerprint: fingerprintOf(token),
     ...ingestEndpoint !== void 0 ? { ingestEndpoint } : {}
   };
 }
@@ -2222,6 +2226,7 @@ function readOneSync(path) {
 
 // dist/shared/whoami/cache.mjs
 import { closeSync as closeSync2, mkdirSync, openSync as openSync2, readFileSync as readFileSync3, readdirSync, renameSync, rmSync as rmSync2, statSync as statSync3, writeSync as writeSync2 } from "node:fs";
+import { createHash as createHash2, randomBytes } from "node:crypto";
 var WHOAMI_SCHEMA_VERSION = 1;
 var SUCCESS_TTL_MS = 6 * 60 * 60 * 1e3;
 var ERROR_TTL_MS = 15 * 60 * 1e3;
@@ -2230,7 +2235,12 @@ var CACHE_SUFFIX = ".json";
 var TMP_ORPHAN_MAX_AGE_MS = 60 * 60 * 1e3;
 function whoamiCachePath(fingerprint, opts = {}) {
   const p = pathFlavor();
-  return p.join(credentialDir(opts), `${CACHE_PREFIX}${fingerprint}${CACHE_SUFFIX}`);
+  const endpoint = opts.apiEndpoint ?? API_ENDPOINT;
+  const endpointFingerprint = createHash2("sha256").update(endpoint, "utf8").digest("hex").slice(0, 12);
+  return p.join(credentialDir(opts), `${CACHE_PREFIX}${fingerprint}-${endpointFingerprint}${CACHE_SUFFIX}`);
+}
+function legacyWhoamiCachePath(fingerprint, opts = {}) {
+  return pathFlavor().join(credentialDir(opts), `${CACHE_PREFIX}${fingerprint}${CACHE_SUFFIX}`);
 }
 function credentialDir(opts = {}) {
   if (opts.dir !== void 0)
@@ -2245,8 +2255,23 @@ function readWhoamiCacheAnyAge(fingerprint, opts = {}) {
     if (validated === null)
       return null;
     entry = validated;
-  } catch {
-    return null;
+  } catch (error) {
+    if (error.code !== "ENOENT")
+      return null;
+    try {
+      const parsed = JSON.parse(readFileSync3(legacyWhoamiCachePath(fingerprint, opts), "utf8"));
+      if (typeof parsed === "object" && parsed !== null && Object.prototype.hasOwnProperty.call(parsed, "error"))
+        return null;
+      const legacy = validateEntry(parsed);
+      if (legacy === null || legacy.result === void 0 || legacy.error !== void 0)
+        return null;
+      const binding = legacy.grant_binding;
+      if (binding === void 0 || binding.api_endpoint !== (opts.apiEndpoint ?? API_ENDPOINT) || binding.ingest_endpoint !== (opts.ingestEndpoint ?? INGEST_ENDPOINT))
+        return null;
+      entry = legacy;
+    } catch {
+      return null;
+    }
   }
   if (entry.credential_fingerprint !== fingerprint)
     return null;
@@ -2392,7 +2417,11 @@ function metadataGrantSkipReason(opts = {}) {
     return "no_credential";
   if (opts.credentialFingerprint !== void 0 && resolved.fingerprint !== opts.credentialFingerprint)
     return "credential_changed";
-  const cacheOpts = opts.dir !== void 0 ? { dir: opts.dir } : {};
+  const cacheOpts = {
+    apiEndpoint: opts.apiEndpoint ?? resolved.apiEndpoint ?? API_ENDPOINT,
+    ingestEndpoint: opts.ingestEndpoint ?? resolved.ingestEndpoint ?? INGEST_ENDPOINT,
+    ...opts.dir !== void 0 ? { dir: opts.dir } : {}
+  };
   const entry = readWhoamiCacheAnyAge(resolved.fingerprint, cacheOpts);
   const tenant = opts.expectedTenantId ?? entry?.result?.tenant_id ?? entry?.grant_binding?.tenant_assertion;
   if (!tenant)
@@ -2656,7 +2685,7 @@ function validateMatchList(value) {
 }
 
 // dist/shared/session-metadata/schedule.mjs
-import { createHash as createHash2, randomUUID as randomUUID2 } from "node:crypto";
+import { createHash as createHash3, randomUUID as randomUUID2 } from "node:crypto";
 import { mkdir as mkdir6, readFile as readFile5, rename as rename4, stat as stat2, unlink as unlink3, writeFile as writeFile4 } from "node:fs/promises";
 import { dirname as dirname3, join as join8 } from "node:path";
 
@@ -2664,7 +2693,7 @@ import { dirname as dirname3, join as join8 } from "node:path";
 var import_proper_lockfile4 = __toESM(require_proper_lockfile(), 1);
 import { mkdir as mkdir5, open as open3, readFile as readFile4, readdir as readdir2, rename as rename3, unlink as unlink2 } from "node:fs/promises";
 import { basename, dirname as dirname2, join as join7 } from "node:path";
-import { randomBytes } from "node:crypto";
+import { randomBytes as randomBytes2 } from "node:crypto";
 var SESSION_METADATA_SCHEMA_VERSION = 1;
 var PENDING_GRANT_TRANSITION_FILE = "grant-transition.pending.ndjson";
 var PENDING_SESSION_REGISTRATION_FILE = "session-registration.pending.ndjson";
@@ -2708,7 +2737,7 @@ async function foldPendingGrantTransitions(dir) {
     return;
   const claimed = paths.filter((path) => basename(path) !== PENDING_GRANT_TRANSITION_FILE);
   const pendingPath = join7(dir, PENDING_GRANT_TRANSITION_FILE);
-  const processingPath = `${pendingPath}.processing.${unixNanosecondClaim()}.${process.pid}.${randomBytes(4).toString("hex")}`;
+  const processingPath = `${pendingPath}.processing.${unixNanosecondClaim()}.${process.pid}.${randomBytes2(4).toString("hex")}`;
   try {
     await rename3(pendingPath, processingPath);
     const firstMarker = claimed.findIndex((path) => basename(path).startsWith(`${PENDING_GRANT_TRANSITION_FILE}.marker.`));
@@ -2748,7 +2777,7 @@ async function foldPendingSessionRegistrations(dir) {
     return;
   const claimed = paths.filter((path) => basename(path) !== PENDING_SESSION_REGISTRATION_FILE);
   const pendingPath = join7(dir, PENDING_SESSION_REGISTRATION_FILE);
-  const processingPath = `${pendingPath}.processing.${unixNanosecondClaim()}.${process.pid}.${randomBytes(4).toString("hex")}`;
+  const processingPath = `${pendingPath}.processing.${unixNanosecondClaim()}.${process.pid}.${randomBytes2(4).toString("hex")}`;
   try {
     await rename3(pendingPath, processingPath);
     claimed.push(processingPath);
@@ -3084,7 +3113,7 @@ var SessionMetadataStateStore = class {
     assertState(state);
     await withDirLock(this.dir, async () => {
       await mkdir5(this.dir, { recursive: true, mode: 448 });
-      const tmp = `${this.path}.${process.pid}.${randomBytes(4).toString("hex")}.tmp`;
+      const tmp = `${this.path}.${process.pid}.${randomBytes2(4).toString("hex")}.tmp`;
       let renamed = false;
       try {
         const fh = await open3(tmp, "wx", 384);
@@ -3298,7 +3327,7 @@ async function readMetadataWorkerRequest(leasePath) {
   }
 }
 function metadataBindingKey(input) {
-  return createHash2("sha256").update(JSON.stringify([
+  return createHash3("sha256").update(JSON.stringify([
     input.installId,
     input.credentialFingerprint ?? "unknown-credential",
     input.expectedTenantId ?? "unknown-tenant",
@@ -3317,7 +3346,7 @@ import { isDeepStrictEqual } from "node:util";
 // dist/shared/session-metadata/outbox.mjs
 import { mkdir as mkdir7, open as open4, readFile as readFile6, readdir as readdir3, rename as rename5, rmdir, unlink as unlink4 } from "node:fs/promises";
 import { dirname as dirname4, join as join9 } from "node:path";
-import { randomBytes as randomBytes2 } from "node:crypto";
+import { randomBytes as randomBytes3 } from "node:crypto";
 var METADATA_OUTBOX_MAX_BYTES = 100 * 1024 * 1024;
 var METADATA_REJECTED_MAX_BYTES = 10 * 1024 * 1024;
 var PENDING_FILE = "pending.ndjson";
@@ -3557,7 +3586,7 @@ async function repairTrailingLine(path) {
     }
   } catch {
   }
-  const quarantine = `${path}.corrupt.${process.pid}.${randomBytes2(4).toString("hex")}`;
+  const quarantine = `${path}.corrupt.${process.pid}.${randomBytes3(4).toString("hex")}`;
   const quarantineFh = await open4(quarantine, "wx", 384);
   try {
     await quarantineFh.writeFile(trailing);
@@ -3710,7 +3739,7 @@ async function scanCapacityDirectory(root, snapshot) {
 }
 async function replacePayloadFile(path, payloads) {
   await mkdir7(dirname4(path), { recursive: true, mode: 448 });
-  const tmp = `${path}.${process.pid}.${randomBytes2(4).toString("hex")}.tmp`;
+  const tmp = `${path}.${process.pid}.${randomBytes3(4).toString("hex")}.tmp`;
   let renamed = false;
   try {
     const fh = await open4(tmp, "wx", 384);
@@ -4168,11 +4197,11 @@ function encodeAnyValue(key, v) {
 }
 
 // dist/shared/session-metadata/claude-reader.mjs
-import { createHash as createHash4 } from "node:crypto";
+import { createHash as createHash5 } from "node:crypto";
 import { open as open5, stat as stat3 } from "node:fs/promises";
 
 // dist/shared/session-metadata/identity.mjs
-import { createHash as createHash3 } from "node:crypto";
+import { createHash as createHash4 } from "node:crypto";
 
 // dist/shared/schema-version.mjs
 var SCHEMA_VERSION = "1.2.1";
@@ -4208,7 +4237,7 @@ function resourceAttributes(state) {
   };
 }
 function uuidV5Url(tuple) {
-  const bytes = createHash3("sha1").update(URL_NAMESPACE).update(JSON.stringify(tuple)).digest().subarray(0, 16);
+  const bytes = createHash4("sha1").update(URL_NAMESPACE).update(JSON.stringify(tuple)).digest().subarray(0, 16);
   bytes[6] = bytes[6] & 15 | 80;
   bytes[8] = bytes[8] & 63 | 128;
   const hex = bytes.toString("hex");
@@ -4493,7 +4522,7 @@ async function readCheckpoint(fh, offset, size, captureStartOffset = 0) {
   }
   return {
     offset,
-    sha256: createHash4("sha256").update(bytes).digest("hex")
+    sha256: createHash5("sha256").update(bytes).digest("hex")
   };
 }
 async function readCheckpointFromPath(path, offset, size, captureStartOffset = 0) {
@@ -4558,7 +4587,7 @@ function buildPayload(state, recap, timestampNanoseconds, observedTime, resource
   if (contentBytes > MAX_RECAP_BYTES) {
     throw new Error(`Claude recap exceeds ${MAX_RECAP_BYTES} decoded bytes`);
   }
-  const contentHash = createHash4("sha256").update(recap.content, "utf8").digest("hex");
+  const contentHash = createHash5("sha256").update(recap.content, "utf8").digest("hex");
   const chunks = splitContent({
     state,
     recap,
@@ -5043,7 +5072,7 @@ async function runSessionMetadataWorker(opts) {
   }
   const fingerprint = resolved.fingerprint;
   const apiEndpoint = resolved.apiEndpoint ?? API_ENDPOINT;
-  const cache = readWhoamiCacheAnyAge(fingerprint);
+  const cache = readWhoamiCacheAnyAge(fingerprint, { apiEndpoint, ingestEndpoint: opts.endpoint });
   const tenantId = opts.expectedTenantId ?? cache?.result?.tenant_id ?? cache?.grant_binding?.tenant_assertion;
   if (!tenantId) {
     await recordMetadataSkip({ dataDir: opts.dataDir, agent: opts.agent, sessionId: opts.sessionId, reason: "no_tenant" }).catch(() => {

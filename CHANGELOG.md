@@ -2,6 +2,15 @@
 
 All public releases of `fancysauce-savings`. Most recent first.
 
+## v0.24.1 — 2026-11-06
+
+### Fixes
+
+- **The whoami cache is kept per endpoint.** The whoami cache file is now keyed by the credential fingerprint and the API endpoint, in both runtimes. So a 401 from one endpoint no longer overwrites or hides the cached flags of another endpoint that uses the same credential. (FAN-2338, #257)
+- **The attribution worker records the model that answered.** The Claude attribution worker reads the model from the `modelUsage` block of the Claude CLI output, in both runtimes. When the output gives no model, the worker records no model and sends no `model` attribute on its `api.request` event. Before this release, it sent the pinned model `claude-haiku-5-5`, which was not always the model that answered. The Codex worker still sends its pinned model. (FAN-2337, #283; FAN-2574, #287)
+- **The MCP proxy decides "logged out" from whoami.** The MCP proxy reads the cached `/v1/whoami` answer for its credential to decide that the developer is logged out. It uses the key-prefix check only when the cache has no answer. So a tenant-scoped key with any prefix gets the login hint, and the proxy sends no request to `/mcp`. (FAN-2349, #284)
+- **Ref capture reads the `work-item-attribution` flag.** Ref capture on `tool_call.complete` reads the tenant's `work-item-attribution` flag. When that flag is absent, it reads the old `fancytab-github-pr-ref` flag. This applies to Claude Code and Codex, in both runtimes. (FAN-2587, #285)
+
 ## v0.24.0 — 2026-11-03
 
 ### Features

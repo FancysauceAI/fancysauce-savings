@@ -397,13 +397,13 @@ script deletes that file outright — the name is exclusively ours.
 `/etc/fancysauce/claude-code.pin` is one line, root-owned, mode `0644`:
 
 ```
-v0.22.0 acdad73fb2dca2b8a2bede823f536210183dc78c
+v0.24.0 2c472279ff8884d5d043e0c3f0e3cd1f40f7a368
 ```
 
 Resolve the sha for a tag with:
 
 ```sh
-git ls-remote https://github.com/FancysauceAI/fancysauce-savings.git 'refs/tags/v0.22.0^{}'
+git ls-remote https://github.com/FancysauceAI/fancysauce-savings.git 'refs/tags/v0.24.0^{}'
 ```
 
 To float on the newest release instead, the pin is the single word `latest`.
