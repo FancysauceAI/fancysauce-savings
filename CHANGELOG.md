@@ -2,6 +2,13 @@
 
 All public releases of `fancysauce-savings`. Most recent first.
 
+## v0.24.2 — 2026-11-10
+
+### Fixes
+
+- **The Go collector starts about 3 ms faster.** The Go collector now uses `modernc.org/sqlite` v1.61.1 and `modernc.org/libc` v1.79.0. The old libc parsed a built-in services list at each start, which cost about 3.9 ms on every hook event. The `go.mod` language line rises from 1.23 to 1.26, so the binary uses the Go 1.26 runtime defaults. For example, the TLS client offers post-quantum key exchange and refuses SHA-1 signatures in TLS 1.2. (FAN-2631, #289)
+- **A skipped attribution flush is logged.** When the Go attribution runner does not send its flush, it now writes one line to `collect-error.log` with the reason. The reasons are a failed identity lookup, a flush error, no credential, and a budget that ran out before the POST. A flush that sends writes no line. (FAN-2255, #302)
+
 ## v0.24.1 — 2026-11-06
 
 ### Fixes

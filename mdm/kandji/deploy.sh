@@ -44,11 +44,11 @@ INGEST_TOKEN="fs_ingest_REPLACE_ME" # from your fancysauce dashboard
 IDENTITY_TYPE="full"
 # A *_TAG of "latest" with an empty *_SHA floats: each session runs the newest
 # release instead of the pinned one.
-CODEX_TAG="v0.24.0"                 # pinned plugin release for Codex telemetry
-CODEX_SHA="2c472279ff8884d5d043e0c3f0e3cd1f40f7a368"   # commit sha of CODEX_TAG
+CODEX_TAG="v0.24.1"                 # pinned plugin release for Codex telemetry
+CODEX_SHA="7d442efe2f1d790430e6815b70785edb8e355774"   # commit sha of CODEX_TAG
 CC_MODE="managed-hooks"             # plugin | managed-hooks
-CC_TAG="v0.24.0"                    # pinned plugin release for Claude Code telemetry
-CC_SHA="2c472279ff8884d5d043e0c3f0e3cd1f40f7a368"   # commit sha of CC_TAG
+CC_TAG="v0.24.1"                    # pinned plugin release for Claude Code telemetry
+CC_SHA="7d442efe2f1d790430e6815b70785edb8e355774"   # commit sha of CC_TAG
 # SessionEnd hooks share a 1.5s budget, which the collector's own 1800ms
 # self-budget already overruns. Claude Code raises the shared budget to the
 # longest per-hook timeout, so this one field is what keeps the end-of-session
