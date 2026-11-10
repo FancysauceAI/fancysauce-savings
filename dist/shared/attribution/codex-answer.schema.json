@@ -1,0 +1,30 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["title", "matches"],
+  "properties": {
+    "title": {
+      "type": "string",
+      "maxLength": 120
+    },
+    "matches": {
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["valueId", "confidence"],
+        "properties": {
+          "valueId": {
+            "type": "string"
+          },
+          "confidence": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100
+          }
+        }
+      }
+    }
+  }
+}
