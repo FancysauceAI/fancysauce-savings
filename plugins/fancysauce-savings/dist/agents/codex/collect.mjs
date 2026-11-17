@@ -7394,13 +7394,38 @@ var DRIVE_FILE_MIME_TYPES = /* @__PURE__ */ new Set([
 ]);
 var DRIVE_ID = /^[A-Za-z0-9_-]{33,44}$/;
 var DRIVE_MUTATION_VERBS = ["create", "update", "copy", "modify", "write", "batch_update"];
-function driveToolVerb(toolName) {
+var DRIVE_FILE_ID_FIELDS = ["document_id", "spreadsheet_id", "presentation_id", "fileId", "file_id"];
+var GOOGLE_EDITOR_TOOLS = /* @__PURE__ */ new Set([
+  "update_values",
+  "update_formulas",
+  "update_spreadsheet",
+  "append_values",
+  "batch_clear_values",
+  "insert_dimension",
+  "update_doc",
+  "update_presentation"
+]);
+var GOOGLE_EDITOR_ID_FIELDS = ["documentId", "spreadsheetId", "presentationId", ...DRIVE_FILE_ID_FIELDS];
+function mcpServerTool(toolName) {
   if (!toolName.startsWith("mcp__"))
     return null;
   const separator = toolName.indexOf("__", 5);
   if (separator < 0)
     return null;
-  const tool = toolName.slice(separator + 2);
+  return { server: toolName.slice(5, separator), tool: toolName.slice(separator + 2) };
+}
+function mcpToolPart(toolName) {
+  if (!toolName.startsWith("mcp__"))
+    return "";
+  const separator = toolName.lastIndexOf("__");
+  return separator > 5 ? toolName.slice(separator + 2) : "";
+}
+function driveToolVerb(toolName) {
+  const tool = mcpServerTool(toolName)?.tool;
+  if (tool === void 0 || tool === "copy_sheet_to_another_spreadsheet")
+    return null;
+  if (GOOGLE_EDITOR_TOOLS.has(tool))
+    return "update";
   return DRIVE_MUTATION_VERBS.find((verb) => tool === verb || tool.startsWith(`${verb}_`)) ?? null;
 }
 function plainObject(value) {
@@ -7416,6 +7441,90 @@ function driveResponseObject(raw) {
     return null;
   }
   return plainObject(response);
+}
+var ARTIFACT_UUID = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
+var CLAUDE_DOCS_SERVERS = /* @__PURE__ */ new Set(["Claude_Docs", "claude_ai_Claude_Docs"]);
+var CLAUDE_DOCS_WRITE_TOOLS = /* @__PURE__ */ new Set(["update", "batch", "create", "delete"]);
+function leadingJsonObject(text) {
+  if (!text.startsWith("{"))
+    return null;
+  let depth = 0;
+  let inString = false;
+  for (let i = 0; i < text.length; i += 1) {
+    const c = text[i];
+    if (inString) {
+      if (c === "\\")
+        i += 1;
+      else if (c === '"')
+        inString = false;
+      continue;
+    }
+    if (c === '"')
+      inString = true;
+    else if (c === "{" || c === "[")
+      depth += 1;
+    else if (c === "}" || c === "]") {
+      depth -= 1;
+      if (depth === 0) {
+        try {
+          return plainObject(JSON.parse(text.slice(0, i + 1)));
+        } catch {
+          return null;
+        }
+      }
+    }
+  }
+  return null;
+}
+function mcpTextObject(raw) {
+  let blocks;
+  try {
+    blocks = JSON.parse(raw);
+  } catch {
+    return null;
+  }
+  if (!Array.isArray(blocks) || blocks.length === 0)
+    return null;
+  const block = plainObject(blocks[0]);
+  if (block?.type !== "text" || typeof block.text !== "string")
+    return null;
+  return leadingJsonObject(block.text);
+}
+function claudeDocsRef(tool, toolInput, toolResponseRaw) {
+  if (!CLAUDE_DOCS_WRITE_TOOLS.has(tool))
+    return [];
+  const input = plainObject(toolInput);
+  const container = plainObject(input?.container);
+  const ref = plainObject(input?.ref);
+  const inputIds = new Set([container?.id, ref?.object === "project" ? ref.id : void 0].filter((value) => typeof value === "string"));
+  let candidate = [...inputIds][0];
+  const birth = inputIds.size === 0 && (tool === "batch" || tool === "create") && plainObject(container?.create) !== null;
+  if (inputIds.size > 1 || !birth && !(typeof candidate === "string" && ARTIFACT_UUID.test(candidate)))
+    return [];
+  const response = mcpTextObject(toolResponseRaw);
+  if (response?.verdict !== "allow")
+    return [];
+  if (birth)
+    candidate = plainObject(response.frame)?.slug;
+  if (typeof candidate !== "string" || !ARTIFACT_UUID.test(candidate))
+    return [];
+  return [{ system: "claude", kind: "artifact", id: candidate.toLowerCase(), scope: "claude.ai", source: "tool_output" }];
+}
+var SLACK_WRITE_TOOLS = /* @__PURE__ */ new Set([
+  "slack_send_message",
+  "slack_send_message_draft",
+  "slack_schedule_message",
+  "slack_create_conversation"
+]);
+var SLACK_CHANNEL_ID = /^C[A-Z0-9]{8,}$/;
+function slackChannelRef(tool, toolInput, toolResponseRaw) {
+  const response = mcpTextObject(toolResponseRaw);
+  if (!response || response.error !== void 0)
+    return [];
+  const candidate = tool === "slack_create_conversation" ? response.channel_id : plainObject(toolInput)?.channel_id;
+  if (typeof candidate !== "string" || !SLACK_CHANNEL_ID.test(candidate))
+    return [];
+  return [{ system: "slack", kind: "channel", id: candidate, scope: "slack.com", source: "tool_output" }];
 }
 function googleDriveRef(toolName, toolInput, toolResponseRaw) {
   const verb = driveToolVerb(toolName);
@@ -7434,11 +7543,16 @@ function googleDriveRef(toolName, toolInput, toolResponseRaw) {
     const input = plainObject(toolInput);
     if (!input)
       return [];
-    const inputIds = new Set(["document_id", "spreadsheet_id", "presentation_id", "fileId", "file_id"].map((field) => input[field]).filter((value) => typeof value === "string"));
-    if (inputIds.size !== 1)
+    const editor = GOOGLE_EDITOR_TOOLS.has(mcpServerTool(toolName)?.tool ?? "");
+    const fields = editor ? GOOGLE_EDITOR_ID_FIELDS : DRIVE_FILE_ID_FIELDS;
+    const source = !editor || fields.some((field) => input[field] !== void 0) ? input : response;
+    if (!source)
       return [];
-    [candidate] = inputIds;
-    if ((typeof input.fileId === "string" || typeof input.file_id === "string") && (!response || typeof mimeType !== "string" || !DRIVE_FILE_MIME_TYPES.has(mimeType) || response.id !== candidate))
+    const ids = new Set(fields.map((field) => source[field]).filter((value) => typeof value === "string"));
+    if (ids.size !== 1)
+      return [];
+    [candidate] = ids;
+    if ((typeof source.fileId === "string" || typeof source.file_id === "string") && (!response || typeof mimeType !== "string" || !DRIVE_FILE_MIME_TYPES.has(mimeType) || response.id !== candidate))
       return [];
   }
   if (typeof candidate !== "string" || !DRIVE_ID.test(candidate))
@@ -7446,8 +7560,15 @@ function googleDriveRef(toolName, toolInput, toolResponseRaw) {
   return [{ system: "google_drive", kind: "file", id: candidate, scope: "drive.google.com", source: "tool_output" }];
 }
 function extractWorkItemRefs(toolName, command, toolResponseRaw, toolInput) {
-  if (toolInput !== void 0 && driveToolVerb(toolName)) {
-    return googleDriveRef(toolName, toolInput, toolResponseRaw);
+  if (toolInput !== void 0) {
+    const mcp = mcpServerTool(toolName);
+    if (mcp && CLAUDE_DOCS_SERVERS.has(mcp.server))
+      return claudeDocsRef(mcp.tool, toolInput, toolResponseRaw);
+    const connectorTool = mcpToolPart(toolName);
+    if (SLACK_WRITE_TOOLS.has(connectorTool))
+      return slackChannelRef(connectorTool, toolInput, toolResponseRaw);
+    if (driveToolVerb(toolName))
+      return googleDriveRef(toolName, toolInput, toolResponseRaw);
   }
   if (toolName === "Artifact") {
     let response;
@@ -7460,7 +7581,7 @@ function extractWorkItemRefs(toolName, command, toolResponseRaw, toolInput) {
       return [];
     const object = response;
     const candidate = object.artifact_id;
-    if (typeof candidate !== "string" || !/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(candidate))
+    if (typeof candidate !== "string" || !ARTIFACT_UUID.test(candidate))
       return [];
     return [{ system: "claude", kind: "artifact", id: candidate.toLowerCase(), scope: "claude.ai", source: "tool_output" }];
   }

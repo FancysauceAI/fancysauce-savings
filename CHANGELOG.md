@@ -2,6 +2,12 @@
 
 All public releases of `fancysauce-savings`. Most recent first.
 
+## v0.24.3 — 2026-11-17
+
+### Changes
+
+- **Work-item capture covers more connector writes.** With the `work-item-attribution` flag on, ref capture on `tool_call.complete` now gives a work-item ref for three more kinds of MCP connector write, in both runtimes. A Claude Docs write (`create`, `update`, `batch`, or `delete`) that the server allows gives a `claude/artifact` ref with the doc id. A Google Sheets, Docs, or Slides write gives a `google_drive/file` ref with the file id, read from the `spreadsheetId`, `documentId`, or `presentationId` field. A Slack message, draft, scheduled message, or new channel gives a `slack/channel` ref with the channel id. Reads, refused calls, errors, Slack direct messages, and canvases give no ref. The ref holds only the id, never the text that was written. (FAN-2649, FAN-2651, FAN-2653, #301)
+
 ## v0.24.2 — 2026-11-10
 
 ### Fixes

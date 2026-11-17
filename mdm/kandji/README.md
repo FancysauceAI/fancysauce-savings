@@ -86,11 +86,11 @@ Open `deploy.sh` and set the configuration values at the top:
 ```sh
 INGEST_TOKEN="fs_ingest_REPLACE_ME" # replace with your ingest token
 IDENTITY_TYPE="full"
-CODEX_TAG="v0.24.1"                 # pinned plugin release for Codex usage analytics
-CODEX_SHA="7d442efe2f1d790430e6815b70785edb8e355774"   # commit sha of CODEX_TAG
+CODEX_TAG="v0.24.2"                 # pinned plugin release for Codex usage analytics
+CODEX_SHA="13a0be920f59cb0c1d3ce7f2512da1376db60dc2"   # commit sha of CODEX_TAG
 CC_MODE="managed-hooks"             # plugin | managed-hooks
-CC_TAG="v0.24.1"                    # pinned plugin release for Claude Code usage analytics
-CC_SHA="7d442efe2f1d790430e6815b70785edb8e355774"   # commit sha of CC_TAG
+CC_TAG="v0.24.2"                    # pinned plugin release for Claude Code usage analytics
+CC_SHA="13a0be920f59cb0c1d3ce7f2512da1376db60dc2"   # commit sha of CC_TAG
 CC_SESSION_END_TIMEOUT="5"          # seconds, 2-60; raises the shared SessionEnd budget
 ```
 
